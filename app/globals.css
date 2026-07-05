@@ -154,6 +154,8 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
   background:linear-gradient(90deg,transparent,rgba(53,225,255,.55),transparent);
   animation:sc-scan 7s linear infinite}
 #cityMap{position:absolute;inset:0}
+/* CARTO dark tiles are too dim over the navy backdrop — lift them so streets read */
+#cityMap canvas,#miniMap canvas{filter:brightness(1.55) contrast(1.05)}
 .map-hudbar{position:absolute;top:12px;inset-inline-start:12px;z-index:5;display:flex;gap:8px;align-items:stretch;flex-wrap:wrap}
 .stat-chip{background:rgba(3,10,21,.82);border:1px solid var(--cy-line);border-radius:0;
   padding:7px 14px;text-align:center;backdrop-filter:blur(6px)}
