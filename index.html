@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#04070D">
+<title>Smart City — הילדים שמתקנים את העיר עם AI</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏙️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link rel="stylesheet" href="css/design.css">
+</head>
+<body>
+<div class="city-bg" aria-hidden="true">
+  <div class="grid-floor"></div>
+  <div class="glow glow-a"></div>
+  <div class="glow glow-b"></div>
+  <svg class="skyline" viewBox="0 0 1440 220" preserveAspectRatio="xMidYMax slice">
+    <g class="sky-line">
+      <path d="M0 220V150h40v-30h30v50h50V90h35v-25h25v55h60v-40h45v70h55V120h40v-45h30v25h25v60h70V95h50v-35h35v60h60v-45h40v85h65V110h45v-30h30v50h60V85h40v-30h30v75h70V100h50v-40h35v70h55v-30h45v50h60V90h40v40h50v90z"/>
+      <g class="sky-dots">
+        <circle cx="128" cy="88" r="2.4"/><circle cx="333" cy="73" r="2.4"/>
+        <circle cx="560" cy="58" r="2.4"/><circle cx="820" cy="53" r="2.4"/>
+        <circle cx="1063" cy="53" r="2.4"/><circle cx="1305" cy="58" r="2.4"/>
+      </g>
+    </g>
+  </svg>
+</div>
+
+<div id="toast"></div>
+
+<!-- ===== auth ===== -->
+<div class="overlay" id="authScreen" style="display:none">
+  <div class="auth-card hud">
+    <div class="logo-lg">SMART<span class="accent">CITY</span></div>
+    <div class="muted" style="font-size:13.5px;margin-top:6px">מאמנים AI לזהות מפגעים עירוניים — <b class="ink">ומתקנים את העיר.</b> 🏙️</div>
+    <div class="auth-tabs">
+      <button id="tabLogin" class="on">התחברות</button>
+      <button id="tabSignup">הרשמה</button>
+    </div>
+    <div id="signupExtra" style="display:none">
+      <label class="lbl">שם הקבוצה</label>
+      <input type="text" id="authTeam" placeholder="למשל: הנמרים של שדרות">
+    </div>
+    <label class="lbl">אימייל</label>
+    <input type="text" id="authEmail" placeholder="name@mail.com" style="direction:ltr;text-align:left" autocomplete="username">
+    <label class="lbl">סיסמה</label>
+    <input type="password" id="authPass" placeholder="••••••••" style="direction:ltr;text-align:left" autocomplete="current-password">
+    <div class="auth-err" id="authErr"></div>
+    <button class="primary" id="authGo" style="width:100%;font-size:15px;padding:13px">כניסה</button>
+    <button class="ghost" id="skipAuth" style="width:100%;margin-top:8px;font-size:12.5px">👀 רק להציץ (צפייה בלבד)</button>
+  </div>
+</div>
+
+<div class="wrap" id="appWrap">
+  <!-- ===== header ===== -->
+  <header class="topbar hud">
+    <div class="logo">SMART<span class="accent">CITY</span><span class="beacon"></span></div>
+    <nav class="tabs" id="mainTabs">
+      <button data-view="map" class="on">🗺️ מפת העיר</button>
+      <button data-view="tour">🚶 סיור ברחובות</button>
+      <button data-view="studio">🎓 סטודיו אימון</button>
+      <button data-view="board">📋 לוח מפגעים</button>
+      <button data-view="factory" id="factoryTab" style="display:none">🏭 מפעל הדאטה</button>
+    </nav>
+    <div class="userbox">
+      <select id="citySel" title="עיר"></select>
+      <span id="teamBadge" class="pill" style="display:none"></span>
+      <button class="ghost" id="loginBtn" style="font-size:12px">🔑 כניסה</button>
+      <button class="ghost" id="logoutBtn" style="display:none;font-size:12px">🚪</button>
+    </div>
+  </header>
+
+  <!-- ===== pedagogy ribbon ===== -->
+  <div class="ml-ribbon" id="mlRibbon">
+    <span class="s" data-step="1">1·איסוף 🎬</span><i></i>
+    <span class="s" data-step="2">2·אוצרות 🔍</span><i></i>
+    <span class="s" data-step="3">3·תיוג ✍️</span><i></i>
+    <span class="s" data-step="4">4·אימון 🧠</span><i></i>
+    <span class="s" data-step="5">5·הערכה 🎯</span><i></i>
+    <span class="s" data-step="6">6·פריסה 🚀</span><i></i>
+    <span class="s" data-step="7">7·ניטור 📡</span>
+  </div>
+
+  <!-- ===== MAP VIEW ===== -->
+  <section class="view" id="view-map">
+    <div class="map-shell hud">
+      <div id="cityMap"></div>
+      <div class="map-hudbar">
+        <div class="stat-chip"><b id="mStatDet">0</b><span>מפגעים</span></div>
+        <div class="stat-chip"><b id="mStatOk">0</b><span>מאושרים</span></div>
+        <div class="stat-chip"><b id="mStatFrames">0</b><span>צילומים</span></div>
+        <label class="hud-toggle"><input type="checkbox" id="tglHeat"> חום 🔥</label>
+        <label class="hud-toggle"><input type="checkbox" id="tglCover" checked> כיסוי 📷</label>
+      </div>
+      <div class="map-legend" id="mapLegend"></div>
+    </div>
+    <p class="hint center">לחיצה על נעץ = פרטי המפגע · לחיצה על נקודת כיסוי כחולה = סיור מאותה נקודה · לחיצה ימנית/ארוכה = פתיחת Street View במקום</p>
+  </section>
+
+  <!-- ===== TOUR VIEW ===== -->
+  <section class="view" id="view-tour" style="display:none">
+    <div class="phase-head"><span class="ph-n">7</span><div><b>ניטור — סיור ברחובות</b><span class="why">למה זה חשוב? מודל שעובד במעבדה חייב להיבדק ברחוב האמיתי. כאן רואים אם ה-AI שלכם באמת מזהה.</span></div></div>
+    <div class="tour-grid">
+      <div class="tour-main hud">
+        <div class="tour-tabs">
+          <button id="ttStreet" class="on">🌍 Street View</button>
+          <button id="ttFrames">📷 הצילומים שלנו</button>
+        </div>
+        <div id="svWrap"><iframe id="svFrame" allow="accelerometer; gyroscope" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+        <div id="framesWrap" style="display:none">
+          <div class="stage" id="tourStage"><div class="empty">בחרו מסלול מצולם, או העלו תמונות רחוב ↓</div></div>
+          <div class="tour-ctl">
+            <button class="ghost" id="tourPrev">→ אחורה</button>
+            <button class="primary" id="tourPlay">▶ נגן</button>
+            <button class="ghost" id="tourNext">קדימה ←</button>
+            <span class="pill" id="tourPos">—</span>
+            <span style="flex:1"></span>
+            <button class="hot" id="liveBtn" disabled>🔴 סיור חי</button>
+            <span class="pill" id="liveModelState">אין מודל</span>
+          </div>
+          <div class="hint" id="liveHint" style="margin:8px 2px 0">🔴 סיור חי = המודל המאומן שלכם רץ על כל תמונה. זיהוי מעל הסף → נשמר אוטומטית כנעץ במפה!
+            <label style="margin-inline-start:10px">סף ביטחון: <input type="text" id="liveConf" value="0.35" style="width:52px;padding:3px 7px"></label>
+          </div>
+        </div>
+      </div>
+      <div class="tour-side">
+        <div class="card hud slim">
+          <h3>📍 מיני-מפה</h3>
+          <div id="miniMap"></div>
+        </div>
+        <div class="card hud slim">
+          <h3>🛣️ מסלולים מצולמים</h3>
+          <div id="routeList" class="route-list"><span class="muted" style="font-size:12.5px">אין עדיין מסלולים — מפעל הדאטה ימלא אותם.</span></div>
+        </div>
+        <div class="card hud slim">
+          <h3>⬆️ העלאת תמונות רחוב</h3>
+          <p class="hint" style="margin:0 0 8px">צילמתם מפגעים בטלפון? העלו, בחרו נקודה במיני-מפה, וסיירו עליהן עם המודל.</p>
+          <div class="dropzone" id="tourDrop">גררו תמונות לכאן<br><b>או לחצו לבחירה</b></div>
+          <input type="file" id="tourFiles" accept="image/*" multiple style="display:none">
+          <div class="hint" id="tourUpState" style="margin-top:6px"></div>
+        </div>
+        <div class="card hud slim" id="liveFeedCard" style="display:none">
+          <h3>📡 זיהויים חיים</h3>
+          <div id="liveFeed" class="live-feed"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== STUDIO VIEW ===== -->
+  <section class="view" id="view-studio" style="display:none">
+    <!-- 1 collect -->
+    <div class="card hud">
+      <div class="phase-head"><span class="ph-n">1</span><div><b>איסוף 🎬</b><span class="why">למה זה חשוב? מודל לומד רק ממה שהוא רואה. מגוון = חוכמה: זוויות, מרחקים, תאורה.</span></div></div>
+      <div class="row" style="margin-bottom:10px">
+        <label style="font-size:13px;font-weight:600">מה מזהים עכשיו?</label>
+        <input id="subjectName" type="text" placeholder="למשל: בור בכביש / מעבר חציה דהוי" style="flex:1;min-width:170px;max-width:300px">
+      </div>
+      <div class="row">
+        <button class="primary" id="videoBtn">🎬 בחר סרטונים</button>
+        <input type="file" id="videoInput" accept="video/*" multiple style="display:none">
+        <button id="uploadBtn">🖼️ העלה תמונות</button>
+        <input type="file" id="fileInput" accept="image/*" multiple style="display:none">
+        <button class="ghost" id="cityPoolBtn">🏙️ מהמאגר העירוני</button>
+        <label class="mini">תמונות מסרטון:
+          <select id="frameCount"><option>30</option><option selected>60</option><option>100</option></select></label>
+        <label class="mini"><input type="checkbox" id="vidBlur" checked> רק חדות</label>
+      </div>
+      <div id="cityPoolPick" style="display:none;margin-top:10px">
+        <div class="row"><select id="poolRouteSel" style="min-width:220px"></select>
+        <button class="primary" id="poolRouteLoad">טען פריימים</button></div>
+      </div>
+      <div id="videoProgress" class="hint" style="margin-top:8px"></div>
+      <video id="vidScratch" style="display:none" muted playsinline></video>
+      <div class="dropzone" id="imgDrop" style="margin-top:10px"><b>או גררו לכאן</b> סרטונים / תמונות</div>
+    </div>
+
+    <!-- 2+3 curate + tag -->
+    <div class="card hud">
+      <div class="phase-head"><span class="ph-n">2·3</span><div><b>אוצרות ותיוג ✍️</b><span class="why">למה זה חשוב? "זבל נכנס — זבל יוצא". מחקו תמונות גרועות (✕), תייגו מלבן צמוד, וסמנו רקע 🚫 (~רבע מהתמונות) כדי שהמודל ילמד מה זה "אין מפגע".</span></div></div>
+      <div class="row" style="margin-bottom:10px">
+        <input type="text" id="newClassName" placeholder="קטגוריית מפגע חדשה… למשל: בור" style="flex:1;min-width:170px;max-width:280px">
+        <button class="primary" id="addClassBtn">➕ הוסף קטגוריה</button>
+        <button class="ghost" id="markBgBtn">🚫 רקע — אין מפגע</button>
+      </div>
+      <div class="classes" id="classBtns"></div>
+      <div class="stage-wrap" style="margin-top:12px">
+        <div class="stage-col">
+          <div class="stage" id="stage"><div class="empty">העלו סרטון או תמונות בשלב 1 — הפריימים יופיעו כאן לתיוג</div></div>
+          <div class="tagbar" id="tagbar" style="display:none">
+            <span>התקדמות</span><div class="bar"><i id="tagbarFill"></i></div><b id="tagbarLbl">0/0</b>
+          </div>
+          <div class="strip" id="strip"></div>
+        </div>
+        <div class="side-col">
+          <div class="muted" style="font-size:13px;margin-bottom:6px">מלבנים בתמונה:</div>
+          <div class="boxlist" id="boxList"></div>
+          <div class="stat-grid" id="stats" style="margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 train -->
+    <div class="card hud">
+      <div class="phase-head"><span class="ph-n">4</span><div><b>אימון 🧠</b><span class="why">למה זה חשוב? כאן הדאטה הופך למודל. GPU בענן לומד את הדוגמאות שלכם ב~10 דקות.</span></div></div>
+      <div class="row">
+        <button class="primary" id="exportBtn">📦 שמור דאטהסט (ZIP)</button>
+        <button class="hot" id="shareBtn" disabled>🌐 שתף למאגר הקבוצות</button>
+        <button id="colabBtn">☁️ פתח מחברת אימון</button>
+        <span id="shareState" class="pill" style="display:none"></span>
+      </div>
+      <p class="hint" style="margin-top:8px">Colab: ‏Runtime → Run all → העלו את ה-ZIP → יורד <code>yolo_tfjs_model.zip</code>. ודאו T4 GPU.</p>
+      <div class="poolbox">
+        <div class="row" style="margin-bottom:8px">
+          <b style="font-size:14px">🤝 מאגר הקבוצות — מודל העיר</b>
+          <button class="ghost" id="poolRefreshBtn" style="font-size:12px">🔄</button>
+          <button class="hot" id="mergeBtn" disabled style="font-size:12.5px">⚡ מזג והורד</button>
+          <span id="poolState" class="pill">—</span>
+        </div>
+        <div id="poolList"></div>
+        <div id="mergeProgress" class="hint"></div>
+      </div>
+    </div>
+
+    <!-- 5 evaluate -->
+    <div class="card hud">
+      <div class="phase-head"><span class="ph-n">5·6</span><div><b>הערכה ופריסה 🎯</b><span class="why">למה זה חשוב? מודל נמדד על תמונות שלא ראה. טענו את המודל, בדקו — ואז פרסו אותו לסיור חי בעיר.</span></div></div>
+      <div class="row" style="margin-bottom:10px">
+        <button class="ghost" id="loadModelBtn">📂 טען מודל (ZIP)</button>
+        <input type="file" id="modelFile" accept=".zip" style="display:none">
+        <span id="modelStatus" class="pill"><span class="status-dot"></span>אין מודל</span>
+        <button class="primary" id="registerModelBtn" disabled>🚀 רשום כמודל הקבוצה</button>
+        <label class="mini">רגישות: <input type="text" id="confInput" value="0.25" style="width:50px"></label>
+      </div>
+      <div class="dropzone" id="modelDrop" style="margin-bottom:10px"><b>גררו לכאן</b> yolo_tfjs_model.zip</div>
+      <div class="stage-wrap">
+        <div class="stage-col">
+          <div class="stage" id="testStage"><div class="empty">טענו מודל → העלו תמונה לבדיקה</div></div>
+          <div class="dropzone" id="testDrop" style="margin-top:8px">גררו <b>תמונה</b> לבדיקה</div>
+          <input type="file" id="testFile" accept="image/*" style="display:none">
+        </div>
+        <div class="side-col">
+          <div class="muted" style="font-size:13px;margin-bottom:6px">מה זוהה:</div>
+          <div id="detList"><span class="muted" style="font-size:12px">—</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== BOARD VIEW ===== -->
+  <section class="view" id="view-board" style="display:none">
+    <div class="phase-head"><span class="ph-n">7</span><div><b>ניטור — לוח מפגעים 📋</b><span class="why">למה זה חשוב? מודל טועה לפעמים (False Positive). אישור אנושי = השלב שהופך זיהוי AI לדיווח אמיתי לעירייה.</span></div></div>
+    <div class="board-stats hud" id="leaderboard"></div>
+    <div class="card hud">
+      <div class="row" style="margin-bottom:10px">
+        <select id="boardFilter">
+          <option value="all">כל הסטטוסים</option>
+          <option value="pending">⏳ ממתינים</option>
+          <option value="approved">✅ מאושרים</option>
+          <option value="rejected">❌ נדחו</option>
+        </select>
+        <button class="ghost" id="boardRefresh">🔄 רענן</button>
+        <span style="flex:1"></span>
+        <button class="primary" id="csvBtn">📄 דוח לעירייה (CSV)</button>
+      </div>
+      <div id="boardList" class="board-list"></div>
+    </div>
+  </section>
+
+  <!-- ===== FACTORY VIEW (admin) ===== -->
+  <section class="view" id="view-factory" style="display:none">
+    <div class="phase-head"><span class="ph-n">🏭</span><div><b>מפעל הדאטה</b><span class="why">סרטון נסיעה + קובץ GPX → פריימים חדים עם קואורדינטות אמיתיות → מאגר עירוני שכולם מתאמנים עליו.</span></div></div>
+    <div class="card hud">
+      <h3 style="margin-top:0">מסלול חדש</h3>
+      <div class="row" style="margin-bottom:8px">
+        <input type="text" id="routeName" placeholder="שם המסלול… למשל: שד׳ מנחם בגין צפונה" style="flex:1;min-width:200px">
+      </div>
+      <div class="row">
+        <button class="primary" id="facVideoBtn">🎬 סרטון נסיעה</button>
+        <input type="file" id="facVideo" accept="video/*" style="display:none">
+        <button id="facGpxBtn">🛰️ קובץ GPX</button>
+        <input type="file" id="facGpx" accept=".gpx,.xml" style="display:none">
+        <label class="mini">פריימים: <select id="facCount"><option>40</option><option selected>80</option><option>150</option></select></label>
+        <span class="pill" id="facState">בחרו סרטון + GPX</span>
+      </div>
+      <div class="hint" id="facInfo" style="margin-top:8px"></div>
+      <button class="hot" id="facGo" disabled style="margin-top:10px">⚙️ עבד והעלה למאגר</button>
+      <div class="tagbar" id="facBar" style="display:none;margin-top:10px"><span>מעבד</span><div class="bar"><i id="facBarFill"></i></div><b id="facBarLbl"></b></div>
+    </div>
+    <div class="card hud">
+      <h3 style="margin-top:0">מסלולים קיימים</h3>
+      <div id="facRoutes"></div>
+    </div>
+  </section>
+
+  <footer class="foot">SMART CITY · שדרות 🇮🇱 · הילדים מאמנים, ה-AI מזהה, העיר מתוקנת · YOLOv8 בדפדפן</footer>
+</div>
+
+<div class="modal-back" id="detModal" style="display:none">
+  <div class="card hud det-modal">
+    <button class="ghost mclose" id="detModalClose">✕</button>
+    <div id="detModalBody"></div>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
