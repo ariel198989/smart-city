@@ -21,14 +21,35 @@
   <div class="grid-floor"></div>
   <div class="glow glow-a"></div>
   <div class="glow glow-b"></div>
-  <svg class="skyline" viewBox="0 0 1440 220" preserveAspectRatio="xMidYMax slice">
+  <svg class="skyline" viewBox="0 0 1000 460" preserveAspectRatio="xMidYMax meet">
     <g class="sky-line">
-      <path d="M0 220V150h40v-30h30v50h50V90h35v-25h25v55h60v-40h45v70h55V120h40v-45h30v25h25v60h70V95h50v-35h35v60h60v-45h40v85h65V110h45v-30h30v50h60V85h40v-30h30v75h70V100h50v-40h35v70h55v-30h45v50h60V90h40v40h50v90z"/>
-      <g class="sky-dots">
-        <circle cx="128" cy="88" r="2.4"/><circle cx="333" cy="73" r="2.4"/>
-        <circle cx="560" cy="58" r="2.4"/><circle cx="820" cy="53" r="2.4"/>
-        <circle cx="1063" cy="53" r="2.4"/><circle cx="1305" cy="58" r="2.4"/>
-      </g>
+      <polygon points="120,360 120,250 175,235 230,250 230,360"/>
+      <line x1="120" y1="250" x2="230" y2="250" stroke-opacity=".25"/>
+      <line x1="175" y1="235" x2="175" y2="360" stroke-opacity=".18"/>
+      <rect x="300" y="180" width="90" height="180"/>
+      <line x1="300" y1="215" x2="390" y2="215" stroke-opacity=".2"/>
+      <line x1="300" y1="255" x2="390" y2="255" stroke-opacity=".2"/>
+      <line x1="300" y1="295" x2="390" y2="295" stroke-opacity=".2"/>
+      <line x1="345" y1="180" x2="345" y2="360" stroke-opacity=".16"/>
+      <polygon points="440,360 440,150 490,120 540,150 540,360"/>
+      <line x1="440" y1="150" x2="540" y2="150" stroke-opacity=".22"/>
+      <line x1="490" y1="120" x2="490" y2="360" stroke-opacity=".16"/>
+      <rect x="600" y="210" width="70" height="150"/>
+      <line x1="600" y1="250" x2="670" y2="250" stroke-opacity=".2"/>
+      <line x1="600" y1="300" x2="670" y2="300" stroke-opacity=".2"/>
+      <polygon points="710,360 710,190 760,170 810,190 810,360"/>
+      <line x1="710" y1="190" x2="810" y2="190" stroke-opacity=".22"/>
+      <rect x="860" y="240" width="60" height="120"/>
+      <line x1="860" y1="290" x2="920" y2="290" stroke-opacity=".2"/>
+      <line x1="60" y1="360" x2="960" y2="360" stroke-opacity=".4"/>
+    </g>
+    <g class="sky-dots">
+      <circle cx="120" cy="250" r="3"/><circle cx="230" cy="250" r="3"/><circle cx="175" cy="235" r="3"/>
+      <circle cx="300" cy="180" r="3"/><circle cx="390" cy="180" r="3"/>
+      <circle cx="440" cy="150" r="3"/><circle cx="540" cy="150" r="3"/><circle cx="490" cy="120" r="3.4"/>
+      <circle cx="600" cy="210" r="3"/><circle cx="670" cy="210" r="3"/>
+      <circle cx="710" cy="190" r="3"/><circle cx="810" cy="190" r="3"/><circle cx="760" cy="170" r="3"/>
+      <circle cx="860" cy="240" r="3"/><circle cx="920" cy="240" r="3"/>
     </g>
   </svg>
 </div>
@@ -63,11 +84,11 @@
   <header class="topbar hud">
     <div class="logo">SMART<span class="accent">CITY</span><span class="beacon"></span></div>
     <nav class="tabs" id="mainTabs">
-      <button data-view="map" class="on">🗺️ מפת העיר</button>
-      <button data-view="tour">🚶 סיור ברחובות</button>
-      <button data-view="studio">🎓 סטודיו אימון</button>
-      <button data-view="board">📋 לוח מפגעים</button>
-      <button data-view="factory" id="factoryTab" style="display:none">🏭 מפעל הדאטה</button>
+      <button data-view="map" class="on">מפת העיר</button>
+      <button data-view="tour">סיור ברחובות</button>
+      <button data-view="studio">סטודיו אימון</button>
+      <button data-view="board">לוח מפגעים</button>
+      <button data-view="factory" id="factoryTab" style="display:none">מפעל הדאטה</button>
     </nav>
     <div class="userbox">
       <select id="citySel" title="עיר"></select>
@@ -79,25 +100,34 @@
 
   <!-- ===== pedagogy ribbon ===== -->
   <div class="ml-ribbon" id="mlRibbon">
-    <span class="s" data-step="1">1·איסוף 🎬</span><i></i>
-    <span class="s" data-step="2">2·אוצרות 🔍</span><i></i>
-    <span class="s" data-step="3">3·תיוג ✍️</span><i></i>
-    <span class="s" data-step="4">4·אימון 🧠</span><i></i>
-    <span class="s" data-step="5">5·הערכה 🎯</span><i></i>
-    <span class="s" data-step="6">6·פריסה 🚀</span><i></i>
-    <span class="s" data-step="7">7·ניטור 📡</span>
+    <span class="s" data-step="1">איסוף</span><i></i>
+    <span class="s" data-step="2">אוצרות</span><i></i>
+    <span class="s" data-step="3">תיוג</span><i></i>
+    <span class="s" data-step="4">אימון</span><i></i>
+    <span class="s" data-step="5">הערכה</span><i></i>
+    <span class="s" data-step="6">פריסה</span><i></i>
+    <span class="s" data-step="7">ניטור</span>
   </div>
 
   <!-- ===== MAP VIEW ===== -->
   <section class="view" id="view-map">
     <div class="map-shell hud">
       <div id="cityMap"></div>
+      <div style="position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:14px;padding:12px;z-index:5;pointer-events:none">
+        <span style="color:rgba(53,225,255,.5);font-size:13px">〈</span>
+        <span style="font-size:12px;letter-spacing:.34em;color:#eafbff">מפת העיר החיה</span>
+        <span style="color:rgba(53,225,255,.5);font-size:13px">〉</span>
+      </div>
+      <div style="position:absolute;top:12px;inset-inline-end:14px;z-index:5;display:flex;align-items:center;gap:8px">
+        <span style="width:8px;height:8px;border-radius:50%;background:#35E1FF;animation:sc-dot 1.4s ease-in-out infinite"></span>
+        <span id="liveCount" style="font-family:'Space Grotesk',sans-serif;font-size:11px;letter-spacing:.14em;color:rgba(53,225,255,.75)">LIVE</span>
+      </div>
       <div class="map-hudbar">
         <div class="stat-chip"><b id="mStatDet">0</b><span>מפגעים</span></div>
         <div class="stat-chip"><b id="mStatOk">0</b><span>מאושרים</span></div>
         <div class="stat-chip"><b id="mStatFrames">0</b><span>צילומים</span></div>
-        <label class="hud-toggle"><input type="checkbox" id="tglHeat"> חום 🔥</label>
-        <label class="hud-toggle"><input type="checkbox" id="tglCover" checked> כיסוי 📷</label>
+        <label class="hud-toggle"><input type="checkbox" id="tglHeat"> מפת חום</label>
+        <label class="hud-toggle"><input type="checkbox" id="tglCover" checked> כיסוי</label>
       </div>
       <div class="map-legend" id="mapLegend"></div>
     </div>

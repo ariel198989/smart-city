@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style data-omelette-injected>html,body{background:transparent}</style><script data-omelette-injected>(()=>{{const Y=new URLSearchParams(location.search).get("theme");if(Y==="light"||Y==="dark"){document.documentElement.dataset.theme=Y}}{const Y=()=>{try{if(document.querySelector('meta[name="color-scheme"]'))return;const k=getComputedStyle(document.documentElement).getPropertyValue("color-scheme").trim();if(k&&k!=="normal")return;const w=(X)=>{if(!X)return null;const F=getComputedStyle(X).backgroundColor.match(/^rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+%?))?\s*\)$/);if(!F)return null;const K=F[4]==null?1:parseFloat(F[4])/(F[4].endsWith("%")?100:1);if(K<0.99)return null;return[+F[1],+F[2],+F[3]]};const U=w(document.body)||w(document.documentElement);if(!U)return;const x=(X)=>{const F=X/255;return F<=0.04045?F/12.92:((F+0.055)/1.055)**2.4};const D=0.2126*x(U[0])+0.7152*x(U[1])+0.0722*x(U[2]);document.documentElement.style.setProperty("color-scheme",D<0.4?"dark":"light")}catch{}};if(document.readyState==="complete")Y();else window.addEventListener("load",Y)}var _=[];var v=false;var P=30000;var h=3000;document.addEventListener("DOMContentLoaded",()=>{const Y=window.Babel;const k="om-src-id";if(Y&&Y.registerPlugin&&!(Y.availablePlugins&&Y.availablePlugins[k])){Y.registerPlugin(k,({types:D})=>({visitor:{JSXOpeningElement(X,F){const K=X.node;if(K.name&&K.name.type==="JSXMemberExpression")return;for(let z=0;z<K.attributes.length;z++){const V=K.attributes[z];if(V.type==="JSXAttribute"&&V.name&&V.name.name==="data-om-id")return}const B=F.file&&F.file.opts&&F.file.opts.filename||"?";const A=K.loc&&K.loc.start;const J=`jsx:${B}:${K.start??0}:${A?A.line:0}:${A?A.column+1:0}`;K.attributes.push(D.jsxAttribute(D.jsxIdentifier("data-om-id"),D.stringLiteral(J)))}}}))}const w="om-text-extract";let U=false;if(v&&Y&&Y.registerPlugin&&!(Y.availablePlugins&&Y.availablePlugins[w])){const D=window.React;if(D&&D.useSyncExternalStore&&D.createElement){U=true;const X={};const F=new Set;let K=0;window.__omTextO=X;window.__omTextSet=(J)=>{for(const z in J){const V=J[z];if(V==null)delete X[z];else X[z]=V}K++;F.forEach((z)=>z())};const B=(J)=>{F.add(J);return()=>F.delete(J)};const A=()=>K;window.__OmT=function J(z){D.useSyncExternalStore(B,A,A);return D.createElement("span",{"data-om-text":z.i,className:"__om-t"},z.i in X?X[z.i]:z.children)};Y.registerPlugin(w,({types:J})=>{const z={style:1,script:1,noscript:1,textarea:1,title:1,option:1,text:1,tspan:1,textPath:1};const V={placeholder:1,alt:1,title:1,label:1,"aria-label":1,"aria-description":1,"aria-placeholder":1};const W=(Z,H)=>J.logicalExpression("??",J.memberExpression(J.logicalExpression("||",J.memberExpression(J.identifier("window"),J.identifier("__omTextO")),J.objectExpression([])),J.stringLiteral(Z),true),H);const Q=(Z)=>Z.file&&Z.file.opts&&Z.file.opts.filename||"?";const j=(Z)=>Z.file&&Z.file.code||"";const G=(Z,H)=>{const N=($)=>$&&$.start!=null&&$.end!=null&&($.type==="StringLiteral"||$.type==="TemplateLiteral"&&$.expressions.length===0)?[$.start,$.end]:null;const L=N(H);if(L)return L;if(H&&H.type==="Identifier"){const $=Z.scope.getBinding(H.name);if($&&$.constant&&$.path.node.type==="VariableDeclarator"){return N($.path.node.init)}}return null};const R=(Z,H,N)=>{const L=Z.node;let $=false;const M=(q,E)=>{$=true;return J.jsxElement(J.jsxOpeningElement(J.jsxIdentifier("__OmT"),[J.jsxAttribute(J.jsxIdentifier("i"),J.stringLiteral(q))],false),J.jsxClosingElement(J.jsxIdentifier("__OmT")),[E],false)};const C=L.children.map((q)=>{if(q.type==="JSXText"){if(q.start==null||q.end==null)return q;const E=N.slice(q.start,q.end);const f=E.length-E.trimStart().length;const I=E.length-E.trimEnd().length;if(f+I>=E.length)return q;return M(`txt:${H}:${q.start+f}:${q.end-I}`,q)}if(q.type==="JSXExpressionContainer"){const E=G(Z,q.expression);if(E)return M(`str:${H}:${E[0]}:${E[1]}`,q)}return q});if($)L.children=C};return{visitor:{JSXOpeningElement(Z,H){const N=Z.node;const L=Q(H);const $={};for(let M=0;M<N.attributes.length;M++){const C=N.attributes[M];if(C.type!=="JSXAttribute"||!C.name)continue;const q=C.name.name;if(!V[q])continue;if(!C.value||C.value.type!=="StringLiteral")continue;if(C.value.start==null||C.value.end==null)continue;const E=`txt:${L}:${C.value.start}:${C.value.end}`;$[q]=E;C.value=J.jsxExpressionContainer(W(E,J.stringLiteral(C.value.value)))}if(Object.keys($).length){N.attributes.push(J.jsxAttribute(J.jsxIdentifier("data-om-text-attrs"),J.stringLiteral(JSON.stringify($))))}},JSXElement(Z,H){const N=Z.node.openingElement;const L=N&&N.name&&N.name.name;if(L==="__OmT")return;if(typeof L==="string"&&z[L])return;R(Z,Q(H),j(H))},JSXFragment(Z,H){R(Z,Q(H),j(H))}}}})}}const x=U?["transform-react-jsx-source",k,w]:["transform-react-jsx-source",k];document.querySelectorAll('script[type="text/babel"],script[type="text/jsx"]').forEach((D,X)=>{const F=D.getAttribute("data-plugins")||"";const K=x.filter((B)=>F.indexOf(B)<0);if(K.length){D.setAttribute("data-plugins",F?`${F},${K.join(",")}`:K.join(","))}if(!D.hasAttribute("data-filename")){D.setAttribute("data-filename",D.getAttribute("src")||`inline-${X}`)}})});var S=window.parent;if(S&&S!==window){const Y=(J,z)=>{try{S.postMessage({__omelette_log:true,type:J,data:z},"*")}catch{}};["log","warn","error"].forEach((J)=>{const z=console[J];console[J]=(...V)=>{const W=V.map((Q)=>{try{return typeof Q==="object"?JSON.stringify(Q):String(Q)}catch{try{return String(Q)}catch{return"[unstringifiable]"}}}).join(" ");Y(J,W);z.apply(console,V)}});window.addEventListener("error",(J)=>{const z=J.target;if(z&&z!==window&&z.tagName){const V=z.src||z.href||"";Y("resource_error",`${z.tagName} failed to load: ${V}`)}else{Y("error",`${J.message||"Unknown error"} at ${J.filename||"?"}:${J.lineno||0}:${J.colno||0}`)}},true);window.addEventListener("unhandledrejection",(J)=>{const z=J.reason;const V=z instanceof Error?`${z.message} ${z.stack}`:String(z);Y("error",`Unhandled rejection: ${V}`)});const k=()=>{try{S.postMessage({type:"omelette:height",height:document.documentElement.scrollHeight},"*")}catch{}};if(window.ResizeObserver)new ResizeObserver(k).observe(document.documentElement);const w=()=>{k();if(!document.querySelector('script[type="text/babel"],script[type="text/jsx"]'))return;const J=()=>document.getElementById("root")||document.querySelector("body > div[id]");const z=J()?.firstElementChild??null;let V=0;const W=()=>{const Q=J();if(Q&&Q.firstElementChild!==z||++V>30){k();return}setTimeout(W,100)};setTimeout(W,100)};if(document.readyState==="complete")w();else window.addEventListener("load",w);const U={};let x=0;const D=(J)=>new Promise((z,V)=>{if(!_.length){V(new Error("claude.complete: no parent origin"));return}const W=`c${++x}`;const Q=()=>setTimeout(()=>{delete U[W];V(new Error(`claude.complete: no data for ${P/1000}s`))},P);const j=Q();U[W]={resolve:z,reject:V,text:"",t:j,arm:Q};try{for(const G of _){S.postMessage({__om_api:true,id:W,body:J},G)}}catch(G){clearTimeout(j);delete U[W];V(G)}});const X=8;const F=async(J,z)=>{if(!Array.isArray(J.messages)){throw new Error("claude.complete: tools require a messages array")}const V=J.messages.slice();const W={...J,tools:J.tools.map((G)=>{if(G===null||typeof G!=="object")return G;const R={};for(const Z of Object.keys(G)){if(typeof G[Z]!=="function")R[Z]=G[Z]}return R})};const Q=W.tool_choice;const j=Q!=null&&(Q.type==="any"||Q.type==="tool")?{...W,tool_choice:Q.disable_parallel_tool_use!==undefined?{type:"auto",disable_parallel_tool_use:Q.disable_parallel_tool_use}:{type:"auto"}}:W;for(let G=0;G<X;G++){const R=await D({...G===0?W:j,messages:V});const Z=R.message;const H=Z&&Array.isArray(Z.content)?Z.content:null;const N=H?H.filter(($)=>$?.type==="tool_use"):[];if(Z?.stop_reason!=="tool_use"||N.length===0){return R.text}const L=[];for(const $ of N){const M=z.get($.name);if(!M){L.push({type:"tool_result",tool_use_id:$.id,content:`no handler for tool "${$.name}"`,is_error:true});continue}try{const C=await M($.input);const q=typeof C==="string"?C:A(C)??"";L.push({type:"tool_result",tool_use_id:$.id,content:q})}catch(C){L.push({type:"tool_result",tool_use_id:$.id,content:String(C?.message??C??"tool handler failed"),is_error:true})}}V.push({role:"assistant",content:H},{role:"user",content:L})}throw new Error(`claude.complete: exceeded ${X} tool turns`)};window.claude={complete(J){const z=J;if(z!==null&&typeof z==="object"&&Array.isArray(z.tools)&&z.tools.some((V)=>V!==null&&typeof V==="object"&&typeof V.run==="function")){const V=new Map;for(const W of z.tools){if(W!==null&&typeof W==="object"&&typeof W.run==="function"){V.set(String(W.name),W.run)}}return F(z,V)}return D(J).then((V)=>V.text)}};const K={};let B=0;window.omelette={writeFile:(J,z)=>new Promise((V,W)=>{if(!_.length){V();return}const Q=`f${++B}`;const j=setTimeout(()=>{delete K[Q];V()},h);K[Q]={resolve:V,reject:W,t:j};try{for(const G of _){S.postMessage({__om_file:true,id:Q,op:"write",path:J,content:z},G)}}catch{clearTimeout(j);delete K[Q];V()}})};const A=(J)=>{try{return JSON.stringify(J)}catch{return JSON.stringify(String(J))}};window.addEventListener("message",(J)=>{if(_.indexOf(J.origin)<0)return;if(J.source!==S)return;const z=J.data;if(!z)return;if(z.type==="omelette-preview-refresh"){if(typeof z.token!=="string"||!/^[0-9a-f.-]+(\.(rc|pr-[0-9]+))?(\.[0-9]+\.[0-9a-f]{16})?$/.test(z.token))return;const Q=Math.max(1,Math.floor((z.expiresAt||0)-Date.now()/1000));document.cookie="__Host-omelette-preview="+z.token+"; Path=/; Secure; SameSite=None; Partitioned; Max-Age="+Q;return}if(z.__om_file_r){const Q=K[z.id];if(!Q)return;clearTimeout(Q.t);delete K[z.id];if(z.ok)Q.resolve();else Q.reject(new Error(z.error||"write failed"));return}if(z.__om_api_r){const Q=U[z.id];if(!Q)return;if(z.error!=null){clearTimeout(Q.t);delete U[z.id];Q.reject(new Error(z.error));return}if(z.chunk!=null){clearTimeout(Q.t);Q.t=Q.arm();Q.text+=z.chunk;return}if(z.done){clearTimeout(Q.t);delete U[z.id];Q.resolve({text:z.text!=null?z.text:Q.text,message:z.message});return}return}if(!z.__om_eval)return;const V=z;const W=(Q)=>{J.source.postMessage({...Q,__om_eval_r:1,id:V.id},J.origin)};try{const Q=(0,eval)(V.code);if(Q&&typeof Q.then==="function"){Q.then((j)=>W({ok:1,v:A(j)}),(j)=>W({ok:0,e:String(j)}))}else{W({ok:1,v:A(Q)})}}catch(Q){W({ok:0,e:String(Q)})}})}})();
+</script>
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  @keyframes sc-beacon { 0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255,182,39,.7); } 50% { opacity: .25; box-shadow: 0 0 0 6px rgba(255,182,39,0); } }
+  @keyframes sc-ring { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(2.6); opacity: 0; } }
+  @keyframes sc-dot { 0%,100% { opacity: .35; } 50% { opacity: .9; } }
+  @keyframes sc-drift { 0% { background-position: 0 0, 20px 20px; } 100% { background-position: 40px 40px, 60px 60px; } }
+  @keyframes sc-scan { 0% { top: -10%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 110%; opacity: 0; } }
+</style>
+</helmet>
+
+<div dir="rtl" style="min-height:100vh;background:linear-gradient(155deg,#020509 0%,#061020 55%,#0A1424 100%);color:#bfe3f0;font-family:Rubik,sans-serif;position:relative;overflow:hidden;padding:18px 20px 26px;">
+
+  <sc-if value="{{ showParticles }}" hint-placeholder-val="{{ true }}">
+    <div style="position:absolute;inset:0;pointer-events:none;opacity:.5;background-image:radial-gradient(rgba(53,225,255,.18) 1px,transparent 1.4px),radial-gradient(rgba(255,182,39,.10) 1px,transparent 1.4px);background-size:44px 44px,64px 64px;animation:sc-drift 18s linear infinite;"></div>
+  </sc-if>
+
+  <div style="position:relative;max-width:1560px;margin:0 auto;display:flex;flex-direction:column;gap:14px;">
+
+    <!-- HUD TOP BAR -->
+    <div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;background:rgba(6,16,28,.72);border:1px solid rgba(53,225,255,.35);padding:12px 18px;">
+      <div style="position:absolute;top:0;right:0;width:8px;height:8px;border-top:1px solid rgba(53,225,255,.7);border-right:1px solid rgba(53,225,255,.7);"></div>
+      <div style="position:absolute;top:0;left:0;width:8px;height:8px;border-top:1px solid rgba(53,225,255,.7);border-left:1px solid rgba(53,225,255,.7);"></div>
+      <div style="position:absolute;bottom:0;right:0;width:8px;height:8px;border-bottom:1px solid rgba(53,225,255,.7);border-right:1px solid rgba(53,225,255,.7);"></div>
+      <div style="position:absolute;bottom:0;left:0;width:8px;height:8px;border-bottom:1px solid rgba(53,225,255,.7);border-left:1px solid rgba(53,225,255,.7);"></div>
+
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="width:11px;height:11px;border-radius:50%;background:#FFB627;display:inline-block;animation:sc-beacon 1.6s ease-in-out infinite;"></span>
+        <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:.28em;font-size:20px;color:#eafbff;white-space:nowrap;">SMART<span style="color:#35E1FF;"> CITY</span></span>
+        <span style="font-size:11px;letter-spacing:.28em;color:rgba(53,225,255,.6);border-right:1px solid rgba(53,225,255,.3);padding-right:12px;margin-right:2px;">שדרות · מרכז בקרה</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <sc-for list="{{ navTabs }}" as="tab" hint-placeholder-count="5">
+          <div onClick="{{ tab.onClick }}" style="{{ tab.style }}" style-hover="color:#eafbff;border-color:rgba(53,225,255,.5);">{{ tab.label }}</div>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- ML PIPELINE RIBBON -->
+    <div style="position:relative;background:rgba(6,16,28,.72);border:1px solid rgba(53,225,255,.35);padding:12px 22px;">
+      <div style="position:absolute;top:0;right:0;width:8px;height:8px;border-top:1px solid rgba(53,225,255,.7);border-right:1px solid rgba(53,225,255,.7);"></div>
+      <div style="position:absolute;top:0;left:0;width:8px;height:8px;border-top:1px solid rgba(53,225,255,.7);border-left:1px solid rgba(53,225,255,.7);"></div>
+      <div style="position:absolute;bottom:0;right:0;width:8px;height:8px;border-bottom:1px solid rgba(53,225,255,.7);border-right:1px solid rgba(53,225,255,.7);"></div>
+      <div style="position:absolute;bottom:0;left:0;width:8px;height:8px;border-bottom:1px solid rgba(53,225,255,.7);border-left:1px solid rgba(53,225,255,.7);"></div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
+        <span style="font-size:10px;letter-spacing:.26em;color:rgba(53,225,255,.55);white-space:nowrap;margin-left:8px;">— צינור העיבוד —</span>
+        <sc-for list="{{ pipeline }}" as="step" hint-placeholder-count="7">
+          <div style="display:flex;align-items:center;flex:1;min-width:0;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
+              <span style="{{ step.dotStyle }}"></span>
+              <span style="{{ step.labelStyle }}">{{ step.label }}</span>
+            </div>
+            <div style="{{ step.connStyle }}"></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- MAIN AREA -->
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:stretch;">
+
+      <!-- RIGHT COLUMN (first in RTL) -->
+      <div style="flex:1 1 250px;min-width:240px;display:flex;flex-direction:column;gap:14px;">
+
+        <div style="position:relative;background:rgba(6,16,28,.72);border:1px solid rgba(53,225,255,.35);padding:16px;">
+          <div style="position:absolute;top:0;right:0;width:8px;height:8px;border-top:1px solid rgba(53,225,255,.7);border-right:1px solid rgba(53,225,255,.7);"></div>
+          <div style="position:absolute;top:0;left:0;width:8px;height:8px;border-top:1px solid rgba(53,225,255,.7);border-left:1px solid rgba(53,225,255,.7);"></div>
+          <div style="position:absolute;bottom:0;right:0;width:8px;height:8px;border-bottom:1px solid rgba(53,225,255,.7);border-right:1px solid rgba(53,225,255,.7);"></div>
+          <div style="position:absolute;bottom:0;left:0;width:8px;height:8px;border-bottom:1px solid rgba(53,225,255,.7);border-left:1px solid rgba(53,225,255,.7);"></div>
+          <div style="font-size:11px;letter-spacing:.2em;color:#FFB627;margin-bottom:12px;">מפגעים פעילים</div>
+          <div style="display:inline-flex;align-items:center;justify-content:center;min-width:96px;padding:8px 18px;border:1px solid rgba(255,182,39,.6);box-shadow:0 0 18px rgba(255,182,39,.22),inset 0 0 12px rgba(255,182,39,.08);">
+            <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:44px;line-height:1;color:#FFB627;">4</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:14px;">
+            <span style="height:1px;flex:1;background:linear-gradient(90deg,transparent,rgba(255,182,39,.5));"></span>
+            <span style="width:4px;height:4px;border-radius:50%;background:#FFB627;"></span>
+            <span style="font-size:11px;color:rgba(255,182,39,.75);white-space:nowrap;">2 חדשים היום</span>
+          </div>
+        </div>
+
+        <div style="position:relative;background:rgba(6,16,28,.72);border:1px solid rgba(53,225,255,.35);padding:16px;">
+          <div style="position:absolute;top:0;right:0;width:8px;height:8px;border-top:1px solid rgba(53,225,255,.7);border-right:1px solid rgba(53,225,255,.7);"></div>
+          <div style="position:absolute;top:0;left:0;width:8px;height:8px;border-top:1px solid rgba(53,225,255,.7);border-left:1px solid rgba(53,225,255,.7);"></div>
+          <div style="position:absolute;bottom:0;right:0;width:8px;height:8px;border-bottom:1px solid rgba(53,225,255,.7);border-right:1px solid rgba(53,225,255,.7);"></div>
+          <div style="position:absolute;bottom:0;left:0;width:8px;height:8px;border-bottom:1px solid rgba(53,225,255,.7);border-left:1px solid rgba(53,225,255,.7);"></div>
+          <div style="font-size:11px;letter-spacing:.2em;color:#35E1FF;margin-bottom:12px;">מאושרים ע״י מפקח</div>
+          <div style="display:inline-flex;align-items:center;justify-content:center;min-width:96px;padding:8px 18px;border:1px solid rgba(53,225,255,.5);box-shadow:0 0 18px rgba(53,225,255,.18),inset 0 0 12px rgba(53,225,255,.06);">
+            <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:44px;line-height:1;color:#eafbff;">2</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:14px;">
+            <span style="height:1px;flex:1;background:linear-gradient(90deg,transparent,rgba(53,225,255,.5));"></span>
+            <span style="width:4px;height:4px;border-radius:50%;background:#35E1FF;"></span>
+            <span style="font-size:11px;color:rgba(53,225,255,.7);white-space:nowrap;">50% דיוק אישור</span>
+          </div>
+        </div>
+
+        <div style="position:relative;background:rgba(6,16,28,.72);border:1px solid rgba(53,225,255,.35);padding:16px;flex:1;">
+          <div style="position:absolute;top:0;right:0;width:8px;height:8px;border-top:1px solid rgba(53,225,255,.7);border-right:1px solid rgba(53,225,255,.7);"></div>
+          <div style="position:absolute;top:0;left:0;width:8px;height:8px;border-top:1px solid rgba(53,225,255,.7);border-left:1px solid rgba(53,225,255,.7);"></div>
+          <div style="position:absolute;bottom:0;right:0;width:8px;height:8px;border-bottom:1px solid rgba(53,225,255,.7);border-right:1px solid rgba(53,225,255,.7);"></div>
+          <div style="position:absolute;bottom:0;left:0;width:8px;height:8px;border-bottom:1px solid rgba(53,225,255,.7);border-left:1px solid rgba(53,225,255,.7);"></div>
+          <div style="font-size:11px;letter-spacing:.2em;color:#35E1FF;margin-bottom:14px;">מגמת זיהויים · 7 ימים</div>
+          <div style="display:flex;align-items:flex-end;gap:8px;height:96px;">
+            <sc-for list="{{ bars }}" as="bar" hint-placeholder-count="7">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;">
+                <div style="{{ bar.style }}"></div>
+                <span style="font-size:9px;color:rgba(191,227,240,.45);">{{ bar.day }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER MAP STAGE -->
+      <div style="flex:3 1 460px;min-width:340px;position:relative;background:radial-gradient(ellipse at 50% 40%,#08182b 0%,#030a15 80%);border:1px solid rgba(53,225,255,.35);overflow:hidden;min-height:520px;">
+        <div style="position:absolute;top:0;right:0;width:10px;height:10px;border-top:1px solid rgba(53,225,255,.8);border-right:1px solid rgba(53,225,255,.8);z-index:6;"></div>
+        <div style="position:absolute;top:0;left:0;width:10px;height:10px;border-top:1px solid rgba(53,225,255,.8);border-left:1px solid rgba(53,225,255,.8);z-index:6;"></div>
+        <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-bottom:1px solid rgba(53,225,255,.8);border-right:1px solid rgba(53,225,255,.8);z-index:6;"></div>
+        <div style="position:absolute;bottom:0;left:0;width:10px;height:10px;border-bottom:1px solid rgba(53,225,255,.8);border-left:1px solid rgba(53,225,255,.8);z-index:6;"></div>
+
+        <!-- map header -->
+        <div style="position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:14px;padding:14px;z-index:5;pointer-events:none;">
+          <span style="color:rgba(53,225,255,.5);font-size:13px;">〈</span>
+          <span style="font-size:12px;letter-spacing:.34em;color:#eafbff;">מפת העיר החיה</span>
+          <span style="color:rgba(53,225,255,.5);font-size:13px;">〉</span>
+        </div>
+        <div style="position:absolute;top:14px;right:16px;z-index:5;display:flex;align-items:center;gap:8px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:#35E1FF;animation:sc-dot 1.4s ease-in-out infinite;"></span>
+          <span style="font-family:'Space Grotesk',sans-serif;font-size:11px;letter-spacing:.14em;color:rgba(53,225,255,.75);">LIVE · 24 חיישנים</span>
+        </div>
+
+        <!-- ground grid -->
+        <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(53,225,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(53,225,255,.06) 1px,transparent 1px);background-size:52px 52px;mask-image:radial-gradient(ellipse at 50% 45%,#000 40%,transparent 85%);-webkit-mask-image:radial-gradient(ellipse at 50% 45%,#000 40%,transparent 85%);"></div>
+
+        <!-- holographic wireframe skyline -->
+        <svg viewBox="0 0 1000 460" preserveAspectRatio="xMidYMax meet" style="position:absolute;inset:0;width:100%;height:100%;opacity:.9;">
+          <g fill="none" stroke="#35E1FF" stroke-width="1" stroke-opacity="0.5">
+            <polygon points="120,360 120,250 175,235 230,250 230,360" />
+            <line x1="120" y1="250" x2="230" y2="250" stroke-opacity="0.25" />
+            <line x1="175" y1="235" x2="175" y2="360" stroke-opacity="0.18" />
+            <rect x="300" y="180" width="90" height="180" />
+            <line x1="300" y1="215" x2="390" y2="215" stroke-opacity="0.2" />
+            <line x1="300" y1="255" x2="390" y2="255" stroke-opacity="0.2" />
+            <line x1="300" y1="295" x2="390" y2="295" stroke-opacity="0.2" />
+            <line x1="345" y1="180" x2="345" y2="360" stroke-opacity="0.16" />
+            <polygon points="440,360 440,150 490,120 540,150 540,360" />
+            <line x1="440" y1="150" x2="540" y2="150" stroke-opacity="0.22" />
+            <line x1="490" y1="120" x2="490" y2="360" stroke-opacity="0.16" />
+            <rect x="600" y="210" width="70" height="150" />
+            <line x1="600" y1="250" x2="670" y2="250" stroke-opacity="0.2" />
+            <line x1="600" y1="300" x2="670" y2="300" stroke-opacity="0.2" />
+            <polygon points="710,360 710,190 760,170 810,190 810,360" />
+            <line x1="710" y1="190" x2="810" y2="190" stroke-opacity="0.22" />
+            <rect x="860" y="240" width="60" height="120" />
+            <line x1="860" y1="290" x2="920" y2="290" stroke-opacity="0.2" />
+            <line x1="60" y1="360" x2="960" y2="360" stroke-opacity="0.4" />
+          </g>
+          <g fill="#35E1FF">
+            <circle cx="120" cy="250" r="3" /><circle cx="230" cy="250" r="3" /><circle cx="175" cy="235" r="3" />
+            <circle cx="300" cy="180" r="3" /><circle cx="390" cy="180" r="3" />
+            <circle cx="440" cy="150" r="3" /><circle cx="540" cy="150" r="3" /><circle cx="490" cy="120" r="3.4" fill="#eafbff" />
+            <circle cx="600" cy="210" r="3" /><circle cx="670" cy="210" r="3" />
+            <circle cx="710" cy="190" r="3" /><circle cx="810" cy="190" r="3" /><circle cx="760" cy="170" r="3" />
+            <circle cx="860" cy="240" r="3" /><circle cx="920" cy="240" r="3" />
+          </g>
+        </svg>
+
+        <!-- highlighted zone (gold diagonal hatch) -->
+        <div style="position:absolute;left:60%;top:56%;width:170px;height:130px;border:1px dashed rgba(255,182,39,.6);background:repeating-linear-gradient(45deg,rgba(255,182,39,.16) 0 6px,transparent 6px 13px);z-index:2;">
+          <span style="position:absolute;top:-9px;right:6px;background:#0A1424;padding:0 6px;font-size:9px;letter-spacing:.2em;color:#FFB627;">אזור מוקד</span>
+        </div>
+
+        <!-- scan line -->
+        <div style="position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(53,225,255,.55),transparent);animation:sc-scan 6s linear infinite;z-index:3;"></div>
+
+        <!-- coverage dots -->
+        <sc-if value="{{ coverageVisible }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <sc-for list="{{ coverage }}" as="c" hint-placeholder-count="8">
+              <span style="{{ c.style }}"></span>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <!-- hazard pins -->
+        <sc-for list="{{ hazards }}" as="h" hint-placeholder-count="4">
+          <div onClick="{{ h.onClick }}" style="{{ h.wrapStyle }}">
+            <span style="{{ h.ringStyle }}"></span>
+            <span style="{{ h.coreStyle }}"></span>
+            <div style="{{ h.tipStyle }}">{{ h.label }}</div>
+          </div>
+        </sc-for>
+
+        <!-- legend -->
+        <div style="position:absolute;bottom:14px;right:16px;z-index:5;display:flex;flex-direction:column;gap:6px;background:rgba(3,10,21,.7);border:1px solid rgba(53,225,255,.28);padding:8px 12px;">
+          <div style="display:flex;align-items:center;gap:8px;font-size:11px;"><span style="width:8px;height:8px;border-radius:50%;background:#FFB627;box-shadow:0 0 8px #FFB627;"></span>מפגע שזוהה</div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:11px;"><span style="width:8px;height:8px;border-radius:50%;background:#35E1FF;box-shadow:0 0 8px #35E1FF;"></span>נקודת כיסוי</div>
+        </div>
+      </div>
+
+      <!-- LEFT COLUMN (last in RTL) -->
+      <div style="flex:1 1 250px;min-width:240px;display:flex;flex-direction:column;gap:14px;">
+
+        <div style="display:flex;gap:14px;">
+          <div style="position:relative;flex:1;background:rgba(6,16,28,.72);border:1px solid rgba(53,225,255,.35);padding:14px;">
+            <div style="position:absolute;top:0;right:0;width:8px;height:8px;border-top:1px solid rgba(53,225,255,.7);border-right:1px solid rgba(53,225,255,.7);"></div>
+            <div style="position:absolute;top:0;left:0;width:8px;height:8px;border-top:1px solid rgba(53,225,255,.7);border-left:1px solid rgba(53,225,255,.7);"></div>
+            <div style="position:absolute;bottom:0;right:0;width:8px;height:8px;border-bottom:1px solid rgba(53,225,255,.7);border-right:1px solid rgba(53,225,255,.7);"></div>
+            <div style="position:absolute;bottom:0;left:0;width:8px;height:8px;border-bottom:1px solid rgba(53,225,255,.7);border-left:1px solid rgba(53,225,255,.7);"></div>
+            <div style="font-size:10px;letter-spacing:.18em;color:#35E1FF;margin-bottom:10px;">צילומים</div>
+            <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:34px;color:#eafbff;">128</span>
+            <div style="margin-top:8px;font-size:10px;color:rgba(191,227,240,.5);">+18 השבוע</div>
+          </div>
+          <div style="position:relative;flex:1;background:rgba(6,16,28,.72);border:1px solid rgba(53,225,255,.35);padding:14px;">
+            <div style="position:absolute;top:0;right:0;width:8px;height:8px;border-top:1px solid rgba(53,225,255,.7);border-right:1px solid rgba(53,225,255,.7);"></div>
+            <div style="position:absolute;top:0;left:0;width:8px;height:8px;border-top:1px solid rgba(53,225,255,.7);border-left:1px solid rgba(53,225,255,.7);"></div>
+            <div style="position:absolute;bottom:0;right:0;width:8px;height:8px;border-bottom:1px solid rgba(53,225,255,.7);border-right:1px solid rgba(53,225,255,.7);"></div>
+            <div style="position:absolute;bottom:0;left:0;width:8px;height:8px;border-bottom:1px solid rgba(53,225,255,.7);border-left:1px solid rgba(53,225,255,.7);"></div>
+            <div style="font-size:10px;letter-spacing:.18em;color:#35E1FF;margin-bottom:10px;">קבוצות</div>
+            <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:34px;color:#eafbff;">3</span>
+            <div style="margin-top:8px;font-size:10px;color:rgba(191,227,240,.5);">47 חניכים</div>
+          </div>
+        </div>
+
+        <!-- recent detections feed -->
+        <div style="position:relative;background:rgba(6,16,28,.72);border:1px solid rgba(53,225,255,.35);padding:16px;flex:1;">
+          <div style="position:absolute;top:0;right:0;width:8px;height:8px;border-top:1px solid rgba(53,225,255,.7);border-right:1px solid rgba(53,225,255,.7);"></div>
+          <div style="position:absolute;top:0;left:0;width:8px;height:8px;border-top:1px solid rgba(53,225,255,.7);border-left:1px solid rgba(53,225,255,.7);"></div>
+          <div style="position:absolute;bottom:0;right:0;width:8px;height:8px;border-bottom:1px solid rgba(53,225,255,.7);border-right:1px solid rgba(53,225,255,.7);"></div>
+          <div style="position:absolute;bottom:0;left:0;width:8px;height:8px;border-bottom:1px solid rgba(53,225,255,.7);border-left:1px solid rgba(53,225,255,.7);"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <span style="font-size:11px;letter-spacing:.2em;color:#FFB627;">זיהויים אחרונים</span>
+            <span style="width:7px;height:7px;border-radius:50%;background:#FFB627;animation:sc-dot 1.4s ease-in-out infinite;"></span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ feed }}" as="f" hint-placeholder-count="4">
+              <div onClick="{{ f.onClick }}" style="{{ f.rowStyle }}">
+                <div style="{{ f.thumbStyle }}">
+                  <span style="{{ f.thumbTick }}"></span>
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:12px;color:#eafbff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ f.type }}</div>
+                  <div style="font-size:10px;color:rgba(191,227,240,.5);margin-top:2px;">{{ f.place }}</div>
+                </div>
+                <div style="text-align:left;flex-shrink:0;">
+                  <div style="{{ f.badgeStyle }}">{{ f.status }}</div>
+                  <div style="font-family:'Space Grotesk',sans-serif;font-size:10px;color:rgba(191,227,240,.45);margin-top:4px;">{{ f.time }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1560,&quot;height&quot;:760},&quot;coverageVisible&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;מפה&quot;},&quot;showParticles&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;רקע&quot;},&quot;pipelineStep&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:4,&quot;min&quot;:1,&quot;max&quot;:7,&quot;step&quot;:1,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;צינור עיבוד&quot;}}">
+class Component extends DCLogic {
+  state = { activeNav: 'map', selected: 1 };
+
+  renderVals() {
+    const CY = '#35E1FF', GOLD = '#FFB627';
+    const coverageVisible = this.props.coverageVisible ?? true;
+    const showParticles = this.props.showParticles ?? true;
+    const activeStep = this.props.pipelineStep ?? 4;
+    const sel = this.state.selected;
+
+    const navData = [
+      { id: 'map', label: 'מפת העיר' },
+      { id: 'tour', label: 'סיור ברחובות' },
+      { id: 'studio', label: 'סטודיו אימון' },
+      { id: 'hazards', label: 'לוח מפגעים' },
+      { id: 'factory', label: 'מפעל הדאטה' },
+    ];
+    const navTabs = navData.map(t => {
+      const active = this.state.activeNav === t.id;
+      return {
+        label: t.label,
+        onClick: () => this.setState({ activeNav: t.id }),
+        style: {
+          cursor: 'pointer',
+          fontSize: '13px',
+          padding: '7px 14px',
+          letterSpacing: '.04em',
+          whiteSpace: 'nowrap',
+          border: '1px solid ' + (active ? 'rgba(53,225,255,.7)' : 'rgba(53,225,255,.14)'),
+          color: active ? '#eafbff' : 'rgba(191,227,240,.6)',
+          background: active ? 'rgba(53,225,255,.12)' : 'transparent',
+          boxShadow: active ? '0 0 14px rgba(53,225,255,.25)' : 'none',
+          transition: 'all .2s',
+        },
+      };
+    });
+
+    const steps = ['איסוף', 'אוצרות', 'תיוג', 'אימון', 'הערכה', 'פריסה', 'ניטור'];
+    const pipeline = steps.map((label, i) => {
+      const n = i + 1;
+      const done = n < activeStep, cur = n === activeStep;
+      const col = cur ? GOLD : (done ? CY : 'rgba(191,227,240,.35)');
+      return {
+        label,
+        dotStyle: {
+          width: cur ? '13px' : '10px', height: cur ? '13px' : '10px',
+          borderRadius: '50%',
+          background: cur ? GOLD : (done ? CY : 'transparent'),
+          border: '1px solid ' + col,
+          boxShadow: cur ? '0 0 12px rgba(255,182,39,.6)' : (done ? '0 0 8px rgba(53,225,255,.4)' : 'none'),
+        },
+        labelStyle: {
+          fontSize: '11px',
+          letterSpacing: '.08em',
+          color: cur ? '#eafbff' : (done ? 'rgba(53,225,255,.8)' : 'rgba(191,227,240,.4)'),
+          fontWeight: cur ? 600 : 400,
+          whiteSpace: 'nowrap',
+        },
+        connStyle: i === steps.length - 1 ? { display: 'none' } : {
+          flex: 1, height: '1px', margin: '0 6px', marginBottom: '20px',
+          borderTop: '1px dashed ' + (done ? 'rgba(53,225,255,.45)' : 'rgba(191,227,240,.18)'),
+        },
+      };
+    });
+
+    const barVals = [40, 62, 55, 78, 48, 90, 70];
+    const barDays = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+    const maxB = Math.max(...barVals);
+    const bars = barVals.map((v, i) => {
+      const peak = v === maxB;
+      return {
+        day: barDays[i],
+        style: {
+          width: '100%',
+          height: (v / maxB * 82) + 'px',
+          border: '1px solid ' + (peak ? 'rgba(255,182,39,.7)' : 'rgba(53,225,255,.5)'),
+          background: peak ? 'repeating-linear-gradient(45deg,rgba(255,182,39,.22) 0 4px,transparent 4px 8px)' : 'linear-gradient(180deg,rgba(53,225,255,.14),transparent)',
+          boxShadow: peak ? '0 0 10px rgba(255,182,39,.25)' : 'none',
+        },
+      };
+    });
+
+    const cov = [[15,30],[35,55],[48,68],[22,72],[62,28],[80,44],[88,66],[52,82]];
+    const coverage = cov.map(([l, t]) => ({
+      style: {
+        position: 'absolute', left: l + '%', top: t + '%', width: '7px', height: '7px',
+        borderRadius: '50%', background: CY, boxShadow: '0 0 8px ' + CY,
+        animation: 'sc-dot 1.6s ease-in-out infinite', zIndex: 3,
+      },
+    }));
+
+    const hz = [
+      { id: 1, type: 'בור בכביש', x: 27, y: 60 },
+      { id: 2, type: 'מעבר חצייה דהוי', x: 54, y: 42 },
+      { id: 3, type: 'פסולת ברחוב', x: 70, y: 66 },
+      { id: 4, type: 'בור בכביש', x: 42, y: 33 },
+    ];
+    const hazards = hz.map(h => {
+      const on = sel === h.id;
+      return {
+        label: h.type,
+        onClick: () => this.setState({ selected: h.id }),
+        wrapStyle: {
+          position: 'absolute', left: h.x + '%', top: h.y + '%',
+          transform: 'translate(-50%,-50%)', width: '22px', height: '22px',
+          cursor: 'pointer', zIndex: on ? 5 : 4,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        },
+        ringStyle: {
+          position: 'absolute', width: '22px', height: '22px', borderRadius: '50%',
+          border: '1px solid ' + GOLD, animation: 'sc-ring 1.8s ease-out infinite',
+        },
+        coreStyle: {
+          width: on ? '14px' : '10px', height: on ? '14px' : '10px', borderRadius: '50%',
+          background: GOLD, boxShadow: '0 0 10px ' + GOLD + (on ? ',0 0 0 3px rgba(255,182,39,.35)' : ''),
+          border: on ? '1px solid #fff' : 'none',
+        },
+        tipStyle: {
+          display: on ? 'block' : 'none',
+          position: 'absolute', bottom: '26px', whiteSpace: 'nowrap',
+          background: 'rgba(3,10,21,.9)', border: '1px solid rgba(255,182,39,.6)',
+          color: '#FFB627', fontSize: '11px', padding: '3px 9px', letterSpacing: '.04em',
+        },
+      };
+    });
+
+    const feedData = [
+      { type: 'בור בכביש', place: 'רח׳ מנחם בגין 14', time: '4 דק׳', status: 'ממתין', ok: false, id: 1 },
+      { type: 'מעבר חצייה דהוי', place: 'שד׳ העצמאות', time: '12 דק׳', status: 'אושר', ok: true, id: 2 },
+      { type: 'פסולת ברחוב', place: 'רח׳ הרצל 3', time: '20 דק׳', status: 'ממתין', ok: false, id: 3 },
+      { type: 'בור בכביש', place: 'רח׳ ז׳בוטינסקי', time: '33 דק׳', status: 'אושר', ok: true, id: 4 },
+    ];
+    const feed = feedData.map(f => {
+      const on = sel === f.id;
+      return {
+        type: f.type, place: f.place, time: f.time, status: f.status,
+        onClick: () => this.setState({ selected: f.id }),
+        rowStyle: {
+          display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer',
+          padding: '8px', border: '1px solid ' + (on ? 'rgba(255,182,39,.5)' : 'rgba(53,225,255,.14)'),
+          background: on ? 'rgba(255,182,39,.06)' : 'rgba(53,225,255,.03)',
+        },
+        thumbStyle: {
+          position: 'relative', width: '46px', height: '38px', flexShrink: 0,
+          background: 'linear-gradient(135deg,#0b2136,#05101d)',
+          backgroundImage: 'repeating-linear-gradient(45deg,rgba(255,182,39,.16) 0 5px,transparent 5px 11px)',
+          border: '1px solid rgba(53,225,255,.3)',
+        },
+        thumbTick: {
+          position: 'absolute', top: '2px', right: '2px', width: '6px', height: '6px',
+          borderTop: '1px solid rgba(53,225,255,.7)', borderRight: '1px solid rgba(53,225,255,.7)',
+        },
+        badgeStyle: {
+          fontSize: '9px', letterSpacing: '.1em', padding: '2px 7px', display: 'inline-block',
+          border: '1px solid ' + (f.ok ? 'rgba(53,225,255,.5)' : 'rgba(255,182,39,.55)'),
+          color: f.ok ? CY : GOLD,
+        },
+      };
+    });
+
+    return { showParticles, coverageVisible, navTabs, pipeline, bars, coverage, hazards, feed };
+  }
+}
+</script>
+</body>
+</html>

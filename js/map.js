@@ -25,7 +25,7 @@ export async function initMap() {
     zoom: DEFAULT_CITY.zoom,
     attributionControl: { compact: true },
   });
-  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-left');
 
   map.on('load', () => {
     map.addSource('det-heat', { type: 'geojson', data: emptyFC() });
@@ -83,6 +83,8 @@ export async function refreshMapData() {
     renderCoverage();
     renderHeat();
     renderLegend();
+    const lc = $('#liveCount');
+    if (lc) lc.textContent = `LIVE · ${cov.length} צילומים`;
     $('#mStatDet').textContent = MAPSTATE.detections.length;
     $('#mStatOk').textContent = dets.filter((d) => d.status === 'approved').length;
     $('#mStatFrames').textContent = cov.length;
