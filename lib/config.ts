@@ -24,6 +24,27 @@ export const MAP_STYLE = {
       tileSize: 256,
       attribution: '© OpenStreetMap © CARTO',
     },
+    // real aerial photos of the city (free, no API key)
+    satellite: {
+      type: 'raster' as const,
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+      tileSize: 256,
+      attribution: 'Imagery © Esri',
+    },
+    // street labels overlay so satellite view still reads street names
+    labels: {
+      type: 'raster' as const,
+      tiles: [
+        'https://a.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}@2x.png',
+        'https://b.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}@2x.png',
+      ],
+      tileSize: 256,
+      attribution: '© CARTO',
+    },
   },
-  layers: [{ id: 'carto', type: 'raster' as const, source: 'carto' }],
+  layers: [
+    { id: 'carto', type: 'raster' as const, source: 'carto' },
+    { id: 'satellite', type: 'raster' as const, source: 'satellite', layout: { visibility: 'none' as const } },
+    { id: 'labels', type: 'raster' as const, source: 'labels', layout: { visibility: 'none' as const } },
+  ],
 };

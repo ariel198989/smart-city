@@ -25,6 +25,7 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
   const [legend, setLegend] = useState<{ name: string; n: number }[]>([]);
   const [showHeat, setShowHeat] = useState(false);
   const [showCover, setShowCover] = useState(true);
+  const [showSat, setShowSat] = useState(false);
   const dv = useStore(dataVersion);
   const city = useStore(cityStore);
   const cbRef = useRef({ onStreetView, onTourFrame });
@@ -101,6 +102,18 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
     covRef.current.forEach((mk) => { mk.getElement().style.display = showCover ? '' : 'none'; });
   }, [showCover]);
 
+  // satellite basemap toggle — real aerial photos of the city
+  useEffect(() => {
+    const m = mapRef.current;
+    if (!m || !m.map.isStyleLoaded()) return;
+    const set = (id: string, v: boolean) => {
+      if (m.map.getLayer(id)) m.map.setLayoutProperty(id, 'visibility', v ? 'visible' : 'none');
+    };
+    set('satellite', showSat);
+    set('labels', showSat);
+    set('carto', !showSat);
+  }, [showSat]);
+
   async function refresh(map: any, maplibregl: any) {
     try {
       const [dets, cov] = await Promise.all([fetchDetections({ limit: 500 }), fetchCoverage(1500)]);
@@ -161,7 +174,7 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
   return (
     <section className="view">
       <div className="map-shell hud">
-        <div ref={mapEl} id="cityMap" />
+        <div ref={mapEl} id="cityMap" className={showSat ? 'sat' : ''} />
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, padding: 12, zIndex: 5, pointerEvents: 'none' }}>
           <span style={{ color: 'rgba(53,225,255,.5)', fontSize: 13 }}>〈</span>
           <span style={{ fontSize: 12, letterSpacing: '.34em', color: '#eafbff' }}>מפת העיר החיה</span>
@@ -176,6 +189,9 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
           </label>
           <label className="hud-toggle">
             <input type="checkbox" checked={showCover} onChange={(e) => setShowCover(e.target.checked)} /> כיסוי
+          </label>
+          <label className="hud-toggle">
+            <input type="checkbox" checked={showSat} onChange={(e) => setShowSat(e.target.checked)} /> לוויין
           </label>
         </div>
         {legend.length > 0 && (
