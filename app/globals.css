@@ -164,6 +164,22 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .stat-chip b{font-family:"Space Grotesk",monospace;font-size:20px;font-weight:700;color:var(--cy);display:block;line-height:1.1}
 .stat-chip:first-child b{color:var(--gold)}
 .stat-chip span{font-size:9.5px;letter-spacing:.14em;color:var(--muted)}
+/* framed hero stat — the "453.7 亩" treatment from Smart Zone */
+.hero-stat{background:rgba(3,10,21,.85);border:1px solid var(--gold-line);padding:9px 14px 10px;backdrop-filter:blur(6px);
+  box-shadow:0 0 18px rgba(255,182,39,.14);position:relative}
+.hero-stat .hs-label{font-size:10px;letter-spacing:.2em;color:var(--gold);margin-bottom:6px}
+.hero-stat .hs-frame{display:inline-flex;align-items:center;justify-content:center;min-width:74px;padding:2px 14px;
+  border:1px solid rgba(255,182,39,.55);box-shadow:0 0 14px rgba(255,182,39,.18),inset 0 0 10px rgba(255,182,39,.07)}
+.hero-stat .hs-frame b{font-family:"Space Grotesk",monospace;font-size:34px;font-weight:700;color:var(--gold);line-height:1}
+.hero-stat .hs-sub{display:flex;align-items:center;gap:7px;margin-top:9px}
+.hero-stat .hs-sub i{flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(255,182,39,.5))}
+.hero-stat .hs-sub span{font-size:10px;color:rgba(255,182,39,.75);white-space:nowrap}
+/* focus-zone callout on the map (leader dot + gold label) */
+.focus-callout{display:flex;align-items:flex-end;gap:6px;pointer-events:none;transform:translate(6px,-6px)}
+.focus-callout .fc-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold);flex-shrink:0;margin-bottom:4px}
+.focus-callout .fc-box{background:rgba(3,10,21,.88);border:1px solid var(--gold-line);padding:4px 9px;backdrop-filter:blur(4px)}
+.focus-callout .fc-t{display:block;font-size:8.5px;letter-spacing:.18em;color:var(--gold)}
+.focus-callout .fc-box b{font-family:"Rubik",sans-serif;font-size:12px;color:var(--ink);white-space:nowrap}
 .hud-toggle{background:rgba(3,10,21,.82);border:1px solid var(--cy-faint);border-radius:0;
   padding:7px 11px;font-size:11px;letter-spacing:.06em;color:var(--muted);display:inline-flex;gap:6px;align-items:center;cursor:pointer;backdrop-filter:blur(6px)}
 .hud-toggle input{accent-color:var(--cy)}

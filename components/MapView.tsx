@@ -21,7 +21,8 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const covRef = useRef<any[]>([]);
-  const [stats, setStats] = useState({ det: 0, ok: 0, frames: 0 });
+  const [stats, setStats] = useState({ det: 0, ok: 0, frames: 0, newToday: 0 });
+  const focusRef = useRef<any>(null);
   const [legend, setLegend] = useState<{ name: string; n: number }[]>([]);
   const [showHeat, setShowHeat] = useState(false);
   const [showCover, setShowCover] = useState(true);
@@ -46,6 +47,23 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
       });
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-left');
       map.on('load', () => {
+        // gold diagonal-hatch pattern (signature Smart Zone zone fill)
+        const S = 16;
+        const hc = document.createElement('canvas');
+        hc.width = hc.height = S;
+        const hx = hc.getContext('2d')!;
+        hx.strokeStyle = 'rgba(255,182,39,0.55)';
+        hx.lineWidth = 2;
+        hx.beginPath();
+        for (let i = -S; i < S * 2; i += 7) { hx.moveTo(i, 0); hx.lineTo(i + S, S); }
+        hx.stroke();
+        if (!map.hasImage('hatch')) map.addImage('hatch', hx.getImageData(0, 0, S, S), { pixelRatio: 2 });
+
+        // focus zone — hatched polygon over the densest hazard area
+        map.addSource('focus-zone', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        map.addLayer({ id: 'focus-fill', type: 'fill', source: 'focus-zone', paint: { 'fill-pattern': 'hatch', 'fill-opacity': 0.85 } });
+        map.addLayer({ id: 'focus-line', type: 'line', source: 'focus-zone', paint: { 'line-color': '#FFB627', 'line-width': 1, 'line-opacity': 0.7, 'line-dasharray': [3, 2] } });
+
         map.addSource('det-heat', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         map.addLayer({
           id: 'det-heat', type: 'heatmap', source: 'det-heat',
@@ -118,10 +136,12 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
     try {
       const [dets, cov] = await Promise.all([fetchDetections({ limit: 500 }), fetchCoverage(1500)]);
       const visible = dets.filter((d: any) => d.status !== 'rejected');
+      const dayAgo = Date.now() - 864e5;
       setStats({
         det: visible.length,
         ok: dets.filter((d: any) => d.status === 'approved').length,
         frames: cov.length,
+        newToday: visible.filter((d: any) => new Date(d.created_at).getTime() > dayAgo).length,
       });
       // legend
       const counts: Record<string, number> = {};
@@ -160,7 +180,42 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
           })),
         });
       }
+      updateFocusZone(map, maplibregl, visible);
     } catch (e: any) { toast('טעינת מפה: ' + (e.message || e)); }
+  }
+
+  // gold hatched "focus zone" over the densest hazard cluster + labeled callout
+  function updateFocusZone(map: any, maplibregl: any, visible: any[]) {
+    const fsrc = map.getSource('focus-zone');
+    if (!fsrc) return;
+    if (focusRef.current) { focusRef.current.remove(); focusRef.current = null; }
+    if (visible.length < 3) { fsrc.setData({ type: 'FeatureCollection', features: [] }); return; }
+    // grid the city into ~250m cells, pick the cell with the most hazards
+    const cell = 0.0025;
+    const buckets: Record<string, any[]> = {};
+    visible.forEach((d) => {
+      const k = `${Math.floor(d.lat / cell)}_${Math.floor(d.lng / cell)}`;
+      (buckets[k] = buckets[k] || []).push(d);
+    });
+    const top = Object.values(buckets).sort((a, b) => b.length - a.length)[0];
+    if (!top || top.length < 2) { fsrc.setData({ type: 'FeatureCollection', features: [] }); return; }
+    // padded bbox around the densest cluster
+    const lats = top.map((d) => d.lat), lngs = top.map((d) => d.lng);
+    const pad = 0.0012;
+    const s = Math.min(...lats) - pad, n = Math.max(...lats) + pad;
+    const w = Math.min(...lngs) - pad, e = Math.max(...lngs) + pad;
+    fsrc.setData({
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature', properties: {},
+        geometry: { type: 'Polygon', coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] },
+      }],
+    });
+    // callout label at the top-right corner (leader dot + gold text)
+    const el = document.createElement('div');
+    el.className = 'focus-callout';
+    el.innerHTML = `<span class="fc-dot"></span><div class="fc-box"><span class="fc-t">אזור מוקד</span><b>${top.length} מפגעים</b></div>`;
+    focusRef.current = new maplibregl.Marker({ element: el, anchor: 'bottom-left' }).setLngLat([e, n]).addTo(map);
   }
 
   function popupHTML(d: any) {
@@ -181,7 +236,11 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
           <span style={{ color: 'rgba(53,225,255,.5)', fontSize: 13 }}>〉</span>
         </div>
         <div className="map-hudbar" style={{ top: 44 }}>
-          <div className="stat-chip"><b>{stats.det}</b><span>מפגעים</span></div>
+          <div className="hero-stat">
+            <div className="hs-label">מפגעים פעילים</div>
+            <div className="hs-frame"><b>{stats.det}</b></div>
+            <div className="hs-sub"><i /><span>{stats.newToday} חדשים היום</span></div>
+          </div>
           <div className="stat-chip"><b>{stats.ok}</b><span>מאושרים</span></div>
           <div className="stat-chip"><b>{stats.frames}</b><span>צילומים</span></div>
           <label className="hud-toggle">
