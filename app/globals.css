@@ -215,8 +215,13 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .tour-tabs button{font-size:12px;padding:7px 14px}
 .tour-tabs button.on{background:var(--cy-soft);color:var(--ink);border-color:rgba(53,225,255,.7);
   box-shadow:0 0 14px rgba(53,225,255,.25)}
-#svWrap{overflow:hidden;background:#000;height:56vh;min-height:380px;border:1px solid var(--cy-faint)}
+#svWrap{overflow:hidden;background:radial-gradient(ellipse at 50% 40%,#08182b 0%,#030a15 80%);height:56vh;min-height:380px;border:1px solid var(--cy-faint)}
 #svFrame{width:100%;height:100%;border:0;display:block}
+.sv-fallback{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:24px}
+.sv-fallback .svf-eye{font-size:40px;color:var(--cy);text-shadow:0 0 18px rgba(53,225,255,.6);animation:sc-dot 2s ease-in-out infinite}
+.sv-fallback .svf-title{font-size:15px;letter-spacing:.14em;color:var(--ink)}
+.sv-fallback .svf-hint{font-size:12.5px;color:var(--muted);max-width:420px;margin:0;line-height:1.6}
+.sv-fallback .svf-coords{font-family:"Space Grotesk",monospace;font-size:11px;color:var(--cy-dim)}
 #framesWrap .stage{min-height:380px}
 .tour-ctl{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
 .tour-side{display:flex;flex-direction:column;gap:14px;min-width:0}

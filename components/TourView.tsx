@@ -7,6 +7,11 @@ import { authStore } from '@/lib/auth';
 import { useStore, toast, bumpData } from '@/lib/store';
 import { dataURLtoBlob, urlToDataURL, fileToDataURL } from '@/lib/util';
 
+// optional Google Maps Embed API key → enables inline Street View.
+// keyless embeds were deprecated by Google, so without a key we fall back
+// to opening the real pano in a new tab.
+const GMAPS_KEY = process.env.NEXT_PUBLIC_GMAPS_KEY || '';
+
 export type TourTarget =
   | { kind: 'street'; lat: number; lng: number; at: number }
   | { kind: 'route'; routeId: string; frameId?: string; at: number };
@@ -202,13 +207,34 @@ export default function TourView({ target }: { target: TourTarget | null }) {
           </div>
           {tab === 'street' ? (
             <div id="svWrap">
-              <iframe
-                id="svFrame"
-                src={`https://maps.google.com/maps?layer=c&cbll=${sv.lat},${sv.lng}&cbp=11,0,0,0,0&output=svembed&hl=iw`}
-                allow="accelerometer; gyroscope"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
+              {GMAPS_KEY ? (
+                // official Google Maps Embed API (Street View) — needs a free key
+                <iframe
+                  id="svFrame"
+                  src={`https://www.google.com/maps/embed/v1/streetview?key=${GMAPS_KEY}&location=${sv.lat},${sv.lng}&language=iw`}
+                  allow="accelerometer; gyroscope"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              ) : (
+                // keyless fallback — Google killed the old output=svembed embed.
+                // open the real Street View pano in a new tab (always works, no key).
+                <div className="sv-fallback">
+                  <div className="svf-eye">◉</div>
+                  <div className="svf-title">Street View של גוגל</div>
+                  <p className="svf-hint">
+                    גוגל חסמה הטמעה ישירה בלי מפתח. לחצו לפתוח את התצוגה האמיתית של הרחוב בטאב חדש —
+                    או השתמשו ב״הצילומים שלנו״ לסיור עם המודל.
+                  </p>
+                  <a
+                    href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${sv.lat},${sv.lng}`}
+                    target="_blank" rel="noopener noreferrer"
+                  >
+                    <button className="primary">🌍 פתח Street View במיקום הזה ↗</button>
+                  </a>
+                  <div className="svf-coords">📍 {sv.lat.toFixed(5)}, {sv.lng.toFixed(5)}</div>
+                </div>
+              )}
             </div>
           ) : (
             <div>
