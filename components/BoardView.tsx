@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { fetchDetections, setDetectionStatus, updateDetection, publicUrl } from '@/lib/db';
 import { authStore } from '@/lib/auth';
-import { CLASS_PALETTE } from '@/lib/config';
+import { CLASS_PALETTE, DEFAULT_CITY } from '@/lib/config';
 import { classColor, fmtWhen, download } from '@/lib/util';
 import { useStore, toast, bumpData, dataVersion } from '@/lib/store';
 import { STATUS_META } from '@/lib/status';
@@ -20,7 +20,10 @@ export default function BoardView() {
 
   const load = async (f = filter) => {
     try {
-      setRows(await fetchDetections({ status: f, limit: 400 }));
+      setRows(await fetchDetections({
+        status: f, limit: 400,
+        scope: { lat: DEFAULT_CITY.center_lat, lng: DEFAULT_CITY.center_lng },
+      }));
     } catch (e: any) { toast('לוח: ' + (e.message || e)); }
   };
   // reload on filter change AND on live data bumps (realtime sync)

@@ -231,7 +231,9 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
 
   async function refresh(map: any, maplibregl: any) {
     try {
-      const [dets, cov] = await Promise.all([fetchDetections({ limit: 500 }), fetchCoverage(1500)]);
+      // city-scoped: national scale must not leak other cities' pins here
+      const scope = { lat: DEFAULT_CITY.center_lat, lng: DEFAULT_CITY.center_lng };
+      const [dets, cov] = await Promise.all([fetchDetections({ limit: 500, scope }), fetchCoverage(1500, scope)]);
       // open events only — resolved hazards come OFF the map (that's the point)
       const visible = dets.filter((d: any) => OPEN_STATUSES.includes(d.status));
       const dayAgo = Date.now() - 864e5;
@@ -248,7 +250,10 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
       const counts: Record<string, number> = {};
       visible.forEach((d: any) => { counts[d.class_name] = (counts[d.class_name] || 0) + 1; });
       setLegend(Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, n]) => ({ name, n })));
-      // pins
+      // pins — dense mode: past ~150 pins the per-pin infinite animations
+      // (ring pulse + beam) tank the frame rate; freeze them, keep the glow
+      const dense = visible.length > 150;
+      map.getContainer().classList.toggle('dense', dense);
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = visible.map((d: any) => {
         const el = document.createElement('div');
@@ -257,7 +262,7 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
         el.className = 'pin' + cls;
         el.style.color = classColor(d.class_name, CLASS_PALETTE);
         // volumetric light pillar rising from the hazard (desktop, motion ok)
-        if (cinematic.current.desktop && !cinematic.current.rm) {
+        if (!dense && cinematic.current.desktop && !cinematic.current.rm) {
           const beam = document.createElement('i');
           beam.className = 'pin-beam';
           el.appendChild(beam);

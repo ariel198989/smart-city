@@ -27,11 +27,23 @@ export async function fetchFrames(routeId: string, limit = 1000) {
   return data;
 }
 
-export async function fetchCoverage(limit = 2000) {
+// city scoping: at national scale every query must be bounded to the
+// active city, or Sderot's map would pull Haifa's newest pins.
+// ~0.2° ≈ 22km — generous box around the city center (geo index backed).
+export interface GeoScope { lat: number; lng: number; radiusDeg?: number }
+function scoped(q: any, s?: GeoScope | null) {
+  if (!s) return q;
+  const r = s.radiusDeg ?? 0.2;
+  return q.gte('lat', s.lat - r).lte('lat', s.lat + r)
+          .gte('lng', s.lng - r).lte('lng', s.lng + r);
+}
+
+export async function fetchCoverage(limit = 2000, scope?: GeoScope | null) {
   // sampled coverage points for the map (scale: don't pull every frame)
-  const { data, error } = await sb.from('sc_frames')
+  const q = sb.from('sc_frames')
     .select('id, route_id, lat, lng, storage_path, seq')
     .order('created_at', { ascending: false }).limit(limit);
+  const { data, error } = await scoped(q, scope);
   if (error) throw error;
   return data;
 }
@@ -59,10 +71,10 @@ export async function insertModel(row: object) {
   return data;
 }
 
-export async function fetchDetections({ status = null as string | null, limit = 400 } = {}) {
+export async function fetchDetections({ status = null as string | null, limit = 400, scope = null as GeoScope | null } = {}) {
   let q = sb.from('sc_detections').select('*').order('created_at', { ascending: false }).limit(limit);
   if (status && status !== 'all') q = q.eq('status', status);
-  const { data, error } = await q;
+  const { data, error } = await scoped(q, scope);
   if (error) throw error;
   return data;
 }

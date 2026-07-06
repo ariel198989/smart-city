@@ -11,8 +11,11 @@ export interface PoolStats {
   contributors: number;
 }
 
-// only AI-passed catches with a full frame + box are training-grade
-async function fetchPoolRows(limit = 3000) {
+// only AI-passed catches with a full frame + box are training-grade.
+// SCALE CEILING: the ZIP is assembled in device memory (~200KB/img →
+// 1500 ≈ 300MB). Beyond that the export must move server-side
+// (Edge Function / worker) — newest-first keeps the freshest data in.
+async function fetchPoolRows(limit = 1500) {
   const { data, error } = await sb.from('sc_detections')
     .select('class_name, frame_path, bbox, confidence, detected_by, created_at')
     .not('frame_path', 'is', null)
