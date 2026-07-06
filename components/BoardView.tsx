@@ -5,7 +5,7 @@ import { fetchDetections, setDetectionStatus, updateDetection, publicUrl } from 
 import { authStore } from '@/lib/auth';
 import { CLASS_PALETTE } from '@/lib/config';
 import { classColor, fmtWhen, download } from '@/lib/util';
-import { useStore, toast, bumpData } from '@/lib/store';
+import { useStore, toast, bumpData, dataVersion } from '@/lib/store';
 import { STATUS_META } from '@/lib/status';
 import { openVerify } from '@/components/VerifyModal';
 
@@ -16,13 +16,15 @@ export default function BoardView() {
   const [rows, setRows] = useState<any[]>([]);
   const [filter, setFilter] = useState('all');
   const [modal, setModal] = useState<any>(null);
+  const dv = useStore(dataVersion);
 
   const load = async (f = filter) => {
     try {
       setRows(await fetchDetections({ status: f, limit: 400 }));
     } catch (e: any) { toast('לוח: ' + (e.message || e)); }
   };
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [filter]);
+  // reload on filter change AND on live data bumps (realtime sync)
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [filter, dv.n]);
 
   async function moderate(id: string, status: string, extra: object = {}) {
     try {

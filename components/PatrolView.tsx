@@ -9,13 +9,43 @@ import { modelStore, detectOnDataURL, clsOf, cropDetection } from '@/lib/infer';
 import { authStore } from '@/lib/auth';
 import { useStore, toast, bumpData } from '@/lib/store';
 import { classColor, dataURLtoBlob, fileToDataURL } from '@/lib/util';
-import { fetchCrossingSpawns, isCrossingClass, calcCredits, ensureCityModel, fetchMonthlyLeaderboard, distM, type Spawn } from '@/lib/patrol';
+import { fetchCrossingSpawns, isCrossingClass, calcCredits, ensureCityModel, fetchMonthlyLeaderboard, distM, fetchCoveredSectors, type Spawn } from '@/lib/patrol';
+import { startCompass, requestCompassPermission, getHeading, sectorOf, SECTOR_NAMES } from '@/lib/compass';
 import StreetCam from '@/components/StreetCam';
 
 type CatchResult =
-  | { kind: 'pass'; cls: string; conf: number; credits: number }
+  | { kind: 'pass'; cls: string; conf: number; credits: number; newAngle?: boolean }
   | { kind: 'blocked'; mission: string; found: string | null }
+  | { kind: 'angle'; covered: number[]; current: number }
   | { kind: 'ungated'; credits: number };
+
+// radar ring: which shooting angles are already covered around this hazard
+function AngleRadar({ covered, current }: { covered: number[]; current: number | null }) {
+  const wedge = (i: number) => {
+    const a0 = ((i * 45 - 22.5) - 90) * Math.PI / 180;
+    const a1 = ((i * 45 + 22.5) - 90) * Math.PI / 180;
+    const r = 42, cx = 50, cy = 50;
+    return `M${cx},${cy} L${cx + r * Math.cos(a0)},${cy + r * Math.sin(a0)} A${r},${r} 0 0 1 ${cx + r * Math.cos(a1)},${cy + r * Math.sin(a1)} Z`;
+  };
+  return (
+    <svg viewBox="0 0 100 100" className="angle-radar">
+      {Array.from({ length: 8 }, (_, i) => (
+        <path key={i} d={wedge(i)}
+          fill={covered.includes(i) ? 'rgba(53,225,255,.35)' : 'rgba(255,182,39,.08)'}
+          stroke={covered.includes(i) ? 'rgba(53,225,255,.7)' : 'rgba(255,182,39,.45)'}
+          strokeWidth=".8" strokeDasharray={covered.includes(i) ? '0' : '2 2'} />
+      ))}
+      {current != null && (
+        <line x1="50" y1="50"
+          x2={50 + 46 * Math.cos((current - 90) * Math.PI / 180)}
+          y2={50 + 46 * Math.sin((current - 90) * Math.PI / 180)}
+          stroke="#FFB627" strokeWidth="2.5" strokeLinecap="round" />
+      )}
+      <circle cx="50" cy="50" r="4" fill="#FFB627" />
+      <text x="50" y="9" textAnchor="middle" fontSize="8" fill="#bfe3f0">צ</text>
+    </svg>
+  );
+}
 
 export default function PatrolView() {
   const auth = useStore(authStore);
@@ -59,6 +89,8 @@ export default function PatrolView() {
       el.innerHTML = '<div class="agent-ring"></div><div class="agent-body">🕵️</div>';
       avatarRef.current = new maplibregl.Marker({ element: el })
         .setLngLat([DEFAULT_CITY.center_lng, DEFAULT_CITY.center_lat]).addTo(map);
+
+      startCompass();  // heading for angle-diversity (iOS asks on street-mode tap)
 
       // no GPS? tap the map to walk (desktop demo / kids indoors)
       map.on('click', (e: any) => {
@@ -145,7 +177,7 @@ export default function PatrolView() {
       const nearSpawn = nearest != null && nearest <= 60;
 
       if (gated) {
-        // 🧠 THE GATE: the city model judges the photo on-device
+        // 🧠 GATE 1: the city model judges the photo on-device
         const { boxes } = await detectOnDataURL(durl, 0.3);
         const relevant = mission
           ? boxes.filter((b) => clsOf(b.cls).name === mission)
@@ -158,19 +190,39 @@ export default function PatrolView() {
           return;
         }
         const best = relevant.sort((a, b) => b.score - a.score)[0];
-        const cr = calcCredits({ conf: best.score, nearSpawn, gated: true });
+        const cls = mission || clsOf(best.cls).name;
+
+        // 📐 GATE 2: angle diversity — the agent knows which viewpoints it
+        // already has here; a repeated angle is worthless training data
+        const heading = getHeading();
+        let newAngle = false;
+        if (heading != null) {
+          try {
+            const covered = await fetchCoveredSectors(at.lat, at.lng, cls);
+            const cur = sectorOf(heading);
+            if (covered.includes(cur)) {
+              setResult({ kind: 'angle', covered, current: heading });
+              if (navigator.vibrate) navigator.vibrate([60, 40, 60, 40, 60]);
+              setBusy(false);
+              return;
+            }
+            newAngle = covered.length > 0;   // bonus only when filling a gap
+          } catch { /* angle service down — capture proceeds */ }
+        }
+
+        const cr = calcCredits({ conf: best.score, nearSpawn, gated: true, newAngle });
         const cropURL = await cropDetection(durl, best);
         const path = `crops/p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.jpg`;  // ASCII-only key
         await uploadBlob(path, dataURLtoBlob(cropURL), 'image/jpeg');
         await insertDetection({
           lat: at.lat, lng: at.lng,
-          class_name: mission || clsOf(best.cls).name,
+          class_name: cls,
           confidence: best.score, crop_path: path,
           detected_by: auth.user.id, team_name: auth.team || null,
-          credits: cr,
+          credits: cr, heading,
         });
         setCredits((c) => c + cr);
-        setResult({ kind: 'pass', cls: mission || clsOf(best.cls).name, conf: best.score, credits: cr });
+        setResult({ kind: 'pass', cls, conf: best.score, credits: cr, newAngle });
         if (navigator.vibrate) navigator.vibrate(200);
         bumpData();
       } else {
@@ -182,7 +234,7 @@ export default function PatrolView() {
           lat: at.lat, lng: at.lng,
           class_name: mission || 'מפגע כללי', confidence: 0,
           crop_path: path, detected_by: auth.user.id, team_name: auth.team || null,
-          credits: cr,
+          credits: cr, heading: getHeading(),
         });
         setCredits((c) => c + cr);
         setResult({ kind: 'ungated', credits: cr });
@@ -246,9 +298,21 @@ export default function PatrolView() {
         {result?.kind === 'pass' && (
           <div className="pt-result pass" onAnimationEnd={() => {}}>
             <div className="ptr-big">+{result.credits} 💎</div>
+            {result.newAngle && <div className="ptr-angle-bonus">📐 זווית חדשה! +5 בונוס</div>}
             <div>נתפס: <b>{result.cls}</b> · {Math.round(result.conf * 100)}% · נשלח לאישור מדריך</div>
             <button className="ghost" style={{ fontSize: 12 }} onClick={share}>📣 שתפו</button>
             <button className="ghost" style={{ fontSize: 12 }} onClick={() => setResult(null)}>המשך</button>
+          </div>
+        )}
+        {result?.kind === 'angle' && (
+          <div className="pt-result blocked">
+            <div className="ptr-big">📐</div>
+            <div><b>הזווית הזאת כבר מצולמת!</b><br />לסוכן כבר יש את נקודת המבט הזו. זוזו לכיוון פתוח ברדאר:</div>
+            <AngleRadar covered={result.covered} current={result.current} />
+            <div className="hint" style={{ fontSize: 11 }}>
+              חסרות: {Array.from({ length: 8 }, (_, i) => i).filter((i) => !result.covered.includes(i)).map((i) => SECTOR_NAMES[i]).join(' · ')}
+            </div>
+            <button className="ghost" style={{ fontSize: 12 }} onClick={() => setResult(null)}>הבנתי</button>
           </div>
         )}
         {result?.kind === 'blocked' && (
@@ -310,7 +374,7 @@ export default function PatrolView() {
         {/* big capture buttons */}
         {!camMode && (
           <>
-            <button className="pt-streetmode" onClick={() => setCamMode(true)}>
+            <button className="pt-streetmode" onClick={() => { requestCompassPermission(); setCamMode(true); }}>
               🎥 מצב רחוב — מצלמה חיה
             </button>
             <label className={'pt-capture' + (busy ? ' busy' : '')}>

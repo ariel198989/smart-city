@@ -13,6 +13,7 @@ import BoardView from '@/components/BoardView';
 import FactoryView from '@/components/FactoryView';
 import VerifyModal from '@/components/VerifyModal';
 import PatrolView from '@/components/PatrolView';
+import { subscribeDetections } from '@/lib/realtime';
 
 // which ML-pipeline steps light up per view (pedagogy ribbon)
 const RIBBON: Record<ViewName, number[]> = {
@@ -28,6 +29,7 @@ export default function Home() {
 
   useEffect(() => {
     initAuth();
+    subscribeDetections();   // 🔄 phone catch → desktop map, live
     // installable PWA
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
     const onPrompt = (e: Event) => { e.preventDefault(); setInstallEvt(e); };

@@ -40,11 +40,34 @@ export async function fetchCrossingSpawns(centerLat: number, centerLng: number, 
 export const isCrossingClass = (name: string) => /חצי|חציה|crosswalk|crossing/i.test(name);
 
 // ---- credits (variable reward, Pokémon-GO style) ----
-export function calcCredits({ conf = 0, nearSpawn = false, gated = true }: { conf?: number; nearSpawn?: boolean; gated?: boolean }) {
+export function calcCredits({ conf = 0, nearSpawn = false, gated = true, newAngle = false }: { conf?: number; nearSpawn?: boolean; gated?: boolean; newAngle?: boolean }) {
   if (!gated) return 5;                                // no AI gate available — small reward
   let c = 10 + Math.round(conf * 10);                  // base + confidence bonus (10-20)
   if (nearSpawn) c += 5;                               // mission-zone bonus
+  if (newAngle) c += 5;                                // angle-diversity bonus — new viewpoint!
   return c;
+}
+
+// ---- angle coverage: which compass sectors are already photographed
+// around this spot for this class (agent's "I already have this angle") ----
+export async function fetchCoveredSectors(lat: number, lng: number, className: string, radiusM = 30): Promise<number[]> {
+  const d = radiusM / 111000; // ~deg
+  const { data, error } = await sb.from('sc_detections')
+    .select('lat, lng, heading')
+    .eq('class_name', className)
+    .neq('status', 'rejected')
+    .not('heading', 'is', null)
+    .gte('lat', lat - d).lte('lat', lat + d)
+    .gte('lng', lng - d * 1.2).lte('lng', lng + d * 1.2)
+    .limit(200);
+  if (error) throw error;
+  const sectors = new Set<number>();
+  (data || []).forEach((r: any) => {
+    if (distM(lat, lng, r.lat, r.lng) <= radiusM) {
+      sectors.add(Math.round(((r.heading % 360) + 360) % 360 / 45) % 8);
+    }
+  });
+  return [...sectors];
 }
 
 // ---- auto-load the latest registered city model ("המטריצה הקיימת") ----
