@@ -373,6 +373,14 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
   background:rgba(124,255,203,.06);color:#b8ffe1}
 .my-pool b{font-family:"Space Grotesk",monospace}
 
+/* 🎓 pocket trainer */
+.pocket .pk-step{font-size:13.5px;line-height:1.6;margin-top:6px}
+.pk-thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:5px;margin-top:10px}
+.pk-thumbs img{width:100%;aspect-ratio:4/3;object-fit:cover;border:1px solid var(--cy-faint)}
+.pk-shutter{position:static !important;transform:none !important;margin:14px auto 0;display:flex}
+.pk-done{text-align:center;padding:8px 0}
+.pk-done b{font-size:15px;color:var(--ink)}
+
 /* ============ 🎮 City Patrol (Pokémon-GO-style mode) ============ */
 .patrol-shell{position:relative;overflow:hidden;height:calc(100vh - 240px);min-height:480px;
   background:radial-gradient(ellipse at 50% 40%,#08182b 0%,#030a15 80%)}

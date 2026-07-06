@@ -11,6 +11,8 @@ import { useStore, toast, bumpData } from '@/lib/store';
 import { classColor, dataURLtoBlob, fileToDataURL } from '@/lib/util';
 import { fetchCrossingSpawns, isCrossingClass, calcCredits, ensureCityModel, fetchMonthlyLeaderboard, distM, fetchCoveredSectors, estimateObjectDistanceM, projectForward, type Spawn } from '@/lib/patrol';
 import { fetchMyContribution } from '@/lib/citypool';
+import { pocketStore, initPocket, classifyPocket } from '@/lib/pocket';
+import PocketTrainer from '@/components/PocketTrainer';
 import { startCompass, requestCompassPermission, getHeading, sectorOf, SECTOR_NAMES } from '@/lib/compass';
 import StreetCam from '@/components/StreetCam';
 
@@ -69,6 +71,8 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
   const [showBoard, setShowBoard] = useState(false);
   const [board, setBoard] = useState<{ name: string; credits: number; catches: number }[]>([]);
   const [myPool, setMyPool] = useState<number | null>(null);
+  const pocket = useStore(pocketStore);
+  const [showTrainer, setShowTrainer] = useState(false);
   const [briefed, setBriefed] = useState(true);
   const [briefReady, setBriefReady] = useState(false);
   const [camMode, setCamMode] = useState(false);
@@ -116,6 +120,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
       } catch { /* overpass down — game still works without spawns */ }
     })();
 
+    initPocket();   // restore the personal on-device model, if trained
     ensureCityModel().then((r) => {
       setModelMsg(r.ok ? '' : (r.error || ''));
       const cls = modelStore.get().classes;
@@ -245,8 +250,38 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
         setResult({ kind: 'pass', cls, conf: best.score, credits: cr, newAngle });
         if (navigator.vibrate) navigator.vibrate(200);
         bumpData();
+      } else if (pocketStore.get().ready) {
+        // 🎓 no city YOLO — the resident's own pocket model is the gate
+        const pk = pocketStore.get();
+        const { label, confidence } = await classifyPocket(durl);
+        if (label !== 'target' || confidence < 0.6) {
+          setResult({ kind: 'blocked', mission: pk.className, found: null, durl });
+          if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+          setBusy(false);
+          return;
+        }
+        const cr = calcCredits({ conf: confidence, nearSpawn, gated: true });
+        const stamp = Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+        const path = `crops/p_${stamp}.jpg`;
+        const framePath = `pool/f_${stamp}.jpg`;   // frame kept — taggable later
+        await uploadBlob(path, dataURLtoBlob(durl), 'image/jpeg');
+        await uploadBlob(framePath, dataURLtoBlob(durl), 'image/jpeg');
+        const heading = getHeading();
+        let pinAt = { lat: at.lat, lng: at.lng };
+        if (heading != null) pinAt = projectForward(at.lat, at.lng, heading, 5);
+        await insertDetection({
+          lat: pinAt.lat, lng: pinAt.lng,
+          class_name: pk.className, confidence,
+          crop_path: path, frame_path: framePath,   // no bbox (classifier) — excluded from auto-pool, tag on desktop
+          detected_by: auth.user.id, team_name: auth.team || null,
+          credits: cr, heading,
+        });
+        setCredits((c) => c + cr);
+        setResult({ kind: 'pass', cls: pk.className + ' (מודל כיס 🎓)', conf: confidence, credits: cr });
+        if (navigator.vibrate) navigator.vibrate(200);
+        bumpData();
       } else {
-        // no model yet — accept unfiltered, small reward
+        // no model at all — accept unfiltered, small reward
         const cr = calcCredits({ gated: false });
         const path = `crops/p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.jpg`;
         await uploadBlob(path, dataURLtoBlob(durl), 'image/jpeg');
@@ -319,8 +354,10 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
             <select className="pt-mission" value={mission} onChange={(e) => setMission(e.target.value)} title="המשימה">
               {model.classes.map((c) => <option key={c} value={c}>🎯 {c}</option>)}
             </select>
+          ) : pocket.ready ? (
+            <div className="pt-chip" style={{ fontSize: 11 }} onClick={() => setShowTrainer(true)}>🎓 {pocket.className}</div>
           ) : (
-            <div className="pt-chip" style={{ maxWidth: 230, fontSize: 10.5 }}>{modelMsg || 'טוען מודל…'}</div>
+            <div className="pt-chip" style={{ fontSize: 11 }} onClick={() => setShowTrainer(true)}>🎓 אמן מודל כיס</div>
           )}
         </div>
 
@@ -414,8 +451,16 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
                   </div>
                   <div className="ptb-hint">הסתובבו בעיר וצלמו בדיוק את אלה — ה-AI בודק כל תמונה. צילום לא רלוונטי ייחסם 🙅. כל תפיסה = 💎 קרדיטים.</div>
                 </>
+              ) : pocket.ready ? (
+                <div className="ptb-hint">🎓 המודל האישי שלך פעיל: מזהה <b>{pocket.className}</b> — הוא ישמש כשער עד שיהיה מודל עירוני.</div>
               ) : (
-                <div className="ptb-hint">עוד אין מודל עירוני רשום — אפשר לצלם מפגעים חופשי (בלי סינון AI), מדריך יבדוק. {modelMsg}</div>
+                <>
+                  <div className="ptb-hint">עוד אין מודל עירוני — אבל אפשר לאמן <b>מודל אישי על הטלפון תוך 30 שניות</b>! 📸</div>
+                  <button className="hot" style={{ width: '100%', marginTop: 10 }}
+                    onClick={() => setShowTrainer(true)}>
+                    🎓 אמן מודל כיס עכשיו
+                  </button>
+                </>
               )}
               <button className="primary ptb-go" onClick={() => {
                 setBriefed(true);
@@ -465,6 +510,8 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
       <p className="hint center">
         🕵️ הסוכן זז עם ה-GPS שלכם (או בלחיצה על המפה) · נקודות 🟡 = מעברי חציה אמיתיים מ-OpenStreetMap · צילום נבדק ע"י מודל ה-AI לפני שנשלח
       </p>
+
+      {showTrainer && <PocketTrainer mission={mission} onClose={() => setShowTrainer(false)} />}
 
       {/* monthly leaderboard + city prizes */}
       {showBoard && (
