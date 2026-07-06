@@ -9,6 +9,7 @@ import { modelStore, loadModelFromZip, detectOnDataURL, drawDetections, type Box
 import { authStore } from '@/lib/auth';
 import { useStore, toast } from '@/lib/store';
 import { fileToDataURL, urlToDataURL, fmtWhen, download } from '@/lib/util';
+import { fetchPoolStats, buildCityPoolZip } from '@/lib/citypool';
 
 const IMG_W = 640, IMG_H = 480;
 
@@ -64,6 +65,9 @@ export default function StudioView() {
   const [pool, setPool] = useState<any[]>([]);
   const [poolChecked, setPoolChecked] = useState<Set<string>>(new Set());
   const [mergeMsg, setMergeMsg] = useState('');
+  const [cityPool, setCityPool] = useState<import('@/lib/citypool').PoolStats | null>(null);
+  const [cpBusy, setCpBusy] = useState(false);
+  const [cpMsg, setCpMsg] = useState('');
   const [shareMsg, setShareMsg] = useState('');
   const [canShare, setCanShare] = useState(false);
   const [modelMsg, setModelMsg] = useState('');
@@ -404,6 +408,21 @@ export default function StudioView() {
     if (!error) setPool(data || []);
   }
 
+  async function loadCityPool() {
+    try { setCityPool(await fetchPoolStats()); } catch (e: any) { toast(e.message || e); }
+  }
+
+  async function exportCityPool() {
+    setCpBusy(true); setCpMsg('אוסף את מאגר העיר…');
+    try {
+      const built = await buildCityPoolZip((d, t) => setCpMsg(`אורז ${d}/${t} תמונות…`));
+      if (!built) { setCpMsg('הפול ריק.'); setCpBusy(false); return; }
+      download(built.blob, `smartcity_pool_${Date.now()}.zip`);
+      setCpMsg(`✓ ירד מאגר עירוני: ${built.count} תמונות · ${built.classes.length} קטגוריות (${built.classes.join(' · ')}) — ל-Colab, אמנו, וטענו כמודל העיר! 🔁`);
+    } catch (e: any) { setCpMsg('⚠️ ' + (e.message || e)); }
+    setCpBusy(false);
+  }
+
   function parseYamlNames(y: string): string[] {
     const m = y.match(/names:\s*\[([^\]]*)\]/);
     if (!m) return [];
@@ -716,6 +735,41 @@ export default function StudioView() {
           )) : <span className="muted" style={{ fontSize: 13 }}>עוד אין — היו הראשונים לשתף! 🚀</span>}
           {mergeMsg && <div className="hint">{mergeMsg}</div>}
         </div>
+
+        {/* 🏙️ community pool — every resident catch trains the city model */}
+        {auth.admin && (
+          <div className="poolbox" style={{ borderTopColor: 'rgba(255,182,39,.35)' }}>
+            <div className="row" style={{ marginBottom: 8 }}>
+              <b style={{ fontSize: 14 }}>🏙️ מאגר העיר — אימון קהילתי</b>
+              <button className="ghost" style={{ fontSize: 12 }} onClick={loadCityPool}>רענן</button>
+              <button className="hot" style={{ fontSize: 12.5 }} disabled={!cityPool || !cityPool.total || cpBusy} onClick={exportCityPool}>
+                {cpBusy ? 'אורז…' : '📦 ייצא מאגר עירוני (ZIP)'}
+              </button>
+            </div>
+            <p className="hint" style={{ margin: '0 0 8px' }}>
+              כל צילום של תושב שעבר את שער ה-AI בפטרול = דוגמת אימון (תמונה מלאה + תיבה). ייצוא ← Colab ← מודל עיר משופר ← נטען אוטומטית לכל טלפון. 🔁
+            </p>
+            {cityPool ? (
+              cityPool.total ? (
+                <div>
+                  <div className="stat-grid" style={{ marginBottom: 8 }}>
+                    <div className="stat"><div className="v">{cityPool.total}</div><div className="l">תמונות בפול</div></div>
+                    <div className="stat"><div className="v">{cityPool.byClass.length}</div><div className="l">קטגוריות</div></div>
+                    <div className="stat"><div className="v">{cityPool.contributors}</div><div className="l">תושבים תרמו</div></div>
+                  </div>
+                  <div className="classes">
+                    {cityPool.byClass.map((c) => (
+                      <span key={c.name} className="class-btn" style={{ cursor: 'default' }}>
+                        <span className="sw" style={{ background: 'var(--gold)' }} />{c.name} · {c.count}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : <span className="muted" style={{ fontSize: 13 }}>הפול ריק — כשתושבים יצלמו בפטרול, התמונות ייכנסו לכאן.</span>
+            ) : <span className="muted" style={{ fontSize: 13 }}>לחצו "רענן" לראות את מאגר העיר.</span>}
+            {cpMsg && <div className="hint">{cpMsg}</div>}
+          </div>
+        )}
       </div>
 
       {/* 5+6: evaluate + deploy */}

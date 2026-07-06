@@ -47,7 +47,7 @@ function AngleRadar({ covered, current }: { covered: number[]; current: number |
   );
 }
 
-export default function PatrolView() {
+export default function PatrolView({ defaultCam = false }: { defaultCam?: boolean }) {
   const auth = useStore(authStore);
   const model = useStore(modelStore);
   const mapEl = useRef<HTMLDivElement>(null);
@@ -120,7 +120,11 @@ export default function PatrolView() {
       setMission(cls.length ? cls[0] : 'מעבר חציה');
       // mission briefing — once per session, after we know what the model knows
       setBriefReady(true);
-      try { setBriefed(sessionStorage.getItem('sc_briefed') === '1'); } catch { setBriefed(false); }
+      let seen = false;
+      try { seen = sessionStorage.getItem('sc_briefed') === '1'; } catch { /* private mode */ }
+      setBriefed(seen);
+      // 📱 mobile default = street camera (returning user goes straight in)
+      if (seen && defaultCam) setCamMode(true);
     });
 
     return () => {
@@ -211,13 +215,18 @@ export default function PatrolView() {
         }
 
         const cr = calcCredits({ conf: best.score, nearSpawn, gated: true, newAngle });
+        const stamp = Date.now() + '_' + Math.random().toString(36).slice(2, 7);
         const cropURL = await cropDetection(durl, best);
-        const path = `crops/p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.jpg`;  // ASCII-only key
+        const path = `crops/p_${stamp}.jpg`;        // crop for the map pin
+        const framePath = `pool/f_${stamp}.jpg`;    // full frame → city training pool
         await uploadBlob(path, dataURLtoBlob(cropURL), 'image/jpeg');
+        await uploadBlob(framePath, dataURLtoBlob(durl), 'image/jpeg');
         await insertDetection({
           lat: at.lat, lng: at.lng,
           class_name: cls,
           confidence: best.score, crop_path: path,
+          frame_path: framePath,                    // full photo (training data)
+          bbox: { x: best.x, y: best.y, w: best.w, h: best.h },  // YOLO label
           detected_by: auth.user.id, team_name: auth.team || null,
           credits: cr, heading,
         });
@@ -299,7 +308,8 @@ export default function PatrolView() {
           <div className="pt-result pass" onAnimationEnd={() => {}}>
             <div className="ptr-big">+{result.credits} 💎</div>
             {result.newAngle && <div className="ptr-angle-bonus">📐 זווית חדשה! +5 בונוס</div>}
-            <div>נתפס: <b>{result.cls}</b> · {Math.round(result.conf * 100)}% · נשלח לאישור מדריך</div>
+            <div>נתפס: <b>{result.cls}</b> · {Math.round(result.conf * 100)}%</div>
+            <div className="hint" style={{ fontSize: 11, margin: '4px 0' }}>🏙️ נוסף למאגר האימון העירוני · נשלח לאישור מדריך</div>
             <button className="ghost" style={{ fontSize: 12 }} onClick={share}>📣 שתפו</button>
             <button className="ghost" style={{ fontSize: 12 }} onClick={() => setResult(null)}>המשך</button>
           </div>
@@ -354,8 +364,10 @@ export default function PatrolView() {
               <button className="primary ptb-go" onClick={() => {
                 setBriefed(true);
                 try { sessionStorage.setItem('sc_briefed', '1'); } catch { /* private mode */ }
+                // mobile: the button tap is the user gesture → open the live camera now
+                if (defaultCam) { requestCompassPermission(); setCamMode(true); }
               }}>
-                יאללה, לסיור! 🎮
+                {defaultCam ? 'יאללה, למצלמה! 🎥' : 'יאללה, לסיור! 🎮'}
               </button>
             </div>
           </div>

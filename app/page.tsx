@@ -81,7 +81,7 @@ export default function Home() {
                 : <button className="ghost" style={{ fontSize: 12 }} onClick={() => authStore.set({ viewer: false })}>כניסה</button>}
             </span>
           </header>
-          <PatrolView />
+          <PatrolView defaultCam />
         </div>
       </>
     );
