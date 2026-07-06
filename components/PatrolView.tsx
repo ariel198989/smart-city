@@ -9,7 +9,7 @@ import { modelStore, detectOnDataURL, clsOf, cropDetection } from '@/lib/infer';
 import { authStore } from '@/lib/auth';
 import { useStore, toast, bumpData } from '@/lib/store';
 import { classColor, dataURLtoBlob, fileToDataURL } from '@/lib/util';
-import { fetchCrossingSpawns, isCrossingClass, calcCredits, ensureCityModel, fetchMonthlyLeaderboard, distM, fetchCoveredSectors, type Spawn } from '@/lib/patrol';
+import { fetchCrossingSpawns, isCrossingClass, calcCredits, ensureCityModel, fetchMonthlyLeaderboard, distM, fetchCoveredSectors, estimateObjectDistanceM, projectForward, type Spawn } from '@/lib/patrol';
 import { startCompass, requestCompassPermission, getHeading, sectorOf, SECTOR_NAMES } from '@/lib/compass';
 import StreetCam from '@/components/StreetCam';
 
@@ -221,8 +221,15 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
         const framePath = `pool/f_${stamp}.jpg`;    // full frame → city training pool
         await uploadBlob(path, dataURLtoBlob(cropURL), 'image/jpeg');
         await uploadBlob(framePath, dataURLtoBlob(durl), 'image/jpeg');
+        // 🎯 auto-pin ON the object: GPS gives the photographer's position;
+        // project forward along the compass heading by the distance the
+        // bbox geometry implies — the pin lands on the hazard itself
+        let pinAt = { lat: at.lat, lng: at.lng };
+        if (heading != null) {
+          pinAt = projectForward(at.lat, at.lng, heading, estimateObjectDistanceM(best));
+        }
         await insertDetection({
-          lat: at.lat, lng: at.lng,
+          lat: pinAt.lat, lng: pinAt.lng,
           class_name: cls,
           confidence: best.score, crop_path: path,
           frame_path: framePath,                    // full photo (training data)

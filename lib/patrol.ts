@@ -39,6 +39,25 @@ export async function fetchCrossingSpawns(centerLat: number, centerLng: number, 
 // mission class ↔ crossing spawns (Hebrew keyword match)
 export const isCrossingClass = (name: string) => /חצי|חציה|crosswalk|crossing/i.test(name);
 
+// ---- auto-pin: project the pin from the PHOTOGRAPHER onto the OBJECT ----
+// distance from the bbox bottom edge (ground-plane heuristic: object whose
+// base sits low in the frame is close; near the horizon line it's far)
+export function estimateObjectDistanceM(bbox: { y: number; h: number }): number {
+  const bottom = Math.min(1, bbox.y + bbox.h);       // 1 = frame bottom
+  // ground-plane 1/x: base at frame bottom ≈ 2.7m, mid-frame ≈ 10m, near horizon → capped
+  const d = 1.5 / Math.max(0.06, bottom - 0.45);
+  return Math.min(25, Math.max(2, d));
+}
+
+// move lat/lng `meters` forward along compass heading (deg, 0=N)
+export function projectForward(lat: number, lng: number, headingDeg: number, meters: number) {
+  const rad = headingDeg * Math.PI / 180;
+  return {
+    lat: lat + (meters * Math.cos(rad)) / 111111,
+    lng: lng + (meters * Math.sin(rad)) / (111111 * Math.cos(lat * Math.PI / 180)),
+  };
+}
+
 // ---- credits (variable reward, Pokémon-GO style) ----
 export function calcCredits({ conf = 0, nearSpawn = false, gated = true, newAngle = false }: { conf?: number; nearSpawn?: boolean; gated?: boolean; newAngle?: boolean }) {
   if (!gated) return 5;                                // no AI gate available — small reward
