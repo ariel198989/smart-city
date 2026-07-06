@@ -4,11 +4,13 @@
 // then ONE '🧠 עבד ולמד' pass embeds them all. MobileNet preloads in
 // the background while you shoot.
 import { useEffect, useRef, useState } from 'react';
-import { pocketStore, addExample, classifyPocket, finishPocket, clearPocket, preloadEngine } from '@/lib/pocket';
+import { pocketStore, addExample, classifyPocket, finishPocket, clearPocket, preloadEngine, POCKET_PASS_CONF } from '@/lib/pocket';
 import { useStore, toast } from '@/lib/store';
 import { fileToDataURL } from '@/lib/util';
 
-const TARGET_MIN = 8, OTHER_MIN = 4;
+// balanced classes — an 8:4 dataset gives the target a built-in
+// majority in kNN voting and "everything passes". 8:8 keeps it honest.
+const TARGET_MIN = 8, OTHER_MIN = 8;
 
 export default function PocketTrainer({ mission, onClose }: { mission: string; onClose: () => void }) {
   const pocket = useStore(pocketStore);
@@ -145,7 +147,7 @@ export default function PocketTrainer({ mission, onClose }: { mission: string; o
             <div className="pk-step">
               {step === 'target'
                 ? <>📸 צלמו ברצף <b>{className}</b> מזוויות שונות — <b>{shot}</b>/{need}</>
-                : <>🚫 עכשיו ברצף דברים <b>אחרים</b> (כביש נקי, קיר, עץ) — <b>{shot}</b>/{need}</>}
+                : <>🚫 עכשיו ברצף <b>{need} דברים שונים</b> שהם לא {className} (שולחן, קיר, יד, רצפה, כוס…) — ככל שמגוון יותר, המודל חכם יותר! <b>{shot}</b>/{need}</>}
             </div>
             <div className="tagbar" style={{ marginTop: 4 }}>
               <div className="bar"><i style={{ width: Math.min(100, Math.round(shot / need * 100)) + '%' }} /></div>
@@ -194,16 +196,37 @@ export default function PocketTrainer({ mission, onClose }: { mission: string; o
               </div>
             </div>
             <div className="row" style={{ marginTop: 10, justifyContent: 'center' }}>
-              <button className="pt-capture pk-shutter" onClick={liveTest} disabled={testBusy}>{testBusy ? '🧠' : '🔬'}</button>
+              {camOn ? (
+                <button className="pt-capture pk-shutter" onClick={liveTest} disabled={testBusy}>{testBusy ? '🧠' : '🔬'}</button>
+              ) : (
+                <label className="ghost" style={{ cursor: 'pointer', padding: '9px 14px', border: '1px solid var(--cy-faint)' }}>
+                  🔬 העלו תמונה לבדיקה
+                  <input type="file" accept="image/*" style={{ display: 'none' }}
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = '';
+                      if (!f) return;
+                      setTestBusy(true);
+                      try {
+                        const durl = await fileToDataURL(f, 480, 360);
+                        const r = await classifyPocket(durl);
+                        setTest({ ...r, durl });
+                      } catch (err: any) { toast(err.message || err); }
+                      setTestBusy(false);
+                    }} />
+                </label>
+              )}
             </div>
-            <div className="hint center" style={{ marginTop: 4 }}>כוונו למשהו ולחצו לבדיקה חיה</div>
+            <div className="hint center" style={{ marginTop: 4 }}>{camOn ? 'כוונו למשהו ולחצו לבדיקה חיה' : 'בחרו תמונה לבדיקה'}</div>
             {test && (
               <div className={'ai-verdict ' + (test.label === 'target' ? 'pass' : 'fail')} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                 <img src={test.durl} alt="" style={{ width: 64, height: 48, objectFit: 'cover', border: '1px solid var(--cy-faint)' }} />
                 <span>
-                  {test.label === 'target'
+                  {test.label === 'target' && test.confidence >= POCKET_PASS_CONF
                     ? `✅ זה ${pocket.className}! (${Math.round(test.confidence * 100)}%)`
-                    : `🙅 זה לא ${pocket.className} (${Math.round(test.confidence * 100)}%)`}
+                    : test.label === 'target'
+                      ? `🤔 אולי ${pocket.className}? רק ${Math.round(test.confidence * 100)}% — במשחק זה היה נחסם`
+                      : `🙅 זה לא ${pocket.className} (${Math.round(test.confidence * 100)}%)`}
                 </span>
               </div>
             )}

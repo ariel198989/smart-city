@@ -11,7 +11,7 @@ import { useStore, toast, bumpData } from '@/lib/store';
 import { classColor, dataURLtoBlob, fileToDataURL } from '@/lib/util';
 import { fetchCrossingSpawns, isCrossingClass, calcCredits, ensureCityModel, fetchMonthlyLeaderboard, distM, fetchCoveredSectors, estimateObjectDistanceM, projectForward, type Spawn } from '@/lib/patrol';
 import { fetchMyContribution } from '@/lib/citypool';
-import { pocketStore, initPocket, classifyPocket } from '@/lib/pocket';
+import { pocketStore, initPocket, classifyPocket, POCKET_PASS_CONF } from '@/lib/pocket';
 import PocketTrainer from '@/components/PocketTrainer';
 import { startCompass, requestCompassPermission, getHeading, sectorOf, SECTOR_NAMES } from '@/lib/compass';
 import StreetCam from '@/components/StreetCam';
@@ -254,8 +254,11 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
         // 🎓 no city YOLO — the resident's own pocket model is the gate
         const pk = pocketStore.get();
         const { label, confidence } = await classifyPocket(durl);
-        if (label !== 'target' || confidence < 0.6) {
-          setResult({ kind: 'blocked', mission: pk.className, found: null, durl });
+        if (label !== 'target' || confidence < POCKET_PASS_CONF) {
+          setResult({
+            kind: 'blocked', mission: pk.className, durl,
+            found: label === 'target' ? `לא בטוח מספיק — רק ${Math.round(confidence * 100)}%` : null,
+          });
           if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
           setBusy(false);
           return;

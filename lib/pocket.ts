@@ -63,10 +63,16 @@ export async function addExample(durl: string, label: 'target' | 'other') {
     : { otherCount: s.otherCount + 1 });
 }
 
+// pass bar for the game gate — below this the photo is rejected
+export const POCKET_PASS_CONF = 0.7;
+
 export async function classifyPocket(durl: string): Promise<{ label: string; confidence: number }> {
   await ensureEngine();
   const act = await embed(durl);
-  const k = Math.min(10, pocketStore.get().targetCount + pocketStore.get().otherCount);
+  const s = pocketStore.get();
+  // k derived from the SMALLER class — an unbalanced dataset must not
+  // get a built-in majority vote (the "everything is a TV remote" bug)
+  const k = Math.max(2, Math.min(8, Math.min(s.targetCount, s.otherCount) * 2));
   const r = await knn.predictClass(act, k);
   act.dispose();
   return { label: r.label, confidence: r.confidences[r.label] ?? 0 };
