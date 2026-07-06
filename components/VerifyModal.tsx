@@ -115,6 +115,9 @@ export default function VerifyModal() {
             {ai.note}
           </div>
         )}
+        {ai?.passed === true && (
+          <img src="/art/hazard-resolved.jpg" alt="" className="art-banner art-celebrate" style={{ marginTop: 10 }} />
+        )}
 
         <div className="row" style={{ marginTop: 12 }}>
           <button className="primary" disabled={!photo || busy} onClick={submit}>

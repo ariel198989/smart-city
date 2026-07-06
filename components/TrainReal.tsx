@@ -62,6 +62,7 @@ export default function TrainReal({ onClose }: { onClose: () => void }) {
     <div className="modal-back" onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }}>
       <div className="card hud det-modal">
         <button className="ghost mclose" onClick={onClose} disabled={busy}>✕</button>
+        <img src="/art/training-core.jpg" alt="" className="art-banner" />
         <div className="phase-head" style={{ marginBottom: 10 }}>
           <span className="ph-n">🚀</span>
           <div>

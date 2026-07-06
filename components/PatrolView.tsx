@@ -524,6 +524,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
         <div className="modal-back" onClick={(e) => { if (e.target === e.currentTarget) setShowBoard(false); }}>
           <div className="card hud det-modal">
             <button className="ghost mclose" onClick={() => setShowBoard(false)}>✕</button>
+            <img src="/art/podium.jpg" alt="" className="art-banner" />
             <h3 style={{ fontSize: 14, letterSpacing: '.2em' }}>🏆 מובילי החודש — פרסים מהעירייה</h3>
             <div className="podium">
               {board.slice(0, 3).map((t, i) => (

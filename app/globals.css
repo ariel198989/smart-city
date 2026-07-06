@@ -202,6 +202,13 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 /* dense mode (150+ pins): freeze per-pin infinite animations, keep glow */
 .dense .pin::before,.dense .cov-dot{animation:none}
 
+/* brand-art banners (public/art/) — cinematic strips inside modals */
+.art-banner{width:100%;display:block;aspect-ratio:16/6;object-fit:cover;object-position:center 38%;
+  border:1px solid var(--cy-line);margin:0 0 12px;filter:saturate(1.05)}
+.art-celebrate{border-color:rgba(255,182,39,.55);animation:art-glow 2.2s ease-in-out infinite}
+@keyframes art-glow{50%{box-shadow:0 0 26px rgba(255,182,39,.35)}}
+@media (prefers-reduced-motion: reduce){.art-celebrate{animation:none}}
+
 /* ⚡ overdrive: volumetric light pillar rising from each hazard */
 .pin-beam{position:absolute;bottom:50%;left:50%;width:5px;height:78px;pointer-events:none;
   transform:translateX(-50%);transform-origin:bottom;
@@ -465,7 +472,8 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .pt-brief{position:absolute;inset:0;z-index:9;background:rgba(2,5,9,.9);backdrop-filter:blur(6px);
   display:flex;align-items:center;justify-content:center;padding:22px}
 .ptb-inner{max-width:360px;width:100%;text-align:center;border:1px solid var(--cy-line);
-  background:rgba(6,16,28,.9);padding:26px 20px;animation:pt-pop .4s cubic-bezier(.2,1.4,.4,1)}
+  background:linear-gradient(rgba(3,8,16,.55),rgba(3,8,16,.88)),url('/art/drone-scan.jpg') center/cover;
+  padding:26px 20px;animation:pt-pop .4s cubic-bezier(.2,1.4,.4,1)}
 .ptb-agent{font-size:52px;filter:drop-shadow(0 0 14px rgba(53,225,255,.7));animation:agent-bob 1.6s ease-in-out infinite}
 .ptb-agent-img{height:168px;width:auto;margin:0 auto;display:block;
   filter:drop-shadow(0 0 22px rgba(53,225,255,.45));animation:agent-bob 2.4s ease-in-out infinite}
