@@ -13,6 +13,7 @@ import { fetchCrossingSpawns, isCrossingClass, calcCredits, ensureCityModel, fet
 import { fetchMyContribution } from '@/lib/citypool';
 import { pocketStore, initPocket, classifyPocket, POCKET_PASS_CONF } from '@/lib/pocket';
 import PocketTrainer from '@/components/PocketTrainer';
+import TrainReal from '@/components/TrainReal';
 import { startCompass, requestCompassPermission, getHeading, sectorOf, SECTOR_NAMES } from '@/lib/compass';
 import StreetCam from '@/components/StreetCam';
 
@@ -73,6 +74,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
   const [myPool, setMyPool] = useState<number | null>(null);
   const pocket = useStore(pocketStore);
   const [showTrainer, setShowTrainer] = useState(false);
+  const [showTrainReal, setShowTrainReal] = useState(false);
   const [briefed, setBriefed] = useState(true);
   const [briefReady, setBriefReady] = useState(false);
   const [camMode, setCamMode] = useState(false);
@@ -515,6 +517,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
       </p>
 
       {showTrainer && <PocketTrainer mission={mission} onClose={() => setShowTrainer(false)} />}
+      {showTrainReal && <TrainReal onClose={() => setShowTrainReal(false)} />}
 
       {/* monthly leaderboard + city prizes */}
       {showBoard && (
@@ -545,6 +548,10 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
                 🧠 תרמת <b>{myPool}</b> תמונות למאגר האימון של העיר — המודל הבא ילמד מהן!
               </div>
             )}
+            <button className="hot" style={{ width: '100%', marginTop: 10 }}
+              onClick={() => { setShowBoard(false); setShowTrainReal(true); }}>
+              🚀 התחל אימון אמיתי — מודל YOLO לעיר
+            </button>
             <div className="hint" style={{ marginTop: 10 }}>
               קרדיטים = תפיסה שעברה את מסנן ה-AI (10-20) + בונוס אזור משימה (+5). מתאפס כל חודש — 3 הראשונים זוכים.
             </div>
