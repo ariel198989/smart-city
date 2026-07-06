@@ -4,6 +4,8 @@ import { MAP_STYLE, CLASS_PALETTE, DEFAULT_CITY } from '@/lib/config';
 import { fetchDetections, fetchCoverage, publicUrl } from '@/lib/db';
 import { classColor, fmtWhen } from '@/lib/util';
 import { createStore, useStore, dataVersion, toast } from '@/lib/store';
+import { STATUS_META, OPEN_STATUSES } from '@/lib/status';
+import { openVerify } from '@/components/VerifyModal';
 
 export const cityStore = createStore<{ city: any; flyAt: number }>({ city: DEFAULT_CITY, flyAt: 0 });
 
@@ -21,8 +23,9 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const covRef = useRef<any[]>([]);
-  const [stats, setStats] = useState({ det: 0, ok: 0, frames: 0, newToday: 0 });
+  const [stats, setStats] = useState({ det: 0, ok: 0, frames: 0, newToday: 0, resolved: 0 });
   const focusRef = useRef<any>(null);
+  const byIdRef = useRef<Record<string, any>>({});
   const [legend, setLegend] = useState<{ name: string; n: number }[]>([]);
   const [showHeat, setShowHeat] = useState(false);
   const [showCover, setShowCover] = useState(true);
@@ -135,13 +138,17 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
   async function refresh(map: any, maplibregl: any) {
     try {
       const [dets, cov] = await Promise.all([fetchDetections({ limit: 500 }), fetchCoverage(1500)]);
-      const visible = dets.filter((d: any) => d.status !== 'rejected');
+      // open events only — resolved hazards come OFF the map (that's the point)
+      const visible = dets.filter((d: any) => OPEN_STATUSES.includes(d.status));
       const dayAgo = Date.now() - 864e5;
+      byIdRef.current = Object.fromEntries(dets.map((d: any) => [d.id, d]));
+      (window as any).__scVerify = (id: string) => { const d = byIdRef.current[id]; if (d) openVerify(d); };
       setStats({
         det: visible.length,
         ok: dets.filter((d: any) => d.status === 'approved').length,
         frames: cov.length,
         newToday: visible.filter((d: any) => new Date(d.created_at).getTime() > dayAgo).length,
+        resolved: dets.filter((d: any) => d.status === 'resolved').length,
       });
       // legend
       const counts: Record<string, number> = {};
@@ -151,11 +158,13 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = visible.map((d: any) => {
         const el = document.createElement('div');
-        el.className = 'pin' + (d.status === 'approved' ? ' approved' : '');
+        const cls = d.status === 'approved' ? ' approved'
+          : d.status === 'awaiting_verify' || d.status === 'verifying' ? ' verify' : '';
+        el.className = 'pin' + cls;
         el.style.color = classColor(d.class_name, CLASS_PALETTE);
         return new maplibregl.Marker({ element: el })
           .setLngLat([d.lng, d.lat])
-          .setPopup(new maplibregl.Popup({ offset: 18, maxWidth: '260px' }).setHTML(popupHTML(d)))
+          .setPopup(new maplibregl.Popup({ offset: 18, maxWidth: '280px' }).setHTML(popupHTML(d)))
           .addTo(map);
       });
       // coverage dots (thin to ~400)
@@ -220,10 +229,14 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
 
   function popupHTML(d: any) {
     const img = d.crop_path ? `<img class="pop-img" src="${publicUrl(d.crop_path)}" alt="">` : '';
-    const st = d.status === 'approved' ? '✅ מאושר' : d.status === 'pending' ? '⏳ ממתין לאישור' : '❌';
+    const meta = STATUS_META[d.status] || { label: d.status, pill: '' };
+    const verifyBtn = d.status === 'awaiting_verify'
+      ? `<button class="pop-verify" onclick="window.__scVerify&&window.__scVerify('${d.id}')">📸 אמת בשטח — צלם ובדוק עם ה-AI</button>`
+      : '';
     return `<div class="pop-cls">${esc(d.class_name)}</div>${img}
-      <div class="pop-meta">ביטחון ${Math.round(d.confidence * 100)}% · ${st}<br>
-      ${d.team_name ? 'קבוצת ' + esc(d.team_name) + ' · ' : ''}${fmtWhen(d.created_at)}</div>`;
+      <div class="pop-status ${meta.pill}">${meta.label}</div>
+      <div class="pop-meta">ביטחון ${Math.round(d.confidence * 100)}%<br>
+      ${d.team_name ? 'קבוצת ' + esc(d.team_name) + ' · ' : ''}${fmtWhen(d.created_at)}</div>${verifyBtn}`;
   }
 
   return (
@@ -241,7 +254,8 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
             <div className="hs-frame"><b>{stats.det}</b></div>
             <div className="hs-sub"><i /><span>{stats.newToday} חדשים היום</span></div>
           </div>
-          <div className="stat-chip"><b>{stats.ok}</b><span>מאושרים</span></div>
+          <div className="stat-chip"><b>{stats.ok}</b><span>בטיפול</span></div>
+          <div className="stat-chip resolved"><b>{stats.resolved}</b><span>טופלו 🟢</span></div>
           <div className="stat-chip"><b>{stats.frames}</b><span>צילומים</span></div>
           <label className="hud-toggle">
             <input type="checkbox" checked={showHeat} onChange={(e) => setShowHeat(e.target.checked)} /> מפת חום

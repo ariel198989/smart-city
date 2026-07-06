@@ -11,6 +11,7 @@ import TourView, { type TourTarget } from '@/components/TourView';
 import StudioView from '@/components/StudioView';
 import BoardView from '@/components/BoardView';
 import FactoryView from '@/components/FactoryView';
+import VerifyModal from '@/components/VerifyModal';
 
 // which ML-pipeline steps light up per view (pedagogy ribbon)
 const RIBBON: Record<ViewName, number[]> = {
@@ -37,6 +38,7 @@ export default function Home() {
   return (
     <>
       <Toast />
+      <VerifyModal />
       {auth.loaded && <AuthOverlay />}
       <div className="wrap">
         <TopBar view={view} onView={setView} />

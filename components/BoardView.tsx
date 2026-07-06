@@ -1,11 +1,13 @@
 'use client';
 // Hazard board: moderation (approve/reject), leaderboard, city CSV report
 import { useEffect, useState } from 'react';
-import { fetchDetections, setDetectionStatus, publicUrl } from '@/lib/db';
+import { fetchDetections, setDetectionStatus, updateDetection, publicUrl } from '@/lib/db';
 import { authStore } from '@/lib/auth';
 import { CLASS_PALETTE } from '@/lib/config';
 import { classColor, fmtWhen, download } from '@/lib/util';
 import { useStore, toast, bumpData } from '@/lib/store';
+import { STATUS_META } from '@/lib/status';
+import { openVerify } from '@/components/VerifyModal';
 
 const csvSafe = (s: unknown) => '"' + String(s ?? '').replace(/"/g, '""') + '"';
 
@@ -22,9 +24,9 @@ export default function BoardView() {
   };
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [filter]);
 
-  async function moderate(id: string, status: string) {
+  async function moderate(id: string, status: string, extra: object = {}) {
     try {
-      await setDetectionStatus(id, status);
+      await updateDetection(id, { status, ...extra });
       load();
       bumpData();
     } catch (e: any) { toast(e.message || e); }
@@ -47,20 +49,22 @@ export default function BoardView() {
   }
 
   // leaderboard
-  const byTeam: Record<string, { total: number; approved: number; rejected: number }> = {};
+  const byTeam: Record<string, { total: number; approved: number; rejected: number; resolved: number }> = {};
   rows.forEach((d) => {
     const t = d.team_name || 'ללא קבוצה';
-    byTeam[t] = byTeam[t] || { total: 0, approved: 0, rejected: 0 };
+    byTeam[t] = byTeam[t] || { total: 0, approved: 0, rejected: 0, resolved: 0 };
     byTeam[t].total++;
     if (d.status === 'approved') byTeam[t].approved++;
     if (d.status === 'rejected') byTeam[t].rejected++;
+    if (d.status === 'resolved') byTeam[t].resolved++;
   });
   const teams = Object.entries(byTeam)
     .map(([tm, s]) => ({
       tm, ...s,
-      precision: (s.approved + s.rejected) ? Math.round(s.approved / (s.approved + s.rejected) * 100) : null,
+      precision: (s.approved + s.resolved + s.rejected)
+        ? Math.round((s.approved + s.resolved) / (s.approved + s.resolved + s.rejected) * 100) : null,
     }))
-    .sort((a, b) => b.approved - a.approved || b.total - a.total);
+    .sort((a, b) => b.resolved - a.resolved || b.approved - a.approved || b.total - a.total);
   const medals = ['🥇', '🥈', '🥉'];
 
   return (
@@ -69,7 +73,7 @@ export default function BoardView() {
         <span className="ph-n">7</span>
         <div>
           <b>ניטור — לוח מפגעים</b>
-          <span className="why">למה זה חשוב? מודל טועה לפעמים (False Positive). אישור אנושי = השלב שהופך זיהוי AI לדיווח אמיתי לעירייה.</span>
+          <span className="why">המעגל המלא: ה-AI מזהה → מדריך מאשר → העירייה מטפלת → יוצאים לשטח לצלם → אותו מודל מאמת שהמפגע נעלם → מהנדס חותם → הנעץ יורד מהמפה. לא רק זיהוי — הבנה.</span>
         </div>
       </div>
       <div className="board-stats">
@@ -78,7 +82,8 @@ export default function BoardView() {
             <span className="rank">{medals[i] || '·'}</span>
             <div className="tm">{t.tm}</div>
             <div className="nums">
-              <span><b>{t.approved}</b>מאושרים</span>
+              <span><b>{t.resolved}</b>טופלו 🟢</span>
+              <span><b>{t.approved}</b>בטיפול</span>
               <span><b>{t.total}</b>זיהויים</span>
               <span><b>{t.precision == null ? '—' : t.precision + '%'}</b>דיוק</span>
             </div>
@@ -89,8 +94,11 @@ export default function BoardView() {
         <div className="row" style={{ marginBottom: 10 }}>
           <select value={filter} onChange={(e) => setFilter(e.target.value)}>
             <option value="all">כל הסטטוסים</option>
-            <option value="pending">⏳ ממתינים</option>
-            <option value="approved">✅ מאושרים</option>
+            <option value="pending">⏳ ממתינים לאישור</option>
+            <option value="approved">🔧 בטיפול</option>
+            <option value="awaiting_verify">🔍 ממתינים לאימות שטח</option>
+            <option value="verifying">🤖 באימות — למהנדס</option>
+            <option value="resolved">🟢 טופלו</option>
             <option value="rejected">❌ נדחו</option>
           </select>
           <button className="ghost" onClick={() => load()}>רענן</button>
@@ -116,13 +124,38 @@ export default function BoardView() {
                   </div>
                 </div>
                 <span className="conf" style={{ color: confCol }}>{conf}%</span>
-                <span className={'st-pill st-' + d.status}>
-                  {d.status === 'pending' ? '⏳ ממתין' : d.status === 'approved' ? '✅ מאושר' : '❌ נדחה'}
+                <span className={'st-pill ' + (STATUS_META[d.status]?.pill || '')}>
+                  {STATUS_META[d.status]?.label || d.status}
                 </span>
+                {d.status === 'verifying' && d.verify_photo_path && (
+                  <span className="vrow" title={d.verify_ai_passed === true ? 'ה-AI אישר: המפגע לא זוהה יותר' : d.verify_ai_passed === false ? 'ה-AI עדיין מזהה את המפגע' : 'ללא בדיקת AI'}>
+                    <img src={publicUrl(d.verify_photo_path)} alt="" style={{ width: 56, height: 42, objectFit: 'cover', border: '1px solid var(--cy-faint)' }} />
+                    <span style={{ fontSize: 11 }}>{d.verify_ai_passed === true ? '🤖✅' : d.verify_ai_passed === false ? '🤖❌' : '🤖—'}</span>
+                  </span>
+                )}
                 {auth.admin && d.status === 'pending' && (
                   <span style={{ display: 'flex', gap: 6 }}>
                     <button className="primary" style={{ fontSize: 12 }} onClick={() => moderate(d.id, 'approved')}>✓ אשר</button>
                     <button className="ghost" style={{ fontSize: 12, color: 'var(--danger)' }} onClick={() => moderate(d.id, 'rejected')}>✕ דחה</button>
+                  </span>
+                )}
+                {auth.admin && d.status === 'approved' && (
+                  <button className="hot" style={{ fontSize: 12 }} onClick={() => moderate(d.id, 'awaiting_verify')}>
+                    🔧 העבודה הסתיימה → לאימות שטח
+                  </button>
+                )}
+                {d.status === 'awaiting_verify' && (
+                  <button className="primary" style={{ fontSize: 12 }} onClick={() => openVerify(d)}>
+                    📸 אמת בשטח
+                  </button>
+                )}
+                {auth.admin && d.status === 'verifying' && (
+                  <span style={{ display: 'flex', gap: 6 }}>
+                    <button className="primary" style={{ fontSize: 12 }}
+                      onClick={() => moderate(d.id, 'resolved', { resolved_at: new Date().toISOString() })}>
+                      🟢 אשר סגירה — הנעץ יורד
+                    </button>
+                    <button className="ghost" style={{ fontSize: 12 }} onClick={() => moderate(d.id, 'approved')}>↩ החזר לטיפול</button>
                   </span>
                 )}
               </div>

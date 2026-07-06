@@ -78,6 +78,11 @@ export async function setDetectionStatus(id: string, status: string) {
   if (error) throw error;
 }
 
+export async function updateDetection(id: string, patch: object) {
+  const { error } = await sb.from('sc_detections').update(patch).eq('id', id);
+  if (error) throw error;
+}
+
 export async function uploadBlob(path: string, blob: Blob, contentType: string, bucket = BUCKET) {
   const up = await sb.storage.from(bucket).upload(path, blob, { contentType, upsert: false });
   if (up.error) throw up.error;

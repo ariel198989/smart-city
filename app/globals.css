@@ -318,6 +318,31 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .st-pending{background:rgba(255,182,39,.1);color:var(--gold);border:1px solid rgba(255,182,39,.45)}
 .st-approved{background:rgba(53,225,255,.08);color:var(--cy);border:1px solid rgba(53,225,255,.45)}
 .st-rejected{background:rgba(255,107,107,.08);color:var(--danger);border:1px solid rgba(255,107,107,.35)}
+.st-awaiting{background:rgba(255,182,39,.14);color:#ffd987;border:1px dashed rgba(255,182,39,.6)}
+.st-verifying{background:rgba(53,225,255,.12);color:var(--cy);border:1px dashed rgba(53,225,255,.6)}
+.st-resolved{background:rgba(124,255,203,.1);color:#7CFFCB;border:1px solid rgba(124,255,203,.45)}
+.vrow{display:inline-flex;align-items:center;gap:5px}
+
+/* pin awaiting field verification — hollow, blinking (event closing) */
+.pin.verify::after{background:transparent;border:2px solid currentColor;box-shadow:0 0 10px currentColor;animation:sc-dot 1.2s ease-in-out infinite}
+.pin.verify::before{border-style:dashed}
+
+/* map popup: work status + verify action */
+.pop-status{font-size:10px;letter-spacing:.08em;padding:3px 8px;display:inline-block;margin:6px 0 4px;font-weight:600}
+.pop-verify{width:100%;margin-top:8px;font-size:12px;padding:8px;cursor:pointer;font-weight:600;
+  background:rgba(53,225,255,.12);border:1px solid rgba(53,225,255,.7);color:#eafbff;font-family:inherit}
+.pop-verify:hover{background:rgba(53,225,255,.22)}
+
+/* verification modal: before/after compare + AI verdict */
+.verify-compare{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.verify-compare img{width:100%;height:150px;object-fit:cover;border:1px solid var(--cy-faint);display:block}
+.verify-compare .vc-lbl{font-size:10px;letter-spacing:.14em;color:var(--muted);margin-bottom:5px}
+.verify-compare .vc-empty{height:150px;display:grid;place-items:center;border:1px dashed var(--cy-faint);color:var(--muted);font-size:12px}
+.verify-compare .vc-drop{height:150px;display:grid;place-items:center;margin:0}
+.ai-verdict{margin-top:10px;padding:9px 12px;font-size:12.5px;line-height:1.55;border:1px solid var(--cy-faint);background:rgba(53,225,255,.04)}
+.ai-verdict.pass{border-color:rgba(124,255,203,.55);background:rgba(124,255,203,.07);color:#b8ffe1}
+.ai-verdict.fail{border-color:rgba(255,182,39,.55);background:rgba(255,182,39,.07);color:#ffd987}
+.stat-chip.resolved b{color:#7CFFCB}
 
 /* ---------- auth / modal / toast ---------- */
 .overlay{position:fixed;inset:0;z-index:100;background:rgba(2,5,9,.92);display:grid;place-items:center;padding:20px;backdrop-filter:blur(6px)}
