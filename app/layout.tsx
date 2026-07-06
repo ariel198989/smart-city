@@ -3,8 +3,21 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import './globals.css';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://smart-city-cyan.vercel.app'),
   title: 'Smart City — הילדים שמתקנים את העיר עם AI',
   description: 'פלטפורמה לימודית להאקתונים: ילדים מאמנים מודלי ראייה ממוחשבת לזהות מפגעים עירוניים בשדרות',
+  openGraph: {
+    title: 'Smart City — הילדים שמתקנים את העיר עם AI',
+    description: 'צלמו מפגעים, ה-AI בודק, העיר מתקנת. קרדיטים ופרסים מהעירייה 🏙️',
+    images: [{ url: '/og-image.jpg', width: 1200, height: 675 }],
+    locale: 'he_IL',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Smart City — פטרול המפגעים של שדרות',
+    images: ['/og-image.jpg'],
+  },
   manifest: '/manifest.json',
   appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Smart City' },
   icons: {

@@ -344,7 +344,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
         {briefReady && !briefed && (
           <div className="pt-brief">
             <div className="ptb-inner">
-              <div className="ptb-agent">🕵️</div>
+              <img src="/agent.jpg" alt="" className="ptb-agent-img" />
               <div className="ptb-title">ברוך הבא לפטרול{auth.team ? ', ' + auth.team : ''}!</div>
               {model.ready ? (
                 <>

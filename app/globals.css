@@ -430,6 +430,8 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .ptb-inner{max-width:360px;width:100%;text-align:center;border:1px solid var(--cy-line);
   background:rgba(6,16,28,.9);padding:26px 20px;animation:pt-pop .4s cubic-bezier(.2,1.4,.4,1)}
 .ptb-agent{font-size:52px;filter:drop-shadow(0 0 14px rgba(53,225,255,.7));animation:agent-bob 1.6s ease-in-out infinite}
+.ptb-agent-img{height:168px;width:auto;margin:0 auto;display:block;
+  filter:drop-shadow(0 0 22px rgba(53,225,255,.45));animation:agent-bob 2.4s ease-in-out infinite}
 .ptb-title{font-size:17px;font-weight:600;letter-spacing:.06em;color:var(--ink);margin-top:8px}
 .ptb-sub{font-size:11px;letter-spacing:.18em;color:var(--cy);margin:14px 0 8px}
 .ptb-classes{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
