@@ -26,6 +26,10 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
   const [stats, setStats] = useState({ det: 0, ok: 0, frames: 0, newToday: 0, resolved: 0 });
   const focusRef = useRef<any>(null);
   const byIdRef = useRef<Record<string, any>>({});
+  const prevIdsRef = useRef<Set<string>>(new Set());
+  const focusCenterRef = useRef<{ lat: number; lng: number } | null>(null);
+  const fxCanvasRef = useRef<HTMLCanvasElement>(null);
+  const cinematic = useRef({ done: false, rm: false, desktop: false });
   const [legend, setLegend] = useState<{ name: string; n: number }[]>([]);
   const [showHeat, setShowHeat] = useState(false);
   const [showCover, setShowCover] = useState(true);
@@ -41,11 +45,16 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
     (async () => {
       const maplibregl = (await import('maplibre-gl')).default;
       if (disposed || !mapEl.current || mapRef.current) return;
+      cinematic.current.rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      cinematic.current.desktop = window.matchMedia('(min-width: 768px)').matches;
+      const cine = cinematic.current.desktop && !cinematic.current.rm;
       const map = new maplibregl.Map({
         container: mapEl.current,
         style: MAP_STYLE as any,
         center: [DEFAULT_CITY.center_lng, DEFAULT_CITY.center_lat],
-        zoom: DEFAULT_CITY.zoom,
+        // cinematic entrance: start wide & flat, fly down into the city
+        zoom: cine ? 11.8 : DEFAULT_CITY.zoom,
+        pitch: 0,
         attributionControl: { compact: true } as any,
       });
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-left');
@@ -82,13 +91,98 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
           },
         });
         refresh(map, maplibregl);
+
+        // 🎬 cinematic descent into the command view (desktop, motion allowed)
+        if (cinematic.current.desktop && !cinematic.current.rm && !cinematic.current.done) {
+          cinematic.current.done = true;
+          setTimeout(() => {
+            map.flyTo({
+              center: [DEFAULT_CITY.center_lng, DEFAULT_CITY.center_lat],
+              zoom: DEFAULT_CITY.zoom, pitch: 52, bearing: -14,
+              duration: 3600, essential: false,
+            });
+          }, 450);
+        }
+
+        // marching-ants border on the focus zone (dasharray step animation)
+        if (!cinematic.current.rm) {
+          const seq = [[0, 4, 3], [1, 4, 2], [2, 4, 1], [3, 4, 0], [0, 0, 4, 3]];
+          let step = 0;
+          setInterval(() => {
+            if (!map.getLayer('focus-line')) return;
+            step = (step + 1) % seq.length;
+            try { map.setPaintProperty('focus-line', 'line-dasharray', seq[step]); } catch { /* style reload */ }
+          }, 140);
+        }
       });
       map.on('contextmenu', (e: any) => cbRef.current.onStreetView(e.lngLat.lat, e.lngLat.lng));
       mapRef.current = { map, maplibregl };
+      startFx(map);
     })();
     return () => { disposed = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ✨ ambient FX layer: data particles converging on the focus zone
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  function startFx(map: any) {
+    if (cinematic.current.rm || !cinematic.current.desktop) return;
+    const cv = fxCanvasRef.current;
+    if (!cv) return;
+    const ctx = cv.getContext('2d')!;
+    type P = { x: number; y: number; vx: number; vy: number; life: number; gold: boolean };
+    let parts: P[] = [];
+    const spawn = (w: number, h: number): P => {
+      const edge = Math.floor(Math.random() * 4);
+      const x = edge === 0 ? 0 : edge === 1 ? w : Math.random() * w;
+      const y = edge < 2 ? Math.random() * h : (edge === 2 ? 0 : h);
+      return { x, y, vx: 0, vy: 0, life: 0.4 + Math.random() * 0.6, gold: Math.random() < 0.25 };
+    };
+    const loop = () => {
+      requestAnimationFrame(loop);
+      if (document.hidden || !activeRef.current) { return; }
+      const shell = cv.parentElement!;
+      const w = shell.clientWidth, h = shell.clientHeight;
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+      ctx.clearRect(0, 0, w, h);
+      const fc = focusCenterRef.current;
+      if (!fc) { parts = []; return; }
+      let target;
+      try { target = map.project([fc.lng, fc.lat]); } catch { return; }
+      while (parts.length < 46) parts.push(spawn(w, h));
+      ctx.globalCompositeOperation = 'lighter';
+      parts.forEach((p) => {
+        const dx = target.x - p.x, dy = target.y - p.y;
+        const d = Math.hypot(dx, dy) || 1;
+        p.vx += (dx / d) * 0.05; p.vy += (dy / d) * 0.05;
+        p.vx *= 0.985; p.vy *= 0.985;
+        p.x += p.vx; p.y += p.vy;
+        p.life -= 0.0022;
+        const near = d < 26;
+        if (near || p.life <= 0 || p.x < -20 || p.x > w + 20 || p.y < -20 || p.y > h + 20) {
+          Object.assign(p, spawn(w, h));
+          return;
+        }
+        ctx.beginPath();
+        ctx.fillStyle = p.gold ? `rgba(255,182,39,${0.5 * p.life})` : `rgba(53,225,255,${0.45 * p.life})`;
+        ctx.arc(p.x, p.y, p.gold ? 1.6 : 1.2, 0, 7);
+        ctx.fill();
+      });
+      ctx.globalCompositeOperation = 'source-over';
+    };
+    requestAnimationFrame(loop);
+  }
+
+  // 📡 radar ping where a new detection just landed (realtime moment)
+  function pingAt(map: any, maplibregl: any, lat: number, lng: number) {
+    if (cinematic.current.rm) return;
+    const el = document.createElement('div');
+    el.className = 'ping';
+    el.innerHTML = '<i></i><i></i>';
+    const mk = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
+    setTimeout(() => mk.remove(), 2100);
+  }
 
   // refetch when data version bumps
   useEffect(() => {
@@ -162,11 +256,24 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
           : d.status === 'awaiting_verify' || d.status === 'verifying' ? ' verify' : '';
         el.className = 'pin' + cls;
         el.style.color = classColor(d.class_name, CLASS_PALETTE);
+        // volumetric light pillar rising from the hazard (desktop, motion ok)
+        if (cinematic.current.desktop && !cinematic.current.rm) {
+          const beam = document.createElement('i');
+          beam.className = 'pin-beam';
+          el.appendChild(beam);
+        }
         return new maplibregl.Marker({ element: el })
           .setLngLat([d.lng, d.lat])
           .setPopup(new maplibregl.Popup({ offset: 18, maxWidth: '280px' }).setHTML(popupHTML(d)))
           .addTo(map);
       });
+      // 📡 radar ping for detections that JUST arrived (cross-device magic)
+      const prev = prevIdsRef.current;
+      if (prev.size) {
+        visible.filter((d: any) => !prev.has(d.id)).slice(0, 3)
+          .forEach((d: any) => pingAt(map, maplibregl, d.lat, d.lng));
+      }
+      prevIdsRef.current = new Set(visible.map((d: any) => d.id));
       // coverage dots (thin to ~400)
       covRef.current.forEach((m) => m.remove());
       const step = Math.max(1, Math.floor(cov.length / 400));
@@ -198,6 +305,7 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
     const fsrc = map.getSource('focus-zone');
     if (!fsrc) return;
     if (focusRef.current) { focusRef.current.remove(); focusRef.current = null; }
+    focusCenterRef.current = null;
     if (visible.length < 3) { fsrc.setData({ type: 'FeatureCollection', features: [] }); return; }
     // grid the city into ~250m cells, pick the cell with the most hazards
     const cell = 0.0025;
@@ -220,6 +328,7 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
         geometry: { type: 'Polygon', coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] },
       }],
     });
+    focusCenterRef.current = { lat: (s + n) / 2, lng: (w + e) / 2 };  // particle target
     // callout label at the top-right corner (leader dot + gold text)
     const el = document.createElement('div');
     el.className = 'focus-callout';
@@ -243,6 +352,7 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
     <section className="view">
       <div className="map-shell hud">
         <div ref={mapEl} id="cityMap" className={showSat ? 'sat' : ''} />
+        <canvas ref={fxCanvasRef} className="map-fx" aria-hidden="true" />
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, padding: 12, zIndex: 5, pointerEvents: 'none' }}>
           <span style={{ color: 'rgba(53,225,255,.5)', fontSize: 13 }}>〈</span>
           <span style={{ fontSize: 12, letterSpacing: '.34em', color: '#eafbff' }}>מפת העיר החיה</span>

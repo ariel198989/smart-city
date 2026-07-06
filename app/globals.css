@@ -198,6 +198,25 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .pin.approved::after{box-shadow:0 0 10px currentColor,0 0 0 3px rgba(53,225,255,.35)}
 .cov-dot{width:7px;height:7px;border-radius:50%;background:var(--cy);opacity:.85;cursor:pointer;
   box-shadow:0 0 8px var(--cy);animation:sc-dot 1.6s ease-in-out infinite}
+
+/* ⚡ overdrive: volumetric light pillar rising from each hazard */
+.pin-beam{position:absolute;bottom:50%;left:50%;width:5px;height:78px;pointer-events:none;
+  transform:translateX(-50%);transform-origin:bottom;
+  background:linear-gradient(180deg,transparent 0%,currentColor 115%);
+  opacity:.32;filter:blur(.6px);
+  animation:beam-breathe 2.8s ease-in-out infinite}
+@keyframes beam-breathe{50%{opacity:.6;transform:translateX(-50%) scaleY(1.14)}}
+
+/* ⚡ overdrive: radar ping where a catch just landed */
+.ping{width:36px;height:36px;pointer-events:none;position:relative}
+.ping i{position:absolute;inset:0;border-radius:50%;border:2px solid var(--cy);
+  box-shadow:0 0 12px rgba(53,225,255,.5);
+  animation:ping-x 1.7s cubic-bezier(.16,.84,.44,1) forwards}
+.ping i:last-child{animation-delay:.28s;border-color:var(--gold);box-shadow:0 0 12px rgba(255,182,39,.4)}
+@keyframes ping-x{0%{transform:scale(.25);opacity:1}100%{transform:scale(5.2);opacity:0}}
+
+/* ⚡ overdrive: ambient data-particle layer over the map */
+.map-fx{position:absolute;inset:0;z-index:3;pointer-events:none}
 .maplibregl-popup-content{background:rgba(3,10,21,.92)!important;color:var(--ink)!important;
   border:1px solid var(--cy-line);border-radius:0!important;font-family:"Rubik",sans-serif;padding:12px 14px!important;direction:rtl}
 .maplibregl-popup-tip{border-top-color:var(--cy-line)!important}
@@ -500,6 +519,12 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 ::-webkit-scrollbar-track{background:rgba(3,10,21,.5)}
 ::-webkit-scrollbar-thumb{background:rgba(53,225,255,.25);border:2px solid rgba(3,10,21,.5)}
 ::-webkit-scrollbar-thumb:hover{background:rgba(53,225,255,.45)}
+
+/* ---------- accessibility: motion off = calm, still beautiful ---------- */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+  .city-bg::before,.glow,.skyline{display:none}
+}
 
 /* ---------- responsive ---------- */
 @media (max-width:900px){
