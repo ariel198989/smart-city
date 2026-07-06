@@ -9,7 +9,7 @@ import { modelStore, loadModelFromZip, detectOnDataURL, drawDetections, type Box
 import { authStore } from '@/lib/auth';
 import { useStore, toast } from '@/lib/store';
 import { fileToDataURL, urlToDataURL, fmtWhen, download } from '@/lib/util';
-import { fetchPoolStats, buildCityPoolZip, fetchFeedback, setFeedbackStatus, fetchPoolGallery } from '@/lib/citypool';
+import { fetchPoolStats, buildCityPoolZip, fetchFeedback, setFeedbackStatus, fetchPoolGallery, fetchUntaggedPhoneShots } from '@/lib/citypool';
 
 const IMG_W = 640, IMG_H = 480;
 
@@ -159,6 +159,25 @@ export default function StudioView() {
         if (n % 10 === 0) setProgress(`נטענו ${n}/${frames.length}…`);
       }
       setProgress(`✓ נטענו ${n} פריימים עירוניים — לתייג!`);
+    } catch (e: any) { toast(e.message || e); }
+  }
+
+  // 📱 training that started on a phone continues here:
+  // pull mobile shots that have no bbox yet straight into the tagging strip
+  async function loadPhoneShots() {
+    setProgress('שולף צילומים מהטלפונים…');
+    try {
+      const shots = await fetchUntaggedPhoneShots(60);
+      if (!shots.length) { setProgress('אין צילומי טלפון שממתינים לתיוג. 📱 צאו לצלם בפטרול!'); return; }
+      let n = 0;
+      for (const s of shots) {
+        const durl = await urlToDataURL(publicUrl(s.frame_path || s.crop_path), IMG_W);
+        addImages([durl]);
+        if (s.class_name && !stRef.current.classes.some((c) => c.name === s.class_name)) addClass(s.class_name);
+        n++;
+        if (n % 10 === 0) setProgress(`נטענו ${n}/${shots.length}…`);
+      }
+      setProgress(`✓ ${n} צילומים מהטלפון ברצועת התיוג — סמנו מלבנים, ייצאו, ואמנו! 📱→🖥️→☁️`);
     } catch (e: any) { toast(e.message || e); }
   }
 
@@ -614,6 +633,9 @@ export default function StudioView() {
           </label>
           <button className="ghost" onClick={() => { setPoolOpen((v) => !v); if (!poolOpen) fetchRoutes().then(setPoolRoutes).catch(() => {}); }}>
             מהמאגר העירוני
+          </button>
+          <button className="hot" style={{ fontSize: 13 }} onClick={loadPhoneShots}>
+            📱 מהטלפון — צילומים לתיוג
           </button>
           <label className="mini">
             תמונות מסרטון:

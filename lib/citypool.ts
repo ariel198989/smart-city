@@ -25,6 +25,20 @@ async function fetchPoolRows(limit = 3000) {
   return data || [];
 }
 
+// phone shots awaiting desktop tagging: full frames without a bbox
+// (pocket-gated + ungated catches) — "training starts on the phone,
+// continues on the web"
+export async function fetchUntaggedPhoneShots(limit = 100) {
+  const { data, error } = await sb.from('sc_detections')
+    .select('id, class_name, frame_path, crop_path, created_at, team_name')
+    .is('bbox', null)
+    .neq('status', 'rejected')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data || []).filter((r: any) => r.frame_path || r.crop_path);
+}
+
 // recent pool photos — make the invisible dataset visible to everyone
 export async function fetchPoolGallery(limit = 12) {
   const { data, error } = await sb.from('sc_detections')
