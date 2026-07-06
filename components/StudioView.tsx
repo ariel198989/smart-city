@@ -9,7 +9,7 @@ import { modelStore, loadModelFromZip, detectOnDataURL, drawDetections, type Box
 import { authStore } from '@/lib/auth';
 import { useStore, toast } from '@/lib/store';
 import { fileToDataURL, urlToDataURL, fmtWhen, download } from '@/lib/util';
-import { fetchPoolStats, buildCityPoolZip, fetchFeedback, setFeedbackStatus } from '@/lib/citypool';
+import { fetchPoolStats, buildCityPoolZip, fetchFeedback, setFeedbackStatus, fetchPoolGallery } from '@/lib/citypool';
 
 const IMG_W = 640, IMG_H = 480;
 
@@ -69,6 +69,7 @@ export default function StudioView() {
   const [cpBusy, setCpBusy] = useState(false);
   const [cpMsg, setCpMsg] = useState('');
   const [feedback, setFeedback] = useState<any[]>([]);
+  const [gallery, setGallery] = useState<any[]>([]);
   const [shareMsg, setShareMsg] = useState('');
   const [canShare, setCanShare] = useState(false);
   const [modelMsg, setModelMsg] = useState('');
@@ -412,9 +413,13 @@ export default function StudioView() {
   async function loadCityPool() {
     try {
       setCityPool(await fetchPoolStats());
-      setFeedback(await fetchFeedback('pending'));
+      setGallery(await fetchPoolGallery(12));
+      if (auth.admin) setFeedback(await fetchFeedback('pending'));
     } catch (e: any) { toast(e.message || e); }
   }
+
+  // the pool is everyone's — load it on entry (actions stay admin-only)
+  useEffect(() => { loadCityPool(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [auth.admin]);
 
   // instructor verdict on a field dispute/negative
   async function judgeFeedback(fb: any, accept: boolean) {
@@ -760,18 +765,20 @@ export default function StudioView() {
           {mergeMsg && <div className="hint">{mergeMsg}</div>}
         </div>
 
-        {/* 🏙️ community pool — every resident catch trains the city model */}
-        {auth.admin && (
-          <div className="poolbox" style={{ borderTopColor: 'rgba(255,182,39,.35)' }}>
+        {/* 🏙️ community pool — every resident catch trains the city model.
+            Visible to EVERYONE (the loop must be felt); actions admin-only */}
+        <div className="poolbox" style={{ borderTopColor: 'rgba(255,182,39,.35)' }}>
             <div className="row" style={{ marginBottom: 8 }}>
               <b style={{ fontSize: 14 }}>🏙️ מאגר העיר — אימון קהילתי</b>
               <button className="ghost" style={{ fontSize: 12 }} onClick={loadCityPool}>רענן</button>
-              <button className="hot" style={{ fontSize: 12.5 }} disabled={!cityPool || !cityPool.total || cpBusy} onClick={exportCityPool}>
-                {cpBusy ? 'אורז…' : '📦 ייצא מאגר עירוני (ZIP)'}
-              </button>
+              {auth.admin && (
+                <button className="hot" style={{ fontSize: 12.5 }} disabled={!cityPool || !cityPool.total || cpBusy} onClick={exportCityPool}>
+                  {cpBusy ? 'אורז…' : '📦 ייצא מאגר עירוני (ZIP)'}
+                </button>
+              )}
             </div>
             <p className="hint" style={{ margin: '0 0 8px' }}>
-              כל צילום של תושב שעבר את שער ה-AI בפטרול = דוגמת אימון (תמונה מלאה + תיבה). ייצוא ← Colab ← מודל עיר משופר ← נטען אוטומטית לכל טלפון. 🔁
+              כל צילום של תושב שעבר את שער ה-AI בפטרול = דוגמת אימון (תמונה מלאה + תיבה). מדריך מייצא ← Colab ← מודל עיר משופר ← נטען אוטומטית לכל טלפון. 🔁
             </p>
             {cityPool ? (
               cityPool.total ? (
@@ -781,16 +788,26 @@ export default function StudioView() {
                     <div className="stat"><div className="v">{cityPool.byClass.length}</div><div className="l">קטגוריות</div></div>
                     <div className="stat"><div className="v">{cityPool.contributors}</div><div className="l">תושבים תרמו</div></div>
                   </div>
-                  <div className="classes">
+                  <div className="classes" style={{ marginBottom: 8 }}>
                     {cityPool.byClass.map((c) => (
                       <span key={c.name} className="class-btn" style={{ cursor: 'default' }}>
                         <span className="sw" style={{ background: 'var(--gold)' }} />{c.name} · {c.count}
                       </span>
                     ))}
                   </div>
+                  {gallery.length > 0 && (
+                    <div className="pool-gallery">
+                      {gallery.map((g, i) => (
+                        <div key={i} className="pg-item" title={g.class_name}>
+                          <img src={publicUrl(g.frame_path)} alt="" loading="lazy" />
+                          <span>{g.class_name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ) : <span className="muted" style={{ fontSize: 13 }}>הפול ריק — כשתושבים יצלמו בפטרול, התמונות ייכנסו לכאן.</span>
-            ) : <span className="muted" style={{ fontSize: 13 }}>לחצו "רענן" לראות את מאגר העיר.</span>}
+              ) : <span className="muted" style={{ fontSize: 13 }}>הפול ריק — כשתושבים יצלמו בפטרול, התמונות ייכנסו לכאן. 📱</span>
+            ) : <span className="muted" style={{ fontSize: 13 }}>טוען את מאגר העיר…</span>}
             {cpMsg && <div className="hint">{cpMsg}</div>}
 
             {/* 🎓 field feedback queue — kids challenged the AI in the street */}
@@ -814,8 +831,7 @@ export default function StudioView() {
                 ))}
               </div>
             )}
-          </div>
-        )}
+        </div>
       </div>
 
       {/* 5+6: evaluate + deploy */}

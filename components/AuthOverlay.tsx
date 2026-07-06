@@ -7,7 +7,13 @@ export default function AuthOverlay() {
   const auth = useStore(authStore);
   // mobile is play-only: a viewer can do nothing, so require an account
   const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => { setIsMobile(window.matchMedia('(max-width: 767px)').matches); }, []);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mq.matches);
+    const on = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');

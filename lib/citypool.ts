@@ -25,6 +25,29 @@ async function fetchPoolRows(limit = 3000) {
   return data || [];
 }
 
+// recent pool photos — make the invisible dataset visible to everyone
+export async function fetchPoolGallery(limit = 12) {
+  const { data, error } = await sb.from('sc_detections')
+    .select('frame_path, class_name, created_at')
+    .not('frame_path', 'is', null)
+    .neq('status', 'rejected')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data || [];
+}
+
+// how many training photos did *I* contribute
+export async function fetchMyContribution(userId: string) {
+  const { count, error } = await sb.from('sc_detections')
+    .select('id', { count: 'exact', head: true })
+    .eq('detected_by', userId)
+    .not('frame_path', 'is', null)
+    .neq('status', 'rejected');
+  if (error) return 0;
+  return count || 0;
+}
+
 export async function fetchPoolStats(): Promise<PoolStats> {
   const rows = await fetchPoolRows();
   const byClass: Record<string, number> = {};

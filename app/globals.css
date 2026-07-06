@@ -363,6 +363,16 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .ai-verdict.fail{border-color:rgba(255,182,39,.55);background:rgba(255,182,39,.07);color:#ffd987}
 .stat-chip.resolved b{color:#7CFFCB}
 
+/* 🏙️ city pool gallery — the community dataset, visible */
+.pool-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px}
+.pg-item{position:relative;aspect-ratio:4/3;overflow:hidden;border:1px solid var(--cy-faint)}
+.pg-item img{width:100%;height:100%;object-fit:cover;display:block}
+.pg-item span{position:absolute;bottom:0;right:0;left:0;background:rgba(3,10,21,.82);
+  font-size:9.5px;padding:2px 5px;color:var(--gold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.my-pool{margin-top:10px;padding:9px 12px;font-size:12.5px;border:1px solid rgba(124,255,203,.4);
+  background:rgba(124,255,203,.06);color:#b8ffe1}
+.my-pool b{font-family:"Space Grotesk",monospace}
+
 /* ============ 🎮 City Patrol (Pokémon-GO-style mode) ============ */
 .patrol-shell{position:relative;overflow:hidden;height:calc(100vh - 240px);min-height:480px;
   background:radial-gradient(ellipse at 50% 40%,#08182b 0%,#030a15 80%)}

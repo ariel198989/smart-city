@@ -10,6 +10,7 @@ import { authStore } from '@/lib/auth';
 import { useStore, toast, bumpData } from '@/lib/store';
 import { classColor, dataURLtoBlob, fileToDataURL } from '@/lib/util';
 import { fetchCrossingSpawns, isCrossingClass, calcCredits, ensureCityModel, fetchMonthlyLeaderboard, distM, fetchCoveredSectors, estimateObjectDistanceM, projectForward, type Spawn } from '@/lib/patrol';
+import { fetchMyContribution } from '@/lib/citypool';
 import { startCompass, requestCompassPermission, getHeading, sectorOf, SECTOR_NAMES } from '@/lib/compass';
 import StreetCam from '@/components/StreetCam';
 
@@ -67,6 +68,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
   const [credits, setCredits] = useState(0);
   const [showBoard, setShowBoard] = useState(false);
   const [board, setBoard] = useState<{ name: string; credits: number; catches: number }[]>([]);
+  const [myPool, setMyPool] = useState<number | null>(null);
   const [briefed, setBriefed] = useState(true);
   const [briefReady, setBriefReady] = useState(false);
   const [camMode, setCamMode] = useState(false);
@@ -289,7 +291,10 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
 
   async function openBoard() {
     setShowBoard(true);
-    try { setBoard(await fetchMonthlyLeaderboard()); } catch (e: any) { toast(e.message || e); }
+    try {
+      setBoard(await fetchMonthlyLeaderboard());
+      if (auth.user) setMyPool(await fetchMyContribution(auth.user.id));
+    } catch (e: any) { toast(e.message || e); }
   }
 
   function share() {
@@ -485,6 +490,11 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
                 <span className="muted" style={{ marginInlineStart: 'auto' }}>{t.credits} 💎 · {t.catches} תפיסות</span>
               </div>
             ))}
+            {myPool != null && (
+              <div className="my-pool">
+                🧠 תרמת <b>{myPool}</b> תמונות למאגר האימון של העיר — המודל הבא ילמד מהן!
+              </div>
+            )}
             <div className="hint" style={{ marginTop: 10 }}>
               קרדיטים = תפיסה שעברה את מסנן ה-AI (10-20) + בונוס אזור משימה (+5). מתאפס כל חודש — 3 הראשונים זוכים.
             </div>
