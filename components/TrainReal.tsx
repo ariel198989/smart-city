@@ -8,6 +8,7 @@ import { COLAB } from '@/lib/config';
 import { authStore } from '@/lib/auth';
 import { useStore, toast, bumpData } from '@/lib/store';
 import { startTrainingJob, registerTrainedModel, fetchJobs, type TrainJob } from '@/lib/trainjobs';
+import { fetchPoolStats, type PoolStats } from '@/lib/citypool';
 
 export default function TrainReal({ onClose }: { onClose: () => void }) {
   const auth = useStore(authStore);
@@ -16,8 +17,19 @@ export default function TrainReal({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [regBusy, setRegBusy] = useState(false);
 
-  useEffect(() => { fetchJobs().then(setJobs).catch(() => {}); }, []);
+  const [pool, setPool] = useState<PoolStats | null>(null);
+  useEffect(() => {
+    fetchJobs().then(setJobs).catch(() => {});
+    fetchPoolStats().then(setPool).catch(() => {});
+  }, []);
   const pending = jobs.find((j) => j.status === 'pending');
+  // readiness: YOLO starts being useful ~50 imgs/class, strong at 150+
+  const weakest = pool?.byClass.length ? Math.min(...pool.byClass.map((c) => c.count)) : 0;
+  const readiness = !pool ? null
+    : !pool.total ? { level: 'none', msg: 'הפול ריק — צאו לצלם בפטרול (דרך שער AI) או תייגו בדסקטופ' }
+    : weakest < 50 ? { level: 'low', msg: `יש ${pool.total} תמונות מ-${pool.contributors} תלמידים, אבל לקטגוריה הדלה ביותר רק ${weakest}. מומלץ 50+ לקטגוריה — כל הכיתה מצלמת ביחד ומגיעים לזה מהר! 🤝` }
+    : weakest < 150 ? { level: 'ok', msg: `${pool.total} תמונות מ-${pool.contributors} תלמידים · הקטגוריה הדלה: ${weakest}. אפשר לאמן — ו-150+ ייתן מודל חזק באמת.` }
+    : { level: 'great', msg: `${pool.total} תמונות מ-${pool.contributors} תלמידים — דאטהסט מעולה! 🔥` };
 
   async function start() {
     if (!auth.user) { toast('צריך להתחבר', true); authStore.set({ viewer: false }); return; }
@@ -61,6 +73,11 @@ export default function TrainReal({ onClose }: { onClose: () => void }) {
         {/* step 1 */}
         <div className="tr-step">
           <b>① פתחו משימת אימון</b>
+          {readiness && (
+            <div className={'ai-verdict ' + (readiness.level === 'great' ? 'pass' : readiness.level === 'low' || readiness.level === 'none' ? 'fail' : '')} style={{ marginTop: 6 }}>
+              {readiness.level === 'none' ? '📭 ' : readiness.level === 'low' ? '📈 ' : '✅ '}{readiness.msg}
+            </div>
+          )}
           {pending ? (
             <div className="ai-verdict pass" style={{ marginTop: 6 }}>
               ✅ משימה ממתינה: {pending.image_count} תמונות · {(pending.classes || []).join(' · ')}
