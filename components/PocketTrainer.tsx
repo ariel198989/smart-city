@@ -1,8 +1,10 @@
 'use client';
-// 🎓 Pocket Trainer wizard — shoot ~8 target photos + ~4 "other" photos,
-// and the phone trains a personal gate model on-device in seconds.
-import { useState } from 'react';
-import { pocketStore, addExample, classifyPocket, finishPocket, clearPocket } from '@/lib/pocket';
+// 🎓 Pocket Trainer wizard v2 — rapid-fire capture, batch learning:
+// live camera inside the modal, tap-tap-tap 8 shots (instant, no ML),
+// then ONE '🧠 עבד ולמד' pass embeds them all. MobileNet preloads in
+// the background while you shoot.
+import { useEffect, useRef, useState } from 'react';
+import { pocketStore, addExample, classifyPocket, finishPocket, clearPocket, preloadEngine } from '@/lib/pocket';
 import { useStore, toast } from '@/lib/store';
 import { fileToDataURL } from '@/lib/util';
 
@@ -12,83 +14,173 @@ export default function PocketTrainer({ mission, onClose }: { mission: string; o
   const pocket = useStore(pocketStore);
   const [step, setStep] = useState<'target' | 'other' | 'done'>(pocket.ready ? 'done' : 'target');
   const [className, setClassName] = useState(pocket.className || mission || 'בור בכביש');
-  const [thumbs, setThumbs] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [queue, setQueue] = useState<string[]>([]);           // unprocessed shots (current step)
+  const [processing, setProcessing] = useState<{ done: number; total: number } | null>(null);
   const [test, setTest] = useState<{ label: string; confidence: number; durl: string } | null>(null);
+  const [testBusy, setTestBusy] = useState(false);
+  const [camOn, setCamOn] = useState(false);
 
-  async function shoot(f: File) {
-    setBusy(true);
-    try {
-      const durl = await fileToDataURL(f, 480, 360);
-      if (step === 'done') {
-        // live test mode
-        const r = await classifyPocket(durl);
-        setTest({ ...r, durl });
-        if (navigator.vibrate) navigator.vibrate(r.label === 'target' ? 150 : [60, 40, 60]);
-      } else {
-        await addExample(durl, step);
-        setThumbs((t) => [durl, ...t].slice(0, 12));
-        if (navigator.vibrate) navigator.vibrate(40);
-      }
-    } catch (e: any) { toast('מאמן: ' + (e.message || e)); }
-    setBusy(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const grabCv = useRef<HTMLCanvasElement | null>(null);
+
+  // live camera + engine preload
+  useEffect(() => {
+    preloadEngine();
+    let stream: MediaStream | null = null;
+    (async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 960 } }, audio: false,
+        });
+        const v = videoRef.current;
+        if (!v) { stream.getTracks().forEach((t) => t.stop()); return; }
+        v.srcObject = stream;
+        await v.play();
+        setCamOn(true);
+      } catch { setCamOn(false); /* fallback: file input below */ }
+    })();
+    return () => { stream?.getTracks().forEach((t) => t.stop()); };
+  }, []);
+
+  function grab(): string | null {
+    const v = videoRef.current;
+    if (!v || !v.videoWidth) return null;
+    if (!grabCv.current) grabCv.current = document.createElement('canvas');
+    const cv = grabCv.current;
+    const w = Math.min(v.videoWidth, 480);
+    const h = Math.round(v.videoHeight * w / v.videoWidth);
+    cv.width = w; cv.height = h;
+    cv.getContext('2d')!.drawImage(v, 0, 0, w, h);
+    return cv.toDataURL('image/jpeg', 0.85);
   }
 
-  const count = step === 'target' ? pocket.targetCount : pocket.otherCount;
+  // ⚡ instant shot — zero ML work, just bank the frame
+  function snap() {
+    const durl = grab();
+    if (!durl) { toast('המצלמה עוד לא מוכנה'); return; }
+    setQueue((q) => [durl, ...q]);
+    if (navigator.vibrate) navigator.vibrate(30);
+  }
+
+  async function filesToQueue(files: FileList) {
+    const durls = await Promise.all([...files].map((f) => fileToDataURL(f, 480, 360)));
+    setQueue((q) => [...durls, ...q]);
+  }
+
+  // 🧠 ONE batch pass over everything shot in this step
+  async function processBatch() {
+    const items = [...queue];
+    setProcessing({ done: 0, total: items.length });
+    try {
+      for (let i = 0; i < items.length; i++) {
+        await addExample(items[i], step as 'target' | 'other');
+        setProcessing({ done: i + 1, total: items.length });
+      }
+      setQueue([]);
+      if (navigator.vibrate) navigator.vibrate(150);
+      if (step === 'target') setStep('other');
+      else { await finishPocket(className.trim() || 'מפגע'); setStep('done'); if (navigator.vibrate) navigator.vibrate(250); }
+    } catch (e: any) { toast('למידה: ' + (e.message || e)); }
+    setProcessing(null);
+  }
+
+  async function liveTest() {
+    const durl = grab();
+    if (!durl) { toast('המצלמה עוד לא מוכנה'); return; }
+    setTestBusy(true);
+    try {
+      const r = await classifyPocket(durl);
+      setTest({ ...r, durl });
+      if (navigator.vibrate) navigator.vibrate(r.label === 'target' ? 150 : [60, 40, 60]);
+    } catch (e: any) { toast(e.message || e); }
+    setTestBusy(false);
+  }
+
   const need = step === 'target' ? TARGET_MIN : OTHER_MIN;
+  const shot = queue.length;
 
   return (
-    <div className="modal-back" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="modal-back" onClick={(e) => { if (e.target === e.currentTarget && !processing) onClose(); }}>
       <div className="card hud det-modal pocket">
-        <button className="ghost mclose" onClick={onClose}>✕</button>
+        <button className="ghost mclose" onClick={onClose} disabled={!!processing}>✕</button>
+        {(pocket.ready || pocket.targetCount > 0 || pocket.otherCount > 0 || queue.length > 0) && (
+          <button className="ghost pk-reset" disabled={!!processing}
+            onClick={() => { clearPocket(); setQueue([]); setTest(null); setStep('target'); if (navigator.vibrate) navigator.vibrate(60); }}>
+            🔄 אפס מודל
+          </button>
+        )}
         <div className="phase-head" style={{ marginBottom: 8 }}>
           <span className="ph-n">🎓</span>
           <div>
             <b>מאמן כיס — AI אישי בטלפון</b>
-            <span className="why">מאמנים מודל אמיתי על המכשיר, בלי מחשב ובלי ענן. הוא יהיה השער האישי שלכם במשחק.</span>
+            <span className="why">מודל זמני ללימוד השיטה: צלמו ברצף → למידה אחת על הכל → בדקו. אפשר לאפס ולהתחיל מחדש מתי שרוצים — זה כל הקטע. 🔁</span>
           </div>
+        </div>
+
+        {/* live viewfinder (all steps) */}
+        <div className="pk-cam">
+          <video ref={videoRef} playsInline muted />
+          {!camOn && (
+            <div className="pk-cam-off">
+              אין מצלמה חיה — העלו תמונות:
+              <label className="ghost" style={{ cursor: 'pointer', padding: '7px 12px', border: '1px solid var(--cy-faint)', marginTop: 6, display: 'inline-block' }}>
+                📁 בחרו כמה תמונות
+                <input type="file" accept="image/*" multiple style={{ display: 'none' }}
+                  onChange={(e) => { if (e.target.files?.length) filesToQueue(e.target.files); e.target.value = ''; }} />
+              </label>
+            </div>
+          )}
+          {pocket.netLoading && <div className="pk-engine">🧠 מנוע ה-AI יורד ברקע… (אפשר להמשיך לצלם)</div>}
         </div>
 
         {step !== 'done' && (
           <>
             {step === 'target' && (
-              <div className="row" style={{ marginBottom: 8 }}>
+              <div className="row" style={{ margin: '10px 0 6px' }}>
                 <label style={{ fontSize: 13 }}>מה מאמנים לזהות?</label>
                 <input type="text" value={className} onChange={(e) => setClassName(e.target.value)}
-                  style={{ flex: 1, minWidth: 120 }} />
+                  style={{ flex: 1, minWidth: 120 }} disabled={!!processing} />
               </div>
             )}
             <div className="pk-step">
               {step === 'target'
-                ? <>📸 צלמו <b>{className}</b> מזוויות ומרחקים שונים — {pocket.targetCount}/{TARGET_MIN}</>
-                : <>🚫 עכשיו צלמו דברים <b>אחרים</b> (כביש נקי, קיר, עץ) — {pocket.otherCount}/{OTHER_MIN}</>}
+                ? <>📸 צלמו ברצף <b>{className}</b> מזוויות שונות — <b>{shot}</b>/{need}</>
+                : <>🚫 עכשיו ברצף דברים <b>אחרים</b> (כביש נקי, קיר, עץ) — <b>{shot}</b>/{need}</>}
             </div>
             <div className="tagbar" style={{ marginTop: 4 }}>
-              <div className="bar"><i style={{ width: Math.min(100, Math.round(count / need * 100)) + '%' }} /></div>
-              <b>{count}/{need}</b>
+              <div className="bar"><i style={{ width: Math.min(100, Math.round(shot / need * 100)) + '%' }} /></div>
+              <b>{shot}/{need}</b>
             </div>
-            {thumbs.length > 0 && (
+            {queue.length > 0 && (
               <div className="pk-thumbs">
-                {thumbs.map((t, i) => <img key={i} src={t} alt="" />)}
+                {queue.slice(0, 12).map((t, i) => (
+                  <div key={i} className="pk-th">
+                    <img src={t} alt="" />
+                    <button onClick={() => setQueue((q) => q.filter((_, j) => j !== i))} disabled={!!processing}>×</button>
+                  </div>
+                ))}
               </div>
             )}
-            <label className={'pt-capture pk-shutter' + (busy || pocket.netLoading ? ' busy' : '')}>
-              {pocket.netLoading ? '⏳' : busy ? '🧠' : '📸'}
-              <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
-                onChange={(e) => { if (e.target.files?.[0]) shoot(e.target.files[0]); e.target.value = ''; }} />
-            </label>
-            <div className="hint center" style={{ marginTop: 4 }}>
-              {pocket.netLoading ? 'טוען את מנוע ה-AI (פעם ראשונה בלבד)…' : busy ? 'לומד את התמונה…' : 'לחצו לצילום'}
-            </div>
-            {count >= need && (
-              <button className="primary" style={{ width: '100%', marginTop: 10 }}
-                onClick={async () => {
-                  if (step === 'target') setStep('other');
-                  else { await finishPocket(className.trim() || 'מפגע'); setStep('done'); if (navigator.vibrate) navigator.vibrate(250); }
-                }}>
-                {step === 'target' ? 'הבא: צילומי "משהו אחר" ←' : '🎉 סיים אימון — המודל שלי מוכן!'}
-              </button>
+
+            {processing ? (
+              <div className="tagbar" style={{ marginTop: 12 }}>
+                <span>🧠 לומד</span>
+                <div className="bar"><i style={{ width: Math.round(processing.done / processing.total * 100) + '%' }} /></div>
+                <b>{processing.done}/{processing.total}</b>
+              </div>
+            ) : (
+              <div className="row" style={{ marginTop: 12, justifyContent: 'center' }}>
+                {camOn && (
+                  <button className="pt-capture pk-shutter" onClick={snap}>📸</button>
+                )}
+                {shot >= need && (
+                  <button className="hot" style={{ flex: 1, minWidth: 170, fontSize: 14, padding: '12px 8px' }} onClick={processBatch}>
+                    🧠 עבד ולמד ({shot} תמונות)
+                  </button>
+                )}
+              </div>
             )}
+            {!processing && camOn && <div className="hint center" style={{ marginTop: 4 }}>טאץ׳-טאץ׳-טאץ׳ — צילום מיידי, הלמידה בסוף</div>}
           </>
         )}
 
@@ -98,15 +190,13 @@ export default function PocketTrainer({ mission, onClose }: { mission: string; o
               <div className="ptr-big">🎉</div>
               <b>המודל שלך מאומן על "{pocket.className}"</b>
               <div className="hint" style={{ marginTop: 4 }}>
-                ‏{pocket.targetCount} דוגמאות חיוביות · {pocket.otherCount} דוגמאות רקע · חי על הטלפון שלך
+                ‏{pocket.targetCount} דוגמאות חיוביות · {pocket.otherCount} רקע · חי על הטלפון שלך
               </div>
             </div>
-            <div className="pk-step" style={{ marginTop: 10 }}>🔬 בדקו אותו — צלמו משהו:</div>
-            <label className={'pt-capture pk-shutter' + (busy ? ' busy' : '')}>
-              {busy ? '🧠' : '🔬'}
-              <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
-                onChange={(e) => { if (e.target.files?.[0]) shoot(e.target.files[0]); e.target.value = ''; }} />
-            </label>
+            <div className="row" style={{ marginTop: 10, justifyContent: 'center' }}>
+              <button className="pt-capture pk-shutter" onClick={liveTest} disabled={testBusy}>{testBusy ? '🧠' : '🔬'}</button>
+            </div>
+            <div className="hint center" style={{ marginTop: 4 }}>כוונו למשהו ולחצו לבדיקה חיה</div>
             {test && (
               <div className={'ai-verdict ' + (test.label === 'target' ? 'pass' : 'fail')} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                 <img src={test.durl} alt="" style={{ width: 64, height: 48, objectFit: 'cover', border: '1px solid var(--cy-faint)' }} />
@@ -120,7 +210,7 @@ export default function PocketTrainer({ mission, onClose }: { mission: string; o
             <div className="row" style={{ marginTop: 12 }}>
               <button className="primary" style={{ flex: 1 }} onClick={onClose}>🎮 לפטרול — המודל שלי שומר עליי</button>
               <button className="ghost" style={{ fontSize: 12, color: 'var(--danger)' }}
-                onClick={() => { clearPocket(); setStep('target'); setThumbs([]); setTest(null); }}>
+                onClick={() => { clearPocket(); setStep('target'); setQueue([]); setTest(null); }}>
                 אמן מחדש
               </button>
             </div>

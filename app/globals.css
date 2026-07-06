@@ -375,11 +375,23 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 
 /* 🎓 pocket trainer */
 .pocket .pk-step{font-size:13.5px;line-height:1.6;margin-top:6px}
+.pk-cam{position:relative;height:210px;background:radial-gradient(ellipse at 50% 40%,#08182b 0%,#030a15 80%);
+  border:1px solid var(--cy-faint);overflow:hidden}
+.pk-cam video{width:100%;height:100%;object-fit:cover;display:block}
+.pk-cam-off{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:12.5px;color:var(--muted);text-align:center;padding:14px}
+.pk-engine{position:absolute;bottom:6px;right:50%;transform:translateX(50%);font-size:10.5px;
+  background:rgba(3,10,21,.85);border:1px solid var(--cy-faint);color:var(--cy-dim);padding:3px 10px;white-space:nowrap}
 .pk-thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:5px;margin-top:10px}
-.pk-thumbs img{width:100%;aspect-ratio:4/3;object-fit:cover;border:1px solid var(--cy-faint)}
-.pk-shutter{position:static !important;transform:none !important;margin:14px auto 0;display:flex}
+.pk-thumbs img{width:100%;aspect-ratio:4/3;object-fit:cover;border:1px solid var(--cy-faint);display:block}
+.pk-th{position:relative}
+.pk-th button{position:absolute;top:2px;inset-inline-start:2px;width:17px;height:17px;padding:0;line-height:1;
+  font-size:11px;background:rgba(0,0,0,.7);color:#fff;border:none}
+.pk-shutter{position:static !important;transform:none !important;margin:0;display:flex;flex-shrink:0}
 .pk-done{text-align:center;padding:8px 0}
 .pk-done b{font-size:15px;color:var(--ink)}
+.pk-reset{position:absolute;top:10px;inset-inline-end:10px;font-size:11px;color:var(--gold);z-index:3;
+  border:1px solid rgba(255,182,39,.35);padding:4px 10px}
 
 /* ============ 🎮 City Patrol (Pokémon-GO-style mode) ============ */
 .patrol-shell{position:relative;overflow:hidden;height:calc(100vh - 240px);min-height:480px;

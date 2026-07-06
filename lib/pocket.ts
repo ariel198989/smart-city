@@ -49,6 +49,9 @@ async function embed(durl: string) {
   return tf.tidy(() => net.infer(tf.browser.fromPixels(img), true));
 }
 
+// start downloading MobileNet while the user is still shooting
+export function preloadEngine() { ensureEngine().catch(() => {}); }
+
 export async function addExample(durl: string, label: 'target' | 'other') {
   await ensureEngine();
   const act = await embed(durl);
