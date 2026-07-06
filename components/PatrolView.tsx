@@ -35,6 +35,8 @@ export default function PatrolView() {
   const [credits, setCredits] = useState(0);
   const [showBoard, setShowBoard] = useState(false);
   const [board, setBoard] = useState<{ name: string; credits: number; catches: number }[]>([]);
+  const [briefed, setBriefed] = useState(true);
+  const [briefReady, setBriefReady] = useState(false);
 
   // boot: map + GPS + auto-load registered city model ("המטריצה כבר אצלך")
   useEffect(() => {
@@ -82,6 +84,9 @@ export default function PatrolView() {
       const cls = modelStore.get().classes;
       // default mission: first model class, or crosswalks (OSM spawns work even without a model)
       setMission(cls.length ? cls[0] : 'מעבר חציה');
+      // mission briefing — once per session, after we know what the model knows
+      setBriefReady(true);
+      try { setBriefed(sessionStorage.getItem('sc_briefed') === '1'); } catch { setBriefed(false); }
     });
 
     return () => {
@@ -242,6 +247,37 @@ export default function PatrolView() {
             <div className="ptr-big">+{result.credits} 💎</div>
             <div>נשמר בלי סינון AI (אין עדיין מודל עירוני) — מדריך יבדוק.</div>
             <button className="ghost" style={{ fontSize: 12 }} onClick={() => setResult(null)}>המשך</button>
+          </div>
+        )}
+
+        {/* mission briefing — what YOUR model is trained on */}
+        {briefReady && !briefed && (
+          <div className="pt-brief">
+            <div className="ptb-inner">
+              <div className="ptb-agent">🕵️</div>
+              <div className="ptb-title">ברוך הבא לפטרול{auth.team ? ', ' + auth.team : ''}!</div>
+              {model.ready ? (
+                <>
+                  <div className="ptb-sub">המודל שלך מאומן לזהות:</div>
+                  <div className="ptb-classes">
+                    {model.classes.map((c) => (
+                      <span key={c} className="ptb-cls" style={{ borderColor: classColor(c, CLASS_PALETTE) }}>
+                        <i style={{ background: classColor(c, CLASS_PALETTE) }} />{c}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="ptb-hint">הסתובבו בעיר וצלמו בדיוק את אלה — ה-AI בודק כל תמונה. צילום לא רלוונטי ייחסם 🙅. כל תפיסה = 💎 קרדיטים.</div>
+                </>
+              ) : (
+                <div className="ptb-hint">עוד אין מודל עירוני רשום — אפשר לצלם מפגעים חופשי (בלי סינון AI), מדריך יבדוק. {modelMsg}</div>
+              )}
+              <button className="primary ptb-go" onClick={() => {
+                setBriefed(true);
+                try { sessionStorage.setItem('sc_briefed', '1'); } catch { /* private mode */ }
+              }}>
+                יאללה, לסיור! 🎮
+              </button>
+            </div>
           </div>
         )}
 

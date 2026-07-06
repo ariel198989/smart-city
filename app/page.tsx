@@ -22,9 +22,18 @@ const RIBBON: Record<ViewName, number[]> = {
 export default function Home() {
   const [view, setView] = useState<ViewName>('map');
   const [tourTarget, setTourTarget] = useState<TourTarget | null>(null);
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
   const auth = useStore(authStore);
 
-  useEffect(() => { initAuth(); }, []);
+  useEffect(() => {
+    initAuth();
+    // phone = game-only experience (Pokémon-style patrol, no dashboard)
+    const mq = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   const openStreetView = (lat: number, lng: number) => {
     setTourTarget({ kind: 'street', lat, lng, at: Date.now() });
@@ -35,6 +44,30 @@ export default function Home() {
     setTourTarget({ kind: 'route', routeId: frame.route_id, frameId: frame.id, at: Date.now() });
     setView('tour');
   };
+
+  if (isMobile === null) return null;
+
+  // 📱 phone: the game IS the app — login → mission briefing → walk & shoot
+  if (isMobile) {
+    return (
+      <>
+        <Toast />
+        <VerifyModal />
+        {auth.loaded && <AuthOverlay />}
+        <div className="mgame">
+          <header className="mg-top">
+            <div className="logo" style={{ fontSize: 14, letterSpacing: '.22em' }}>
+              SMART<span className="accent">CITY</span><span className="beacon" />
+            </div>
+            {auth.user
+              ? <span className="pill">🕵️ {auth.team || 'סוכן'}</span>
+              : <button className="ghost" style={{ fontSize: 12 }} onClick={() => authStore.set({ viewer: false })}>כניסה</button>}
+          </header>
+          <PatrolView />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
