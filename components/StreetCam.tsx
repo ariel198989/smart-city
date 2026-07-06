@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { modelStore, detectOnDataURL, drawDetections } from '@/lib/infer';
 import { useStore, toast } from '@/lib/store';
-import { getHeading, sectorOf, SECTOR_NAMES } from '@/lib/compass';
+import { getHeading, sectorOf, SECTOR_NAMES, requestCompassPermission } from '@/lib/compass';
 import { fetchCoveredSectors, distM } from '@/lib/patrol';
 
 interface Props {
@@ -62,11 +62,15 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
   const [heading, setHeading] = useState<number | null>(null);
   const [covered, setCovered] = useState<number[] | null>(null);
 
-  // IMU heading poll (~8Hz — smooth band, cheap renders)
+  // IMU heading poll (~8Hz — smooth band, cheap renders).
+  // noCompass flips on only after a grace period — sensors need a moment.
+  const [noCompass, setNoCompass] = useState(false);
   useEffect(() => {
+    const t0 = Date.now();
     const h = setInterval(() => {
       const g = getHeading();
-      if (g != null) setHeading(Math.round(g / 2) * 2);
+      if (g != null) { setHeading(Math.round(g / 2) * 2); setNoCompass(false); }
+      else if (Date.now() - t0 > 3000) setNoCompass(true);
     }, 120);
     return () => clearInterval(h);
   }, []);
@@ -195,19 +199,31 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
       </div>
       {mission && <div className="sc-mission">🎯 המשימה: {mission}</div>}
 
-      {/* IMU angle guidance: live compass band + zone verdict */}
-      {heading != null && covered != null && (
-        <div className="sc-angle">
-          <CompassBand heading={heading} covered={covered} />
-          <div className={'sc-zone ' + (zone || '')}>
-            {zone === 'red'
-              ? `⛔ ${SECTOR_NAMES[curSector!]} כבר מכוסה — סובבו לירוק`
-              : covered.length
-                ? `✅ ${SECTOR_NAMES[curSector!]} — זווית פתוחה, צלמו!`
-                : '✅ זווית ראשונה כאן — הכל פתוח!'}
+      {/* IMU angle guidance — ALWAYS visible with an explicit state, so
+          "does the meter even work?" is answerable at a glance:
+          live degrees prove the compass is alive as you rotate */}
+      <div className="sc-angle">
+        {heading != null && covered != null ? (
+          <>
+            <CompassBand heading={heading} covered={covered} />
+            <div className={'sc-zone ' + (zone || '')}>
+              {zone === 'red'
+                ? `⛔ ${SECTOR_NAMES[curSector!]} (${heading}°) כבר מכוסה — סובבו לירוק`
+                : covered.length
+                  ? `✅ ${SECTOR_NAMES[curSector!]} (${heading}°) — זווית פתוחה, צלמו!`
+                  : `🧭 ${SECTOR_NAMES[curSector!]} (${heading}°) · אין עדיין צילומים ב-30מ' — כל הזוויות פתוחות`}
+            </div>
+          </>
+        ) : heading != null ? (
+          <div className="sc-zone">
+            🧭 מצפן פעיל — {SECTOR_NAMES[curSector!]} ({heading}°) · {gpsReady ? 'טוען מפת כיסוי…' : 'ממתין ל-GPS לכיסוי זוויות'}
           </div>
-        </div>
-      )}
+        ) : noCompass ? (
+          <div className="sc-zone red" onClick={() => requestCompassPermission()} style={{ cursor: 'pointer' }}>
+            🧭 אין מצפן — הנחיית הזוויות כבויה (iPhone: הקישו לאישור חיישנים)
+          </div>
+        ) : null}
+      </div>
 
       {camErr && <div className="sc-err">{camErr}</div>}
 
