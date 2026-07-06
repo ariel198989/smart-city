@@ -432,6 +432,12 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
             onCapture={captureFromDataURL}
             onClose={() => setCamMode(false)}
             getPos={() => posRef.current}
+            blockReason={() => {
+              if (!authStore.get().user) return 'login';
+              if (!posRef.current) return '🛰️ עוד אין מיקום GPS — צאו לאזור פתוח או אשרו הרשאת מיקום';
+              return null;
+            }}
+            onNeedLogin={() => { toast('התחברו כדי לתפוס מפגעים 🎮', true); authStore.set({ viewer: false }); }}
           />
         )}
 

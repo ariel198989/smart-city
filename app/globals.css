@@ -460,6 +460,11 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
   background:rgba(3,10,21,.9);border:1px solid var(--danger);padding:14px;font-size:13px;line-height:1.6;color:#ffd9d9}
 .streetcam .sc-shutter{z-index:11}
 .streetcam .sc-shutter.locked{border-color:rgba(255,107,107,.8);box-shadow:0 0 24px rgba(255,107,107,.4);opacity:.85}
+.streetcam .sc-shutter.waiting{border-color:rgba(255,182,39,.7);box-shadow:0 0 22px rgba(255,182,39,.35);animation:sc-dot 1.2s ease-in-out infinite}
+.sc-ready{position:absolute;bottom:118px;right:50%;transform:translateX(50%);z-index:6}
+.scr-chip{background:rgba(3,10,21,.85);border:1px solid var(--gold-line);color:var(--gold);
+  padding:5px 14px;font-size:12px;font-weight:600;white-space:nowrap;backdrop-filter:blur(4px)}
+.scr-chip.ok{border-color:rgba(124,255,203,.55);color:#7CFFCB}
 
 /* IMU angle guidance: zone tint + compass band */
 .streetcam.zone-red::before{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;

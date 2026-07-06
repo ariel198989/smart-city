@@ -1,10 +1,13 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { authStore, login, signup } from '@/lib/auth';
 import { useStore } from '@/lib/store';
 
 export default function AuthOverlay() {
   const auth = useStore(authStore);
+  // mobile is play-only: a viewer can do nothing, so require an account
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => { setIsMobile(window.matchMedia('(max-width: 767px)').matches); }, []);
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
@@ -64,10 +67,16 @@ export default function AuthOverlay() {
         <button className="primary" disabled={busy} onClick={go} style={{ width: '100%', fontSize: 15, padding: 13 }}>
           {mode === 'signup' ? 'צור חשבון' : 'כניסה'}
         </button>
-        <button className="ghost" onClick={() => authStore.set({ viewer: true })}
-          style={{ width: '100%', marginTop: 8, fontSize: 12.5 }}>
-          רק להציץ (צפייה בלבד)
-        </button>
+        {isMobile ? (
+          <div className="hint" style={{ textAlign: 'center', marginTop: 10, fontSize: 12 }}>
+            נכנסים עם חשבון — ומתחילים לתפוס מפגעים ולצבור קרדיטים 🎮
+          </div>
+        ) : (
+          <button className="ghost" onClick={() => authStore.set({ viewer: true })}
+            style={{ width: '100%', marginTop: 8, fontSize: 12.5 }}>
+            רק להציץ (צפייה בלבד)
+          </button>
+        )}
       </div>
     </div>
   );

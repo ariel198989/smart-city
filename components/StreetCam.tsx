@@ -16,6 +16,8 @@ interface Props {
   onClose: () => void;
   busy: boolean;
   getPos: () => { lat: number; lng: number } | null;
+  blockReason: () => string | null;       // null = ok to shoot; else why not
+  onNeedLogin: () => void;
 }
 
 // live AR compass band: 180° field, sectors slide as you rotate.
@@ -42,8 +44,14 @@ function CompassBand({ heading, covered }: { heading: number; covered: number[] 
   );
 }
 
-export default function StreetCam({ mission, onCapture, onClose, busy, getPos }: Props) {
+export default function StreetCam({ mission, onCapture, onClose, busy, getPos, blockReason, onNeedLogin }: Props) {
   const model = useStore(modelStore);
+  const [gpsReady, setGpsReady] = useState(false);
+  useEffect(() => {
+    const h = setInterval(() => setGpsReady(!!getPos()), 500);
+    return () => clearInterval(h);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const grabRef = useRef<HTMLCanvasElement | null>(null);
@@ -153,6 +161,14 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos }:
   }
 
   function shutter() {
+    // login / GPS gate — surface the reason LOUDLY, not a fleeting toast
+    const reason = blockReason();
+    if (reason === 'login') { onNeedLogin(); return; }
+    if (reason) {
+      toast(reason, true);
+      if (navigator.vibrate) navigator.vibrate([50, 40, 50]);
+      return;
+    }
     // IMU gate: pointing into an already-covered angle → blocked before the shot
     if (zone === 'red') {
       toast('⛔ הזווית הזאת כבר מכוסה — סובבו עד שהפס יהיה ירוק', true);
@@ -160,7 +176,7 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos }:
       return;
     }
     const durl = grabFrame(0.85, 900);
-    if (!durl) { toast('המצלמה עוד לא מוכנה'); return; }
+    if (!durl) { toast('המצלמה עוד לא מוכנה — חכו רגע'); return; }
     onCapture(durl);
   }
 
@@ -195,13 +211,23 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos }:
 
       {camErr && <div className="sc-err">{camErr}</div>}
 
+      {/* live readiness — so 'nothing happens' never happens silently */}
+      <div className="sc-ready">
+        <span className={'scr-chip' + (gpsReady ? ' ok' : '')}>
+          {gpsReady ? '🛰️ GPS מוכן' : '🛰️ מחפש מיקום…'}
+        </span>
+      </div>
+
       <button
-        className={'pt-capture sc-shutter' + (busy ? ' busy' : '') + (zone === 'red' ? ' locked' : '')}
+        className={'pt-capture sc-shutter' + (busy ? ' busy' : '') + (zone === 'red' ? ' locked' : '') + (!gpsReady ? ' waiting' : '')}
         onClick={shutter} disabled={busy}>
-        {busy ? '🤖' : zone === 'red' ? '⛔' : '📸'}
+        {busy ? '🤖' : zone === 'red' ? '⛔' : !gpsReady ? '🛰️' : '📸'}
       </button>
       <div className="pt-capture-lbl" style={{ zIndex: 12 }}>
-        {busy ? 'ה-AI בודק…' : zone === 'red' ? 'זווית חסומה — סובבו' : 'צלמו כשהמפגע בפריים'}
+        {busy ? 'ה-AI בודק…'
+          : zone === 'red' ? 'זווית חסומה — סובבו'
+          : !gpsReady ? 'ממתין ל-GPS — צאו החוצה / אשרו מיקום'
+          : 'צלמו כשהמפגע בפריים'}
       </div>
     </div>
   );
