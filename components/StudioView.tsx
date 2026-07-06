@@ -9,7 +9,7 @@ import { modelStore, loadModelFromZip, detectOnDataURL, drawDetections, type Box
 import { authStore } from '@/lib/auth';
 import { useStore, toast } from '@/lib/store';
 import { fileToDataURL, urlToDataURL, fmtWhen, download } from '@/lib/util';
-import { fetchPoolStats, buildCityPoolZip } from '@/lib/citypool';
+import { fetchPoolStats, buildCityPoolZip, fetchFeedback, setFeedbackStatus } from '@/lib/citypool';
 
 const IMG_W = 640, IMG_H = 480;
 
@@ -68,6 +68,7 @@ export default function StudioView() {
   const [cityPool, setCityPool] = useState<import('@/lib/citypool').PoolStats | null>(null);
   const [cpBusy, setCpBusy] = useState(false);
   const [cpMsg, setCpMsg] = useState('');
+  const [feedback, setFeedback] = useState<any[]>([]);
   const [shareMsg, setShareMsg] = useState('');
   const [canShare, setCanShare] = useState(false);
   const [modelMsg, setModelMsg] = useState('');
@@ -409,7 +410,30 @@ export default function StudioView() {
   }
 
   async function loadCityPool() {
-    try { setCityPool(await fetchPoolStats()); } catch (e: any) { toast(e.message || e); }
+    try {
+      setCityPool(await fetchPoolStats());
+      setFeedback(await fetchFeedback('pending'));
+    } catch (e: any) { toast(e.message || e); }
+  }
+
+  // instructor verdict on a field dispute/negative
+  async function judgeFeedback(fb: any, accept: boolean) {
+    try {
+      await setFeedbackStatus(fb.id, accept ? 'accepted' : 'rejected');
+      if (accept && fb.kind === 'dispute') {
+        // hard positive the model missed → load into the tagging strip so the
+        // instructor draws the box; it then flows out through the normal export
+        const durl = await urlToDataURL(publicUrl(fb.frame_path), IMG_W);
+        addImages([durl]);
+        if (!classes.some((c) => c.name === fb.claimed_class)) addClass(fb.claimed_class);
+        toast('נטען לרצועת התיוג — סמנו את המלבן של "' + fb.claimed_class + '" 👇', true);
+      }
+      if (accept && fb.kind === 'negative') {
+        // awards nothing to tag — it joins the pool export as a background image
+        toast('נוסף כדוגמת רקע למאגר האימון 🧠', true);
+      }
+      setFeedback((prev) => prev.filter((x) => x.id !== fb.id));
+    } catch (e: any) { toast(e.message || e); }
   }
 
   async function exportCityPool() {
@@ -418,7 +442,7 @@ export default function StudioView() {
       const built = await buildCityPoolZip((d, t) => setCpMsg(`אורז ${d}/${t} תמונות…`));
       if (!built) { setCpMsg('הפול ריק.'); setCpBusy(false); return; }
       download(built.blob, `smartcity_pool_${Date.now()}.zip`);
-      setCpMsg(`✓ ירד מאגר עירוני: ${built.count} תמונות · ${built.classes.length} קטגוריות (${built.classes.join(' · ')}) — ל-Colab, אמנו, וטענו כמודל העיר! 🔁`);
+      setCpMsg(`✓ ירד מאגר עירוני: ${built.count} תמונות מתויגות + ${built.negatives || 0} דוגמאות רקע · ${built.classes.length} קטגוריות (${built.classes.join(' · ')}) — ל-Colab, אמנו, וטענו כמודל העיר! 🔁`);
     } catch (e: any) { setCpMsg('⚠️ ' + (e.message || e)); }
     setCpBusy(false);
   }
@@ -768,6 +792,28 @@ export default function StudioView() {
               ) : <span className="muted" style={{ fontSize: 13 }}>הפול ריק — כשתושבים יצלמו בפטרול, התמונות ייכנסו לכאן.</span>
             ) : <span className="muted" style={{ fontSize: 13 }}>לחצו "רענן" לראות את מאגר העיר.</span>}
             {cpMsg && <div className="hint">{cpMsg}</div>}
+
+            {/* 🎓 field feedback queue — kids challenged the AI in the street */}
+            {feedback.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <b style={{ fontSize: 13.5 }}>🎓 משוב מהשטח — {feedback.length} ממתינים</b>
+                <p className="hint" style={{ margin: '4px 0 8px' }}>
+                  🙋 = "ה-AI טעה" (אם תאשרו — התמונה נטענת לתיוג ידני). ‏🤖 = "ה-AI צדק" (אישור = דוגמת רקע למודל).
+                </p>
+                {feedback.map((fb) => (
+                  <div key={fb.id} className="pool-row">
+                    <img src={publicUrl(fb.frame_path)} alt="" loading="lazy"
+                      style={{ width: 74, height: 55, objectFit: 'cover', border: '1px solid var(--cy-faint)' }} />
+                    <div className="meta">
+                      <div className="nm">{fb.kind === 'dispute' ? '🙋 "זה כן ' + fb.claimed_class + '!"' : '🤖 אושר שזה לא ' + fb.claimed_class}</div>
+                      <div className="cls">{fb.team_name || '—'} · {fmtWhen(fb.created_at)}</div>
+                    </div>
+                    <button className="primary" style={{ fontSize: 12 }} onClick={() => judgeFeedback(fb, true)}>✓ קבל</button>
+                    <button className="ghost" style={{ fontSize: 12, color: 'var(--danger)' }} onClick={() => judgeFeedback(fb, false)}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

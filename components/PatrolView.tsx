@@ -15,8 +15,9 @@ import StreetCam from '@/components/StreetCam';
 
 type CatchResult =
   | { kind: 'pass'; cls: string; conf: number; credits: number; newAngle?: boolean }
-  | { kind: 'blocked'; mission: string; found: string | null }
+  | { kind: 'blocked'; mission: string; found: string | null; durl: string }
   | { kind: 'angle'; covered: number[]; current: number }
+  | { kind: 'feedback_sent'; msg: string }
   | { kind: 'ungated'; credits: number };
 
 // radar ring: which shooting angles are already covered around this hazard
@@ -188,7 +189,8 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
           : boxes;
         if (!relevant.length) {
           const found = boxes.length ? clsOf(boxes[0].cls).name : null;
-          setResult({ kind: 'blocked', mission: mission || 'מפגע', found });
+          // keep the frame — a blocked photo is training gold either way
+          setResult({ kind: 'blocked', mission: mission || 'מפגע', found, durl });
           if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
           setBusy(false);
           return;
@@ -257,6 +259,31 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
         bumpData();
       }
     } catch (e: any) { toast('תפיסה: ' + (e.message || e)); }
+    setBusy(false);
+  }
+
+  // 🎓 field feedback on a blocked photo — the missing half of training
+  async function sendFeedback(durl: string, claimedClass: string, kind: 'dispute' | 'negative') {
+    if (!auth.user) { toast('צריך להתחבר', true); authStore.set({ viewer: false }); return; }
+    setBusy(true);
+    try {
+      const path = `feedback/fb_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.jpg`;  // ASCII-only key
+      await uploadBlob(path, dataURLtoBlob(durl), 'image/jpeg');
+      const at = posRef.current;
+      const { error } = await (await import('@/lib/db')).sb.from('sc_feedback').insert({
+        frame_path: path, claimed_class: claimedClass, kind,
+        lat: at?.lat ?? null, lng: at?.lng ?? null, heading: getHeading(),
+        submitted_by: auth.user.id, team_name: auth.team || null,
+      });
+      if (error) throw error;
+      setResult({
+        kind: 'feedback_sent',
+        msg: kind === 'dispute'
+          ? 'נשלח למדריך! אם צדקתם — המודל ילמד מהתמונה הזאת ותקבלו 💎'
+          : 'תודה! התמונה תלמד את המודל מה זה "לא מפגע" 🧠',
+      });
+      if (navigator.vibrate) navigator.vibrate(120);
+    } catch (e: any) { toast('משוב: ' + (e.message || e)); }
     setBusy(false);
   }
 
@@ -335,8 +362,25 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
         {result?.kind === 'blocked' && (
           <div className="pt-result blocked">
             <div className="ptr-big">🙅</div>
-            <div>זה לא <b>{result.mission}</b>!{result.found ? ` ה-AI רואה כאן "${result.found}".` : ' ה-AI לא מזהה כאן את המשימה.'} נסו שוב מזווית אחרת.</div>
-            <button className="ghost" style={{ fontSize: 12 }} onClick={() => setResult(null)}>סגור</button>
+            <div>ה-AI לא מזהה כאן <b>{result.mission}</b>{result.found ? ` (רואה "${result.found}")` : ''}. מי צודק?</div>
+            <div className="fb-btns">
+              <button className="hot" style={{ fontSize: 12 }} disabled={busy}
+                onClick={() => sendFeedback(result.durl, result.mission, 'dispute')}>
+                🙋 ה-AI טעה — זה כן {result.mission}!
+              </button>
+              <button className="ghost" style={{ fontSize: 12 }} disabled={busy}
+                onClick={() => sendFeedback(result.durl, result.mission, 'negative')}>
+                🤖 ה-AI צדק — שילמד מזה
+              </button>
+            </div>
+            <button className="ghost" style={{ fontSize: 11 }} onClick={() => setResult(null)}>סגור ונסה זווית אחרת</button>
+          </div>
+        )}
+        {result?.kind === 'feedback_sent' && (
+          <div className="pt-result pass">
+            <div className="ptr-big">🎓</div>
+            <div>{result.msg}</div>
+            <button className="ghost" style={{ fontSize: 12 }} onClick={() => setResult(null)}>המשך</button>
           </div>
         )}
         {result?.kind === 'ungated' && (

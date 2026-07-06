@@ -40,6 +40,27 @@ export async function fetchPoolStats(): Promise<PoolStats> {
   };
 }
 
+// ---- field feedback (blocked photos: disputes + negatives) ----
+export async function fetchFeedback(status = 'pending', limit = 200) {
+  const { data, error } = await sb.from('sc_feedback')
+    .select('*').eq('status', status).order('created_at', { ascending: false }).limit(limit);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function setFeedbackStatus(id: string, status: 'accepted' | 'rejected') {
+  const { error } = await sb.from('sc_feedback').update({ status }).eq('id', id);
+  if (error) throw error;
+}
+
+// accepted negatives = background training images (empty YOLO labels)
+async function fetchAcceptedNegatives(limit = 800) {
+  const { data, error } = await sb.from('sc_feedback')
+    .select('frame_path').eq('kind', 'negative').eq('status', 'accepted').limit(limit);
+  if (error) return [];
+  return data || [];
+}
+
 // build a YOLO dataset ZIP from the whole city pool (full images + labels)
 export async function buildCityPoolZip(onProgress: (d: number, t: number) => void) {
   const JSZip = (await import('jszip')).default;
@@ -74,6 +95,23 @@ export async function buildCityPoolZip(onProgress: (d: number, t: number) => voi
     } catch { /* skip unreadable frame */ }
     await new Promise((res) => setTimeout(res, 0));
   }
+
+  // negatives: accepted "ה-AI צדק" photos → background images, empty labels
+  // (~quarter negatives is the proven thinkCV recipe for fewer false positives)
+  const negs = await fetchAcceptedNegatives();
+  let negOk = 0;
+  for (let i = 0; i < negs.length; i++) {
+    try {
+      const res = await fetch(publicUrl(negs[i].frame_path));
+      if (!res.ok) continue;
+      const seg = (i % 5 === 0) ? 'val' : 'train';
+      const base = `neg_${String(i).padStart(4, '0')}`;
+      zip.file(`images/${seg}/${base}.jpg`, new Uint8Array(await res.arrayBuffer()));
+      zip.file(`labels/${seg}/${base}.txt`, '');
+      negOk++;
+    } catch { /* skip */ }
+  }
+
   const blob = await zip.generateAsync({ type: 'blob' });
-  return { blob, count: ok, classes: names };
+  return { blob, count: ok, negatives: negOk, classes: names };
 }

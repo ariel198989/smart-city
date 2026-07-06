@@ -412,6 +412,8 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .pt-result.pass{border:1px solid rgba(124,255,203,.6);box-shadow:0 0 30px rgba(124,255,203,.25)}
 .pt-result.blocked{border:1px solid rgba(255,107,107,.55);box-shadow:0 0 30px rgba(255,107,107,.2)}
 .ptr-big{font-family:"Space Grotesk",monospace;font-size:30px;font-weight:700;color:var(--gold);margin-bottom:4px}
+.fb-btns{display:flex;flex-direction:column;gap:7px;margin:10px 0 6px}
+.fb-btns button{width:100%}
 .pt-result.pass .ptr-big{color:#7CFFCB;text-shadow:0 0 16px rgba(124,255,203,.6)}
 
 /* monthly podium */
