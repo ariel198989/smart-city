@@ -344,6 +344,72 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .ai-verdict.fail{border-color:rgba(255,182,39,.55);background:rgba(255,182,39,.07);color:#ffd987}
 .stat-chip.resolved b{color:#7CFFCB}
 
+/* ============ 🎮 City Patrol (Pokémon-GO-style mode) ============ */
+.patrol-shell{position:relative;overflow:hidden;height:calc(100vh - 240px);min-height:480px;
+  background:radial-gradient(ellipse at 50% 40%,#08182b 0%,#030a15 80%)}
+#patrolMap{position:absolute;inset:0}
+#patrolMap canvas{filter:brightness(1.55) contrast(1.05)}
+
+/* the agent (avatar) */
+.agent{position:relative;width:46px;height:46px;display:flex;align-items:center;justify-content:center}
+.agent-ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(53,225,255,.8);
+  box-shadow:0 0 18px rgba(53,225,255,.5);animation:sc-ring 2.2s ease-out infinite}
+.agent-body{font-size:26px;filter:drop-shadow(0 0 8px rgba(53,225,255,.8));animation:agent-bob 1.6s ease-in-out infinite}
+@keyframes agent-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+
+/* spawn points (real OSM crosswalks) */
+.spawn{width:14px;height:14px;border-radius:50%;background:rgba(255,182,39,.25);
+  border:1.5px solid var(--gold);box-shadow:0 0 10px rgba(255,182,39,.5);animation:sc-dot 1.8s ease-in-out infinite;cursor:pointer}
+
+/* top HUD */
+.pt-top{position:absolute;top:10px;inset-inline:10px;z-index:5;display:flex;gap:8px;align-items:center;justify-content:space-between}
+.pt-chip{background:rgba(3,10,21,.88);border:1px solid var(--cy-line);padding:7px 13px;font-size:12px;
+  color:var(--body);backdrop-filter:blur(6px);cursor:pointer}
+.pt-credits b{font-family:"Space Grotesk",monospace;font-size:16px;color:var(--gold)}
+.pt-mission{background:rgba(3,10,21,.88);border:1px solid var(--gold-line);color:var(--ink);
+  padding:8px 12px;font-size:13px;font-weight:600;max-width:200px}
+.pt-near{position:absolute;top:56px;right:50%;transform:translateX(50%);z-index:5;
+  background:rgba(3,10,21,.85);border:1px solid var(--cy-faint);padding:5px 14px;font-size:11.5px;color:var(--muted);white-space:nowrap}
+.pt-near.in{border-color:var(--gold-line);color:var(--gold);box-shadow:0 0 14px rgba(255,182,39,.3);animation:sc-dot 1s ease-in-out infinite}
+.pt-gps{position:absolute;top:56px;inset-inline-start:10px;z-index:5;background:rgba(3,10,21,.85);
+  border:1px dashed var(--cy-faint);padding:5px 12px;font-size:11px;color:var(--muted)}
+
+/* the big capture button */
+.pt-capture{position:absolute;bottom:26px;right:50%;transform:translateX(50%);z-index:6;
+  width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:38px;cursor:pointer;background:rgba(6,16,28,.9);
+  border:2px solid rgba(53,225,255,.8);box-shadow:0 0 30px rgba(53,225,255,.45),inset 0 0 18px rgba(53,225,255,.12);
+  transition:transform .15s}
+.pt-capture:active{transform:translateX(50%) scale(.92)}
+.pt-capture.busy{animation:sc-dot 1s ease-in-out infinite;border-color:var(--gold-line)}
+.pt-capture-lbl{position:absolute;bottom:8px;right:50%;transform:translateX(50%);z-index:6;
+  font-size:11px;letter-spacing:.14em;color:var(--cy-dim);white-space:nowrap}
+
+/* capture result cards */
+.pt-result{position:absolute;bottom:130px;right:50%;transform:translateX(50%);z-index:7;
+  width:min(320px,86%);text-align:center;padding:16px;font-size:13px;line-height:1.6;
+  background:rgba(3,10,21,.94);backdrop-filter:blur(8px);animation:pt-pop .35s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pt-pop{from{transform:translateX(50%) scale(.6);opacity:0}to{transform:translateX(50%) scale(1);opacity:1}}
+.pt-result.pass{border:1px solid rgba(124,255,203,.6);box-shadow:0 0 30px rgba(124,255,203,.25)}
+.pt-result.blocked{border:1px solid rgba(255,107,107,.55);box-shadow:0 0 30px rgba(255,107,107,.2)}
+.ptr-big{font-family:"Space Grotesk",monospace;font-size:30px;font-weight:700;color:var(--gold);margin-bottom:4px}
+.pt-result.pass .ptr-big{color:#7CFFCB;text-shadow:0 0 16px rgba(124,255,203,.6)}
+
+/* monthly podium */
+.podium{display:flex;gap:10px;align-items:stretch;justify-content:center;margin:14px 0}
+.pod{flex:1;max-width:130px;text-align:center;padding:12px 8px;border:1px solid var(--cy-faint);background:rgba(53,225,255,.03)}
+.pod-0{border-color:var(--gold-line);box-shadow:0 0 20px rgba(255,182,39,.2);order:2}
+.pod-1{order:1}.pod-2{order:3}
+.pod-medal{font-size:26px}
+.pod-name{font-size:12.5px;font-weight:600;color:var(--ink);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pod-credits{font-family:"Space Grotesk",monospace;font-size:16px;color:var(--gold);margin-top:2px}
+.pod-prize{font-size:9.5px;letter-spacing:.12em;color:var(--gold);margin-top:6px;border-top:1px dashed rgba(255,182,39,.35);padding-top:5px}
+
+@media (max-width:560px){
+  .patrol-shell{height:calc(100vh - 210px);min-height:420px}
+  .pt-mission{max-width:150px;font-size:12px}
+}
+
 /* ---------- auth / modal / toast ---------- */
 .overlay{position:fixed;inset:0;z-index:100;background:rgba(2,5,9,.92);display:grid;place-items:center;padding:20px;backdrop-filter:blur(6px)}
 .auth-card{width:100%;max-width:420px;padding:28px;

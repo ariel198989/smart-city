@@ -1,0 +1,14 @@
+{
+  "name": "Smart City פטרול — שדרות",
+  "short_name": "Smart City",
+  "description": "צלמו מפגעים עירוניים, ה-AI בודק, העיר מתקנת — ואתם צוברים קרדיטים ופרסים",
+  "start_url": "/",
+  "display": "standalone",
+  "dir": "rtl",
+  "lang": "he",
+  "background_color": "#020509",
+  "theme_color": "#020509",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

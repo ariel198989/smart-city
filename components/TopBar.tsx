@@ -6,10 +6,11 @@ import { fetchCities } from '@/lib/db';
 import { DEFAULT_CITY } from '@/lib/config';
 import { cityStore } from '@/components/MapView';
 
-export type ViewName = 'map' | 'tour' | 'studio' | 'board' | 'factory';
+export type ViewName = 'map' | 'patrol' | 'tour' | 'studio' | 'board' | 'factory';
 
 const TABS: { id: ViewName; label: string; admin?: boolean }[] = [
   { id: 'map', label: 'מפת העיר' },
+  { id: 'patrol', label: '🎮 פטרול' },
   { id: 'tour', label: 'סיור ברחובות' },
   { id: 'studio', label: 'סטודיו אימון' },
   { id: 'board', label: 'לוח מפגעים' },

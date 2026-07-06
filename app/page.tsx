@@ -12,10 +12,11 @@ import StudioView from '@/components/StudioView';
 import BoardView from '@/components/BoardView';
 import FactoryView from '@/components/FactoryView';
 import VerifyModal from '@/components/VerifyModal';
+import PatrolView from '@/components/PatrolView';
 
 // which ML-pipeline steps light up per view (pedagogy ribbon)
 const RIBBON: Record<ViewName, number[]> = {
-  map: [7], tour: [6, 7], studio: [1, 2, 3, 4, 5], board: [7], factory: [1, 2],
+  map: [7], patrol: [1, 6, 7], tour: [6, 7], studio: [1, 2, 3, 4, 5], board: [7], factory: [1, 2],
 };
 
 export default function Home() {
@@ -46,6 +47,7 @@ export default function Home() {
         <div style={{ display: view === 'map' ? '' : 'none' }}>
           <MapView active={view === 'map'} onStreetView={openStreetView} onTourFrame={openTourFrame} />
         </div>
+        {view === 'patrol' && <PatrolView />}
         {view === 'tour' && <TourView target={tourTarget} />}
         <div style={{ display: view === 'studio' ? '' : 'none' }}>
           <StudioView />
