@@ -23,16 +23,24 @@ export default function Home() {
   const [view, setView] = useState<ViewName>('map');
   const [tourTarget, setTourTarget] = useState<TourTarget | null>(null);
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
+  const [installEvt, setInstallEvt] = useState<any>(null);
   const auth = useStore(authStore);
 
   useEffect(() => {
     initAuth();
+    // installable PWA
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+    const onPrompt = (e: Event) => { e.preventDefault(); setInstallEvt(e); };
+    window.addEventListener('beforeinstallprompt', onPrompt);
     // phone = game-only experience (Pokémon-style patrol, no dashboard)
     const mq = window.matchMedia('(max-width: 767px)');
     setIsMobile(mq.matches);
     const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
+    return () => {
+      mq.removeEventListener('change', onChange);
+      window.removeEventListener('beforeinstallprompt', onPrompt);
+    };
   }, []);
 
   const openStreetView = (lat: number, lng: number) => {
@@ -59,9 +67,17 @@ export default function Home() {
             <div className="logo" style={{ fontSize: 14, letterSpacing: '.22em' }}>
               SMART<span className="accent">CITY</span><span className="beacon" />
             </div>
-            {auth.user
-              ? <span className="pill">🕵️ {auth.team || 'סוכן'}</span>
-              : <button className="ghost" style={{ fontSize: 12 }} onClick={() => authStore.set({ viewer: false })}>כניסה</button>}
+            <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              {installEvt && (
+                <button className="hot" style={{ fontSize: 11, padding: '6px 10px' }}
+                  onClick={async () => { installEvt.prompt(); await installEvt.userChoice; setInstallEvt(null); }}>
+                  📲 התקן
+                </button>
+              )}
+              {auth.user
+                ? <span className="pill">🕵️ {auth.team || 'סוכן'}</span>
+                : <button className="ghost" style={{ fontSize: 12 }} onClick={() => authStore.set({ viewer: false })}>כניסה</button>}
+            </span>
           </header>
           <PatrolView />
         </div>

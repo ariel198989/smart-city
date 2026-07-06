@@ -10,6 +10,7 @@ import { authStore } from '@/lib/auth';
 import { useStore, toast, bumpData } from '@/lib/store';
 import { classColor, dataURLtoBlob, fileToDataURL } from '@/lib/util';
 import { fetchCrossingSpawns, isCrossingClass, calcCredits, ensureCityModel, fetchMonthlyLeaderboard, distM, type Spawn } from '@/lib/patrol';
+import StreetCam from '@/components/StreetCam';
 
 type CatchResult =
   | { kind: 'pass'; cls: string; conf: number; credits: number }
@@ -37,6 +38,7 @@ export default function PatrolView() {
   const [board, setBoard] = useState<{ name: string; credits: number; catches: number }[]>([]);
   const [briefed, setBriefed] = useState(true);
   const [briefReady, setBriefReady] = useState(false);
+  const [camMode, setCamMode] = useState(false);
 
   // boot: map + GPS + auto-load registered city model ("המטריצה כבר אצלך")
   useEffect(() => {
@@ -129,12 +131,16 @@ export default function PatrolView() {
   }, [pos, spawns, mission]);
 
   async function capture(f: File) {
+    const durl = await fileToDataURL(f, 900, 675);
+    await captureFromDataURL(durl);
+  }
+
+  async function captureFromDataURL(durl: string) {
     if (!auth.user) { toast('נכנסים עם משתמש — ותופסים מפגעים 🎮', true); authStore.set({ viewer: false }); return; }
     const at = posRef.current;
     if (!at) { toast('אין מיקום עדיין — הפעילו GPS או לחצו על המפה'); return; }
     setBusy(true); setResult(null);
     try {
-      const durl = await fileToDataURL(f, 900, 675);
       const gated = modelStore.get().ready;
       const nearSpawn = nearest != null && nearest <= 60;
 
@@ -224,7 +230,17 @@ export default function PatrolView() {
             {nearest <= 60 ? '🎯 בטווח משימה! בונוס +5' : `מעבר החציה הקרוב: ${nearest} מ׳`}
           </div>
         )}
-        {gpsErr && <div className="pt-gps">{gpsErr}</div>}
+        {gpsErr && (
+          <button className="pt-gps" onClick={() => {
+            navigator.geolocation?.getCurrentPosition(
+              (p) => { setGpsErr(''); moveAgent(p.coords.latitude, p.coords.longitude, true); },
+              () => toast('הדפדפן חוסם מיקום — אפשרו "מיקום" לאתר בהגדרות', true),
+              { enableHighAccuracy: true, timeout: 10000 },
+            );
+          }}>
+            {gpsErr} · נסו שוב 🛰️
+          </button>
+        )}
 
         {/* capture result */}
         {result?.kind === 'pass' && (
@@ -281,13 +297,30 @@ export default function PatrolView() {
           </div>
         )}
 
-        {/* big capture button */}
-        <label className={'pt-capture' + (busy ? ' busy' : '')}>
-          {busy ? '🤖' : '📸'}
-          <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
-            onChange={(e) => { if (e.target.files?.[0]) capture(e.target.files[0]); e.target.value = ''; }} />
-        </label>
-        <div className="pt-capture-lbl">{busy ? 'ה-AI בודק…' : mission ? `צלמו ${mission}` : 'צלמו מפגע'}</div>
+        {/* 🎥 street mode — live camera with real-time AI */}
+        {camMode && (
+          <StreetCam
+            mission={mission}
+            busy={busy}
+            onCapture={captureFromDataURL}
+            onClose={() => setCamMode(false)}
+          />
+        )}
+
+        {/* big capture buttons */}
+        {!camMode && (
+          <>
+            <button className="pt-streetmode" onClick={() => setCamMode(true)}>
+              🎥 מצב רחוב — מצלמה חיה
+            </button>
+            <label className={'pt-capture' + (busy ? ' busy' : '')}>
+              {busy ? '🤖' : '📸'}
+              <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+                onChange={(e) => { if (e.target.files?.[0]) capture(e.target.files[0]); e.target.value = ''; }} />
+            </label>
+            <div className="pt-capture-lbl">{busy ? 'ה-AI בודק…' : mission ? `צלמו ${mission}` : 'צלמו מפגע'}</div>
+          </>
+        )}
       </div>
 
       <p className="hint center">

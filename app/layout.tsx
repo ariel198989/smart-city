@@ -5,11 +5,12 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Smart City — הילדים שמתקנים את העיר עם AI',
   description: 'פלטפורמה לימודית להאקתונים: ילדים מאמנים מודלי ראייה ממוחשבת לזהות מפגעים עירוניים בשדרות',
-  icons: {
-    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏙️</text></svg>",
-  },
   manifest: '/manifest.json',
   appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Smart City' },
+  icons: {
+    icon: [{ url: '/icon-192.png', sizes: '192x192' }, { url: '/icon-512.png', sizes: '512x512' }],
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export const viewport: Viewport = { themeColor: '#020509' };
