@@ -436,6 +436,27 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .streetcam .sc-err{position:absolute;top:45%;inset-inline:24px;z-index:3;text-align:center;
   background:rgba(3,10,21,.9);border:1px solid var(--danger);padding:14px;font-size:13px;line-height:1.6;color:#ffd9d9}
 .streetcam .sc-shutter{z-index:11}
+.streetcam .sc-shutter.locked{border-color:rgba(255,107,107,.8);box-shadow:0 0 24px rgba(255,107,107,.4);opacity:.85}
+
+/* IMU angle guidance: zone tint + compass band */
+.streetcam.zone-red::before{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;
+  box-shadow:inset 0 0 90px 20px rgba(255,60,60,.35)}
+.streetcam.zone-green::before{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;
+  box-shadow:inset 0 0 70px 6px rgba(60,255,160,.18)}
+.sc-angle{position:absolute;bottom:130px;right:50%;transform:translateX(50%);z-index:5;
+  display:flex;flex-direction:column;align-items:center;gap:6px}
+.cband{position:relative;height:26px;overflow:hidden;background:rgba(3,10,21,.75);
+  border:1px solid rgba(53,225,255,.3);backdrop-filter:blur(4px)}
+.cb-sec{position:absolute;top:3px;bottom:3px;display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:#eafbff;transition:left .12s linear}
+.cb-sec.green{background:rgba(60,255,160,.28);border-inline:1px solid rgba(60,255,160,.5)}
+.cb-sec.red{background:rgba(255,60,60,.32);border-inline:1px solid rgba(255,80,80,.55);
+  background-image:repeating-linear-gradient(45deg,rgba(255,80,80,.25) 0 4px,transparent 4px 8px)}
+.cb-needle{position:absolute;top:0;bottom:0;right:50%;width:2px;background:var(--gold);
+  box-shadow:0 0 8px var(--gold);z-index:2}
+.sc-zone{font-size:12px;font-weight:600;padding:5px 14px;white-space:nowrap;backdrop-filter:blur(4px)}
+.sc-zone.green{background:rgba(3,25,15,.8);border:1px solid rgba(60,255,160,.55);color:#7CFFCB}
+.sc-zone.red{background:rgba(25,5,5,.85);border:1px solid rgba(255,80,80,.6);color:#ffb3b3}
 .pt-streetmode{position:absolute;bottom:118px;right:50%;transform:translateX(50%);z-index:6;
   font-size:13px;font-weight:600;padding:10px 18px;white-space:nowrap;
   background:rgba(3,10,21,.88);border:1px solid var(--gold-line);color:var(--gold);

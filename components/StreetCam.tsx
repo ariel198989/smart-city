@@ -1,19 +1,48 @@
 'use client';
 // 🎥 Street Mode — walk with the camera OPEN, see the street live,
 // and the trained model detects hazards on the live feed in real time.
-// Tap the shutter → the current frame goes through the capture gate.
+// IMU angle guidance: a live AR compass band shows which shooting
+// angles are already covered (red = blocked) and steers you to the
+// open ones (green) BEFORE you shoot. Shutter locks on red.
 import { useEffect, useRef, useState } from 'react';
 import { modelStore, detectOnDataURL, drawDetections } from '@/lib/infer';
 import { useStore, toast } from '@/lib/store';
+import { getHeading, sectorOf, SECTOR_NAMES } from '@/lib/compass';
+import { fetchCoveredSectors, distM } from '@/lib/patrol';
 
 interface Props {
   mission: string;
   onCapture: (dataURL: string) => void;   // hands the frame to the patrol gate
   onClose: () => void;
   busy: boolean;
+  getPos: () => { lat: number; lng: number } | null;
 }
 
-export default function StreetCam({ mission, onCapture, onClose, busy }: Props) {
+// live AR compass band: 180° field, sectors slide as you rotate.
+// green = open angle (shoot here), red = already covered (blocked).
+function CompassBand({ heading, covered }: { heading: number; covered: number[] }) {
+  const W = 264, FOV = 180;
+  return (
+    <div className="cband" style={{ width: W }}>
+      {Array.from({ length: 8 }, (_, i) => {
+        const d = ((i * 45 - heading + 540) % 360) - 180;      // sector center vs view
+        if (Math.abs(d) > FOV / 2 + 22.5) return null;
+        const w = 45 / FOV * W;
+        const x = W / 2 + (d / FOV) * W - w / 2;
+        return (
+          <div key={i}
+            className={'cb-sec ' + (covered.includes(i) ? 'red' : 'green')}
+            style={{ left: x, width: w }}>
+            {i === 0 ? 'צ' : ''}
+          </div>
+        );
+      })}
+      <div className="cb-needle" />
+    </div>
+  );
+}
+
+export default function StreetCam({ mission, onCapture, onClose, busy, getPos }: Props) {
   const model = useStore(modelStore);
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -22,6 +51,41 @@ export default function StreetCam({ mission, onCapture, onClose, busy }: Props) 
   const [camErr, setCamErr] = useState('');
   const [liveHits, setLiveHits] = useState(0);
   const [scanning, setScanning] = useState(false);
+  const [heading, setHeading] = useState<number | null>(null);
+  const [covered, setCovered] = useState<number[] | null>(null);
+
+  // IMU heading poll (~8Hz — smooth band, cheap renders)
+  useEffect(() => {
+    const h = setInterval(() => {
+      const g = getHeading();
+      if (g != null) setHeading(Math.round(g / 2) * 2);
+    }, 120);
+    return () => clearInterval(h);
+  }, []);
+
+  // angle coverage around me — refetch after moving >20m (checked every 4s)
+  useEffect(() => {
+    let stop = false;
+    let last: { lat: number; lng: number } | null = null;
+    const tick = async () => {
+      if (stop) return;
+      const p = getPos();
+      if (p && mission && (!last || distM(last.lat, last.lng, p.lat, p.lng) > 20)) {
+        last = p;
+        try { setCovered(await fetchCoveredSectors(p.lat, p.lng, mission)); } catch { /* keep old */ }
+      }
+      setTimeout(tick, 4000);
+    };
+    tick();
+    return () => { stop = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mission]);
+
+  const curSector = heading != null ? sectorOf(heading) : null;
+  const zone: 'green' | 'red' | null =
+    heading != null && covered != null && curSector != null
+      ? (covered.includes(curSector) ? 'red' : 'green')
+      : null;
 
   // open the rear camera
   useEffect(() => {
@@ -89,13 +153,19 @@ export default function StreetCam({ mission, onCapture, onClose, busy }: Props) 
   }
 
   function shutter() {
+    // IMU gate: pointing into an already-covered angle → blocked before the shot
+    if (zone === 'red') {
+      toast('⛔ הזווית הזאת כבר מכוסה — סובבו עד שהפס יהיה ירוק', true);
+      if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+      return;
+    }
     const durl = grabFrame(0.85, 900);
     if (!durl) { toast('המצלמה עוד לא מוכנה'); return; }
     onCapture(durl);
   }
 
   return (
-    <div className="streetcam">
+    <div className={'streetcam' + (zone ? ' zone-' + zone : '')}>
       <video ref={videoRef} playsInline muted />
       <canvas ref={overlayRef} className="sc-overlay" />
 
@@ -109,12 +179,30 @@ export default function StreetCam({ mission, onCapture, onClose, busy }: Props) 
       </div>
       {mission && <div className="sc-mission">🎯 המשימה: {mission}</div>}
 
+      {/* IMU angle guidance: live compass band + zone verdict */}
+      {heading != null && covered != null && (
+        <div className="sc-angle">
+          <CompassBand heading={heading} covered={covered} />
+          <div className={'sc-zone ' + (zone || '')}>
+            {zone === 'red'
+              ? `⛔ ${SECTOR_NAMES[curSector!]} כבר מכוסה — סובבו לירוק`
+              : covered.length
+                ? `✅ ${SECTOR_NAMES[curSector!]} — זווית פתוחה, צלמו!`
+                : '✅ זווית ראשונה כאן — הכל פתוח!'}
+          </div>
+        </div>
+      )}
+
       {camErr && <div className="sc-err">{camErr}</div>}
 
-      <button className={'pt-capture sc-shutter' + (busy ? ' busy' : '')} onClick={shutter} disabled={busy}>
-        {busy ? '🤖' : '📸'}
+      <button
+        className={'pt-capture sc-shutter' + (busy ? ' busy' : '') + (zone === 'red' ? ' locked' : '')}
+        onClick={shutter} disabled={busy}>
+        {busy ? '🤖' : zone === 'red' ? '⛔' : '📸'}
       </button>
-      <div className="pt-capture-lbl" style={{ zIndex: 12 }}>{busy ? 'ה-AI בודק…' : 'צלמו כשהמפגע בפריים'}</div>
+      <div className="pt-capture-lbl" style={{ zIndex: 12 }}>
+        {busy ? 'ה-AI בודק…' : zone === 'red' ? 'זווית חסומה — סובבו' : 'צלמו כשהמפגע בפריים'}
+      </div>
     </div>
   );
 }

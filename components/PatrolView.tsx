@@ -380,6 +380,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
             busy={busy}
             onCapture={captureFromDataURL}
             onClose={() => setCamMode(false)}
+            getPos={() => posRef.current}
           />
         )}
 
