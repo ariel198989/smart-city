@@ -206,14 +206,14 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
   text-shadow:0 0 10px rgba(53,225,255,.6);border:1px solid rgba(53,225,255,.3)}
 
 /* ═══ 📱 bottom tab bar + full-screen hubs (mobile) ═══ */
-.bottombar{position:fixed;bottom:0;inset-inline:0;z-index:65;display:flex;
+.bottombar{position:fixed;bottom:0;inset-inline:0;z-index:65;display:flex;height:var(--bb-h);
   background:rgba(3,9,18,.92);backdrop-filter:blur(14px);
   border-top:1px solid rgba(53,225,255,.22);
   padding-bottom:env(safe-area-inset-bottom);
   box-shadow:0 -12px 40px rgba(0,0,0,.5)}
-.bb-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
-  padding:9px 0 7px;background:none;border:none;cursor:pointer;color:var(--muted);
-  transition:color .15s;position:relative}
+.bb-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  background:none;border:none;cursor:pointer;color:var(--muted);
+  transition:color .15s;position:relative;min-height:44px}
 .bb-tab .bb-ico{font-size:21px;filter:grayscale(.6) opacity(.75);transition:filter .15s,transform .15s}
 .bb-tab .bb-lbl{font-size:9.5px;letter-spacing:.08em}
 .bb-tab.on{color:var(--cy)}
@@ -222,8 +222,10 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
   width:26px;height:2px;background:var(--cy);box-shadow:0 0 10px var(--cy)}
 .bb-tab:active .bb-ico{transform:scale(.9)}
 
+:root{--bb-h:calc(58px + env(safe-area-inset-bottom))}  /* bottom bar height, single source */
+
 /* full-screen hub: slides up, sits above the map, below the tab bar */
-.hub{position:fixed;inset:0;bottom:calc(52px + env(safe-area-inset-bottom));z-index:62;
+.hub{position:fixed;inset:0;height:calc(100dvh - var(--bb-h));z-index:62;
   background:linear-gradient(180deg,rgba(4,11,22,.985),rgba(2,5,9,.995));
   display:flex;flex-direction:column;animation:hub-up .3s cubic-bezier(.32,.72,0,1)}
 @keyframes hub-up{from{transform:translateY(24px);opacity:0}}
@@ -232,8 +234,9 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
   background:linear-gradient(rgba(3,8,16,.55),rgba(2,5,9,.92)),url('/art/training-core.jpg') center 35%/cover}
 .hub-head b{display:block;font-size:16px;letter-spacing:.06em}
 .hub-head span{display:block;font-size:11px;color:var(--muted);margin-top:3px}
-.hub-close{position:absolute;top:calc(10px + env(safe-area-inset-top));inset-inline-start:12px;font-size:14px}
-.hub-body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:14px 14px 20px}
+.hub-close{position:absolute;top:calc(10px + env(safe-area-inset-top));inset-inline-start:12px;
+  font-size:14px;min-width:40px;min-height:40px}
+.hub-body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:14px 14px 28px}
 
 /* the training journey stepper */
 .step{display:flex;gap:10px;margin-bottom:4px}
@@ -253,7 +256,7 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .step-who{font-size:9.5px;color:var(--gold);border:1px solid rgba(255,182,39,.35);
   padding:2px 6px;white-space:nowrap}
 .step-card p{font-size:11.5px;color:var(--muted);line-height:1.6;margin:0 0 8px}
-.step-card button{font-size:12.5px;padding:9px}
+.step-card button{font-size:13px;padding:11px;min-height:44px}
 
 /* world cards (training hub: personal vs group) */
 .world{padding:12px;background:rgba(53,225,255,.04);margin-bottom:6px}
@@ -266,8 +269,8 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
   background:linear-gradient(90deg,transparent,rgba(255,182,39,.45),transparent)}
 
 /* 📸 series capture */
-.series-hud{position:absolute;top:96px;inset-inline:16px;z-index:5;display:flex;
-  flex-direction:column;align-items:center;gap:10px}
+.series-hud{position:absolute;top:calc(92px + env(safe-area-inset-top));inset-inline:16px;z-index:5;
+  display:flex;flex-direction:column;align-items:center;gap:10px}
 .series-count{text-align:center;border:1px solid rgba(255,182,39,.5);background:rgba(3,10,21,.72);
   padding:10px 26px;backdrop-filter:blur(4px)}
 .series-count b{display:block;font-family:'Space Grotesk',monospace;font-size:34px;color:var(--gold);
@@ -279,8 +282,8 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .series-thumbs img{width:44px;height:44px;object-fit:cover;border:1px solid rgba(53,225,255,.35)}
 .sc-shutter.rec{border-color:#ff6b6b;box-shadow:0 0 24px rgba(255,80,80,.55)}
 
-/* 🏷️ mobile tagger */
-.tagger{width:100%;height:100%;display:flex;flex-direction:column;background:#04070d}
+/* 🏷️ mobile tagger — dvh so the action row NEVER hides under browser chrome */
+.tagger{width:100%;height:100dvh;display:flex;flex-direction:column;background:#04070d}
 .tg-stage{flex:1;position:relative;overflow:hidden;touch-action:none;user-select:none;
   display:grid;place-items:center;background:#000}
 .tg-stage img{max-width:100%;max-height:100%;pointer-events:none}
@@ -290,11 +293,13 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
   background:var(--gold);padding:2px 6px;white-space:nowrap}
 .tg-guide{position:absolute;bottom:14px;inset-inline:14px;text-align:center;font-size:13px;
   background:rgba(3,10,21,.8);border:1px solid rgba(53,225,255,.3);padding:9px;pointer-events:none}
-.tg-actions{display:flex;gap:8px;padding:10px 12px calc(12px + env(safe-area-inset-bottom));
-  background:rgba(4,11,22,.98);border-top:1px solid rgba(53,225,255,.18);flex-wrap:wrap}
-.tg-actions .hot{flex:2;min-width:130px}
-.tg-actions .primary{flex:2;min-width:130px}
-.tg-actions .ghost{flex:1}
+/* two clean rows: primary action full-width on top, secondary below —
+   no wrapping surprises, 48px touch targets, generous safe-area pad */
+.tg-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;
+  padding:12px 14px calc(18px + env(safe-area-inset-bottom));
+  background:rgba(4,11,22,.98);border-top:1px solid rgba(53,225,255,.18)}
+.tg-actions button{min-height:48px;font-size:13.5px}
+.tg-actions .hot,.tg-actions .primary{grid-column:1 / -1}
 .tg-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:8px;padding:22px;text-align:center}
 
@@ -304,15 +309,16 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
   padding:12px;margin-top:6px;transition:background .15s,transform .12s}
 .me-row:active{transform:scale(.985);background:rgba(53,225,255,.09)}
 
-/* lift game controls above the tab bar on mobile */
-.mgame .pt-capture{bottom:calc(78px + env(safe-area-inset-bottom))}
-.mgame .pt-capture-lbl{bottom:calc(62px + env(safe-area-inset-bottom))}
+/* lift game controls above the tab bar on mobile — all offsets derive
+   from --bb-h so a bar tweak can never re-clip them */
+.mgame .pt-capture{bottom:calc(var(--bb-h) + 20px)}
+.mgame .pt-capture-lbl{bottom:calc(var(--bb-h) + 4px)}
 .mgame .pt-streetmode{display:none}  /* the 🎥 tab replaces it */
-.mgame .pt-result{bottom:calc(150px + env(safe-area-inset-bottom))}
-.mgame .sc-ready{bottom:calc(168px + env(safe-area-inset-bottom))}
-.mgame .sc-angle{bottom:calc(182px + env(safe-area-inset-bottom))}
-.mgame .sc-autocap{bottom:calc(172px + env(safe-area-inset-bottom))}
-.mgame .streetcam .sc-shutter{bottom:calc(78px + env(safe-area-inset-bottom))}
+.mgame .pt-result{bottom:calc(var(--bb-h) + 96px)}
+.mgame .sc-ready{bottom:calc(var(--bb-h) + 112px)}
+.mgame .sc-angle{bottom:calc(var(--bb-h) + 126px)}
+.mgame .sc-autocap{bottom:calc(var(--bb-h) + 116px)}
+.mgame .streetcam .sc-shutter{bottom:calc(var(--bb-h) + 20px)}
 
 .dw-stats{display:flex;gap:8px;margin-top:12px}
 .dw-stat{flex:1;text-align:center;border:1px solid rgba(53,225,255,.2);background:rgba(3,10,21,.55);
@@ -711,8 +717,11 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .auth-tabs button.on{background:var(--cy-soft);border-color:rgba(53,225,255,.6);color:var(--ink)}
 .auth-card input{width:100%;margin-bottom:9px}
 .auth-err{font-size:12.5px;min-height:18px;margin:2px 0 8px;color:var(--danger)}
-.modal-back{position:fixed;inset:0;z-index:120;background:rgba(2,5,9,.88);display:grid;place-items:center;padding:18px;backdrop-filter:blur(4px)}
-.det-modal{max-width:520px;width:100%;max-height:88vh;overflow-y:auto;position:relative;padding:20px}
+/* dvh, not vh: on phones the URL bar eats the bottom of 100vh —
+   anything measured in vh gets its bottom actions cut off */
+.modal-back{position:fixed;inset:0;height:100dvh;z-index:120;background:rgba(2,5,9,.88);display:grid;place-items:center;padding:18px;backdrop-filter:blur(4px)}
+.det-modal{max-width:520px;width:100%;max-height:86dvh;overflow-y:auto;position:relative;padding:20px;
+  overscroll-behavior:contain}
 .mclose{position:absolute;top:10px;inset-inline-start:10px;font-size:13px;padding:5px 10px;z-index:3}
 #toast{position:fixed;bottom:16px;right:16px;left:16px;z-index:300;max-width:520px;margin:0 auto;
   background:rgba(42,18,21,.95);border:1px solid var(--danger);color:#ffd9d9;padding:11px 15px;
