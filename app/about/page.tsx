@@ -106,7 +106,7 @@ export default function AboutPage() {
         <div><b>30<i>שנ׳</i></b><span>אימון מודל אישי ראשון על הטלפון</span></div>
         <div><b>90<i>שנ׳</i></b><span>סדרת 60 תמונות אימון סביב מפגע</span></div>
         <div><b>8</b><span>זוויות צילום שהמערכת דורשת למפגע</span></div>
-        <div><b>0<i>₪</i></b><span>חומרה נוספת — רק הטלפונים שכבר בכיס</span></div>
+        <div><b>0</b><span>התקנות חומרה — רק הטלפונים שכבר בכיס</span></div>
       </section>
 
       {/* the municipal case — what the CITY gains, in hard terms */}
@@ -163,7 +163,7 @@ export default function AboutPage() {
             <li>תכנית חינוכית מובנית: הכיתה מאמנת מודל אמיתי מקצה לקצה</li>
           </ul>
           <div className="ld-city-cta">
-            <p>פיילוט עירוני עולה פחות מעמוד תאורה אחד.</p>
+            <p>הצעת מחיר מסודרת — לאחר פגישת אפיון קצרה אחת.</p>
             <a className="ld-btn gold" href="mailto:ariel@ao-fin.co.il?subject=Smart City — פיילוט עירוני">דברו איתנו</a>
             <a className="ld-btn line" href="/">או פשוט נסו את המשחק</a>
           </div>
