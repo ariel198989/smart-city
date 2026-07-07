@@ -28,6 +28,7 @@ export default function TopBar({ view, onView }: { view: ViewName; onView: (v: V
   return (
     <header className="topbar hud">
       <div className="logo">
+        <img src="/icon.svg" alt="" className="logo-mark" />
         SMART<span className="accent">CITY</span>
         <span className="beacon" />
       </div>

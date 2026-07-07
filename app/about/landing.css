@@ -12,7 +12,9 @@
 .ld-nav{position:fixed;top:0;inset-inline:0;z-index:50;display:flex;justify-content:space-between;
   align-items:center;padding:16px clamp(16px,4vw,48px);
   background:linear-gradient(rgba(2,5,9,.85),transparent);backdrop-filter:blur(8px)}
-.ld-logo{font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:.32em;font-size:14px}
+.ld-logo{font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:.32em;font-size:14px;
+  display:inline-flex;align-items:center;gap:10px}
+.ld-mark{width:30px;height:30px;filter:drop-shadow(0 0 8px rgba(53,225,255,.5))}
 .ld-logo i{display:inline-block;width:5px;height:5px;background:var(--gold);margin-inline-start:6px;
   box-shadow:0 0 8px var(--gold)}
 .ld-nav-cta{display:inline-flex;align-items:center;gap:8px;color:var(--cy);text-decoration:none;

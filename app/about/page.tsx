@@ -23,7 +23,7 @@ export default function AboutPage() {
     <main className="ld" dir="rtl">
       {/* nav — minimal split, floating */}
       <nav className="ld-nav">
-        <span className="ld-logo">SMART&nbsp;CITY<i /></span>
+        <span className="ld-logo"><img src="/icon.svg" alt="" className="ld-mark" />SMART&nbsp;CITY<i /></span>
         <a className="ld-nav-cta" href="/">פתחו את האפליקציה <Arrow /></a>
       </nav>
 
