@@ -99,8 +99,23 @@ export async function ensureCityModel(): Promise<{ ok: boolean; name?: string; e
     const models = await fetchModels();
     const m = models.find((x: any) => x.zip_path);
     if (!m) return { ok: false, error: 'אין עדיין מודל רשום — אמנו בסטודיו ולחצו "רשום כמודל הקבוצה"' };
-    const res = await fetch(publicUrl(m.zip_path));
-    if (!res.ok) throw new Error('הורדת מודל נכשלה');
+    // model ZIPs are immutable (unique path per version) → cache-first:
+    // slow 3G downloads the model ONCE, every later app open is instant
+    const url = publicUrl(m.zip_path);
+    let res: Response | null = null;
+    let cache: Cache | null = null;
+    try {
+      cache = await caches.open('sc-models-v1');
+      res = (await cache.match(url)) || null;
+    } catch { /* no Cache API (old webview) — plain fetch below */ }
+    if (!res) {
+      res = await fetch(url);
+      if (!res.ok) throw new Error('הורדת מודל נכשלה');
+      try {
+        await cache?.keys().then((ks) => Promise.all(ks.map((k) => cache!.delete(k))));  // keep only the newest
+        await cache?.put(url, res.clone());
+      } catch { /* cache full — model still loads */ }
+    }
     await loadModelFromZip(await res.blob(), m.name || m.team_name, Array.isArray(m.classes) ? m.classes : []);
     return { ok: true, name: m.name || m.team_name };
   } catch (e: any) {

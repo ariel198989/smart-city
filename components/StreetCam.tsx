@@ -99,6 +99,36 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
       ? (covered.includes(curSector) ? 'red' : 'green')
       : null;
 
+  // 🎯 AI auto-capture: the live model already judges every frame — when
+  // it's ≥85% sure it sees the mission target in an open angle, it takes
+  // the shot itself (1.5s cancellable countdown, 15s cooldown).
+  const [autoCap, setAutoCap] = useState<string | null>(null);   // pending frame
+  const autoLastRef = useRef(0);
+  const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const zoneRef = useRef(zone);
+  zoneRef.current = zone;
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
+  function armAutoCapture(durl: string) {
+    if (autoTimerRef.current) return;
+    setAutoCap(durl);
+    if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
+    autoTimerRef.current = setTimeout(() => {
+      autoTimerRef.current = null;
+      setAutoCap(null);
+      autoLastRef.current = Date.now();
+      const full = grabFrame(0.85, 900) || durl;   // freshest full-res frame
+      onCapture(full);
+    }, 1500);
+  }
+  function cancelAutoCapture() {
+    if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+    autoTimerRef.current = null;
+    setAutoCap(null);
+    autoLastRef.current = Date.now();              // cancel also cools down
+  }
+  useEffect(() => () => { if (autoTimerRef.current) clearTimeout(autoTimerRef.current); }, []);
+
   // open the rear camera
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -129,7 +159,7 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
 
   function grabFrame(quality = 0.8, maxW = 900): string | null {
     const v = videoRef.current;
-    if (!v || !v.videoWidth) return null;
+    if (!v || !v.videoWidth || v.readyState < 2) return null;  // camera gone mid-session
     if (!grabRef.current) grabRef.current = document.createElement('canvas');
     const cv = grabRef.current;
     const w = Math.min(v.videoWidth, maxW);
@@ -139,11 +169,13 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
     return cv.toDataURL('image/jpeg', quality);
   }
 
-  // live detection loop (~1fps — walking pace, phone-friendly)
+  // live detection loop (~1fps — walking pace, phone-friendly).
+  // paused while the tab is hidden: inference in the background only
+  // burns battery on a kid's phone in a pocket.
   async function liveLoop() {
     while (runningRef.current) {
       const v = videoRef.current, ov = overlayRef.current;
-      if (!v || !ov || !modelStore.get().ready) {
+      if (document.hidden || !v || !ov || !modelStore.get().ready) {
         await new Promise((r) => setTimeout(r, 800));
         continue;
       }
@@ -157,6 +189,18 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
           drawDetections(ov, boxes);
           setLiveHits(boxes.length);
           if (boxes.length && navigator.vibrate) navigator.vibrate(30);
+          // auto-capture: strong mission hit + open angle + all gates green
+          const names = modelStore.get().classes;
+          const strong = boxes
+            .filter((b: any) => !mission || names[b.cls] === mission || String(b.cls) === mission)
+            .sort((a: any, b: any) => b.score - a.score)[0];
+          if (strong && strong.score >= 0.85
+              && zoneRef.current !== 'red' && !busyRef.current
+              && !autoTimerRef.current
+              && Date.now() - autoLastRef.current > 15000
+              && !blockReason()) {
+            armAutoCapture(durl);
+          }
         }
       } catch { /* frame skipped */ }
       setScanning(false);
@@ -226,6 +270,13 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
       </div>
 
       {camErr && <div className="sc-err">{camErr}</div>}
+
+      {/* 🎯 auto-capture countdown — tap anywhere on it to cancel */}
+      {autoCap && (
+        <button className="sc-autocap" onClick={cancelAutoCapture}>
+          🎯 זיהוי חזק! צולם אוטומטית… <b>הקישו לביטול</b>
+        </button>
+      )}
 
       {/* live readiness — so 'nothing happens' never happens silently */}
       <div className="sc-ready">

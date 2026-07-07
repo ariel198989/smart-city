@@ -55,8 +55,7 @@ export function preloadEngine() { ensureEngine().catch(() => {}); }
 export async function addExample(durl: string, label: 'target' | 'other') {
   await ensureEngine();
   const act = await embed(durl);
-  knn.addExample(act, label);
-  act.dispose();
+  try { knn.addExample(act, label); } finally { act.dispose(); }
   const s = pocketStore.get();
   pocketStore.set(label === 'target'
     ? { targetCount: s.targetCount + 1 }
@@ -73,9 +72,10 @@ export async function classifyPocket(durl: string): Promise<{ label: string; con
   // k derived from the SMALLER class — an unbalanced dataset must not
   // get a built-in majority vote (the "everything is a TV remote" bug)
   const k = Math.max(2, Math.min(8, Math.min(s.targetCount, s.otherCount) * 2));
-  const r = await knn.predictClass(act, k);
-  act.dispose();
-  return { label: r.label, confidence: r.confidences[r.label] ?? 0 };
+  try {
+    const r = await knn.predictClass(act, k);
+    return { label: r.label, confidence: r.confidences[r.label] ?? 0 };
+  } finally { act.dispose(); }
 }
 
 export async function finishPocket(className: string) {

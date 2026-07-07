@@ -10,6 +10,8 @@ import { authStore } from '@/lib/auth';
 import { useStore, toast, bumpData } from '@/lib/store';
 import { classColor, dataURLtoBlob, fileToDataURL } from '@/lib/util';
 import { fetchCrossingSpawns, isCrossingClass, calcCredits, ensureCityModel, fetchMonthlyLeaderboard, distM, fetchCoveredSectors, estimateObjectDistanceM, projectForward, type Spawn } from '@/lib/patrol';
+import { touchStreak, dailyProgress, dailyCatch, DAILY_TARGET, DAILY_BONUS } from '@/lib/daily';
+import { assessFrameQuality } from '@/lib/quality';
 import { fetchMyContribution } from '@/lib/citypool';
 import { pocketStore, initPocket, classifyPocket, POCKET_PASS_CONF } from '@/lib/pocket';
 import PocketTrainer from '@/components/PocketTrainer';
@@ -18,7 +20,7 @@ import { startCompass, requestCompassPermission, getHeading, sectorOf, SECTOR_NA
 import StreetCam from '@/components/StreetCam';
 
 type CatchResult =
-  | { kind: 'pass'; cls: string; conf: number; credits: number; newAngle?: boolean }
+  | { kind: 'pass'; cls: string; conf: number; credits: number; newAngle?: boolean; daily?: number }
   | { kind: 'blocked'; mission: string; found: string | null; durl: string }
   | { kind: 'angle'; covered: number[]; current: number }
   | { kind: 'feedback_sent'; msg: string }
@@ -69,6 +71,9 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
   const [result, setResult] = useState<CatchResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [credits, setCredits] = useState(0);
+  const [streak, setStreak] = useState(1);
+  const [dailyN, setDailyN] = useState(0);
+  useEffect(() => { setStreak(touchStreak()); setDailyN(dailyProgress()); }, []);
   const [showBoard, setShowBoard] = useState(false);
   const [board, setBoard] = useState<{ name: string; credits: number; catches: number }[]>([]);
   const [myPool, setMyPool] = useState<number | null>(null);
@@ -140,6 +145,9 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
     return () => {
       disposed = true;
       if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      // WebGL contexts are precious on cheap phones — release the map
+      try { mapRef.current?.map?.remove(); } catch { /* already gone */ }
+      mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -187,6 +195,15 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
     if (!at) { toast('אין מיקום עדיין — הפעילו GPS או לחצו על המפה'); return; }
     setBusy(true); setResult(null);
     try {
+      // 📷 GATE 0: instant quality check — junk photos never reach the AI
+      // (blurry/dark frames poison the city training pool)
+      const q = await assessFrameQuality(durl);
+      if (!q.ok) {
+        toast(q.reason!, true);
+        if (navigator.vibrate) navigator.vibrate([50, 40, 50]);
+        setBusy(false);
+        return;
+      }
       const gated = modelStore.get().ready;
       const nearSpawn = nearest != null && nearest <= 60;
 
@@ -225,7 +242,10 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
           } catch { /* angle service down — capture proceeds */ }
         }
 
-        const cr = calcCredits({ conf: best.score, nearSpawn, gated: true, newAngle });
+        // 🎯 daily challenge: first 3 gated catches today earn +10 each
+        const daily = dailyCatch();
+        setDailyN(daily.count);
+        const cr = calcCredits({ conf: best.score, nearSpawn, gated: true, newAngle }) + daily.bonus;
         const stamp = Date.now() + '_' + Math.random().toString(36).slice(2, 7);
         const cropURL = await cropDetection(durl, best);
         const path = `crops/p_${stamp}.jpg`;        // crop for the map pin
@@ -249,7 +269,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
           credits: cr, heading,
         });
         setCredits((c) => c + cr);
-        setResult({ kind: 'pass', cls, conf: best.score, credits: cr, newAngle });
+        setResult({ kind: 'pass', cls, conf: best.score, credits: cr, newAngle, daily: daily.bonus });
         if (navigator.vibrate) navigator.vibrate(200);
         bumpData();
       } else if (pocketStore.get().ready) {
@@ -265,7 +285,9 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
           setBusy(false);
           return;
         }
-        const cr = calcCredits({ conf: confidence, nearSpawn, gated: true });
+        const daily = dailyCatch();
+        setDailyN(daily.count);
+        const cr = calcCredits({ conf: confidence, nearSpawn, gated: true }) + daily.bonus;
         const stamp = Date.now() + '_' + Math.random().toString(36).slice(2, 7);
         const path = `crops/p_${stamp}.jpg`;
         const framePath = `pool/f_${stamp}.jpg`;   // frame kept — taggable later
@@ -282,7 +304,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
           credits: cr, heading,
         });
         setCredits((c) => c + cr);
-        setResult({ kind: 'pass', cls: pk.className + ' (מודל כיס 🎓)', conf: confidence, credits: cr });
+        setResult({ kind: 'pass', cls: pk.className + ' (מודל כיס 🎓)', conf: confidence, credits: cr, daily: daily.bonus });
         if (navigator.vibrate) navigator.vibrate(200);
         bumpData();
       } else {
@@ -350,10 +372,19 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
       <div className="patrol-shell hud">
         <div ref={mapEl} id="patrolMap" />
 
-        {/* top HUD: mission + credits */}
+        {/* top HUD: mission + credits + streak + daily challenge */}
         <div className="pt-top">
           <div className="pt-chip pt-credits" onClick={openBoard} title="לוח מובילים חודשי">
             <b>{credits}</b> קרדיטים · 🏆
+          </div>
+          {streak > 1 && (
+            <div className="pt-chip" style={{ color: 'var(--gold)' }} title={`רצף של ${streak} ימים — אל תשברו אותו!`}>
+              🔥 {streak}
+            </div>
+          )}
+          <div className="pt-chip" style={{ fontSize: 11 }}
+            title={`אתגר יומי: ${DAILY_TARGET} תפיסות דרך שער ה-AI = +${DAILY_BONUS} קרדיטים כל אחת`}>
+            🎯 {dailyN}/{DAILY_TARGET}{dailyN >= DAILY_TARGET ? ' ✓' : ''}
           </div>
           {model.ready ? (
             <select className="pt-mission" value={mission} onChange={(e) => setMission(e.target.value)} title="המשימה">
@@ -389,6 +420,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
           <div className="pt-result pass" onAnimationEnd={() => {}}>
             <div className="ptr-big">+{result.credits} 💎</div>
             {result.newAngle && <div className="ptr-angle-bonus">📐 זווית חדשה! +5 בונוס</div>}
+            {!!result.daily && <div className="ptr-angle-bonus">🎯 אתגר יומי! +{result.daily} בונוס</div>}
             <div>נתפס: <b>{result.cls}</b> · {Math.round(result.conf * 100)}%</div>
             <div className="hint" style={{ fontSize: 11, margin: '4px 0' }}>🏙️ נוסף למאגר האימון העירוני · נשלח לאישור מדריך</div>
             <button className="ghost" style={{ fontSize: 12 }} onClick={share}>📣 שתפו</button>
@@ -398,7 +430,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
         {result?.kind === 'angle' && (
           <div className="pt-result blocked">
             <div className="ptr-big">📐</div>
-            <div><b>הזווית הזאת כבר מצולמת!</b><br />לסוכן כבר יש את נקודת המבט הזו. זוזו לכיוון פתוח ברדאר:</div>
+            <div><b>הזווית הזאת כבר מצולמת!</b><br />🎓 מודל AI לומד הכי טוב מהרבה זוויות שונות — צילום כפול לא מלמד אותו כלום. זוזו לכיוון פתוח ברדאר:</div>
             <AngleRadar covered={result.covered} current={result.current} />
             <div className="hint" style={{ fontSize: 11 }}>
               חסרות: {Array.from({ length: 8 }, (_, i) => i).filter((i) => !result.covered.includes(i)).map((i) => SECTOR_NAMES[i]).join(' · ')}
@@ -425,8 +457,10 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
         )}
         {result?.kind === 'feedback_sent' && (
           <div className="pt-result pass">
-            <div className="ptr-big">🎓</div>
+            <div className="ptr-big">🧠✨</div>
+            <div><b>עזרתם ל-AI להשתחכם!</b></div>
             <div>{result.msg}</div>
+            <div className="hint" style={{ fontSize: 11, margin: '4px 0' }}>מדריך יבדוק — ואם צדקתם, התמונה שלכם תיכנס לאימון הבא של מודל העיר 🏙️</div>
             <button className="ghost" style={{ fontSize: 12 }} onClick={() => setResult(null)}>המשך</button>
           </div>
         )}
@@ -440,7 +474,13 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
 
         {/* mission briefing — what YOUR model is trained on */}
         {briefReady && !briefed && (
-          <div className="pt-brief">
+          <div className="pt-brief" onClick={(e) => {
+            // tap outside the card = skip the briefing (kid-proof escape)
+            if (e.target === e.currentTarget) {
+              setBriefed(true);
+              try { sessionStorage.setItem('sc_briefed', '1'); } catch { /* private mode */ }
+            }
+          }}>
             <div className="ptb-inner">
               <img src="/agent.jpg" alt="" className="ptb-agent-img" />
               <div className="ptb-title">ברוך הבא לפטרול{auth.team ? ', ' + auth.team : ''}!</div>
@@ -544,6 +584,24 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
                 <span className="muted" style={{ marginInlineStart: 'auto' }}>{t.credits} 💎 · {t.catches} תפיסות</span>
               </div>
             ))}
+            {/* progress-to-podium: why collect credits, made visible */}
+            {auth.team && board.length > 0 && (() => {
+              const meIdx = board.findIndex((t) => t.name === auth.team);
+              const me = meIdx >= 0 ? board[meIdx] : null;
+              const bar3 = board[Math.min(2, board.length - 1)]?.credits || 0;
+              if (me && meIdx < 3) return (
+                <div className="my-pool" style={{ borderColor: 'rgba(255,182,39,.5)' }}>
+                  🏆 אתם על הפודיום — מקום {meIdx + 1}! שמרו עליו עד סוף החודש
+                </div>
+              );
+              const gap = me ? Math.max(1, bar3 - me.credits + 1) : bar3 + 1;
+              return (
+                <div className="my-pool">
+                  🎯 {me ? <>אתם במקום <b>{meIdx + 1}</b> · </> : null}
+                  עוד <b>{gap} 💎</b> (~{Math.max(1, Math.ceil(gap / 15))} תפיסות) לפודיום ולפרס מהעירייה!
+                </div>
+              );
+            })()}
             {myPool != null && (
               <div className="my-pool">
                 🧠 תרמת <b>{myPool}</b> תמונות למאגר האימון של העיר — המודל הבא ילמד מהן!

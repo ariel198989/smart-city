@@ -1,7 +1,9 @@
 // Smart City patrol — minimal service worker: makes the app installable
-// and keeps the shell reachable. Network-first (app updates often).
+// and keeps the shell reachable. Network-first (app updates often), but
+// with a hard timeout so a weak-signal fetch can't freeze the app.
 const CACHE = 'sc-shell-v1';
 const SHELL = ['/', '/manifest.json', '/icon-192.png', '/icon-512.png'];
+const NET_TIMEOUT_MS = 8000;
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {}));
@@ -18,9 +20,12 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
-  // network-first, cache fallback (offline shell)
+  // network-first with timeout, cache fallback (offline shell / slow 3G)
   e.respondWith(
-    fetch(e.request)
+    Promise.race([
+      fetch(e.request),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('net-timeout')), NET_TIMEOUT_MS)),
+    ])
       .then((res) => {
         if (res.ok && (url.pathname === '/' || SHELL.includes(url.pathname))) {
           const copy = res.clone();

@@ -202,6 +202,14 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 /* dense mode (150+ pins): freeze per-pin infinite animations, keep glow */
 .dense .pin::before,.dense .cov-dot{animation:none}
 
+/* 🎯 auto-capture countdown banner (street mode) */
+.sc-autocap{position:absolute;bottom:120px;right:50%;transform:translateX(50%);z-index:13;
+  padding:12px 18px;font-size:14px;color:#08131f;background:var(--gold);border:none;
+  letter-spacing:.02em;box-shadow:0 0 30px rgba(255,182,39,.55);cursor:pointer;
+  animation:autocap-pulse .5s ease-in-out infinite alternate}
+@keyframes autocap-pulse{to{box-shadow:0 0 44px rgba(255,182,39,.85)}}
+@media (prefers-reduced-motion: reduce){.sc-autocap{animation:none}}
+
 /* brand-art banners (public/art/) — cinematic strips inside modals */
 .art-banner{width:100%;display:block;aspect-ratio:16/6;object-fit:cover;object-position:center 38%;
   border:1px solid var(--cy-line);margin:0 0 12px;filter:saturate(1.05)}
@@ -442,7 +450,8 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
   border:2px solid rgba(53,225,255,.8);box-shadow:0 0 30px rgba(53,225,255,.45),inset 0 0 18px rgba(53,225,255,.12);
   transition:transform .15s}
 .pt-capture:active{transform:translateX(50%) scale(.92)}
-.pt-capture.busy{animation:sc-dot 1s ease-in-out infinite;border-color:var(--gold-line)}
+.pt-capture.busy{animation:sc-dot 1s ease-in-out infinite;border-color:var(--gold-line);
+  pointer-events:none}  /* double-tap while the AI is judging = ghost captures */
 .pt-capture-lbl{position:absolute;bottom:8px;right:50%;transform:translateX(50%);z-index:6;
   font-size:11px;letter-spacing:.14em;color:var(--cy-dim);white-space:nowrap}
 
