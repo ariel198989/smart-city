@@ -10,6 +10,7 @@ import { authStore } from '@/lib/auth';
 import { useStore, toast } from '@/lib/store';
 import { fileToDataURL, urlToDataURL, fmtWhen, download } from '@/lib/util';
 import { fetchPoolStats, buildCityPoolZip, fetchFeedback, setFeedbackStatus, fetchPoolGallery, fetchUntaggedPhoneShots } from '@/lib/citypool';
+import TrainReal from '@/components/TrainReal';
 
 const IMG_W = 640, IMG_H = 480;
 
@@ -67,6 +68,9 @@ export default function StudioView() {
   const [mergeMsg, setMergeMsg] = useState('');
   const [cityPool, setCityPool] = useState<import('@/lib/citypool').PoolStats | null>(null);
   const [cpBusy, setCpBusy] = useState(false);
+  // desktop entry to the Colab training path (personal / class-merged)
+  const [showTrainReal, setShowTrainReal] = useState(false);
+  const [trainScope, setTrainScope] = useState<'mine' | 'all'>('all');
   const [cpMsg, setCpMsg] = useState('');
   const [feedback, setFeedback] = useState<any[]>([]);
   const [gallery, setGallery] = useState<any[]>([]);
@@ -802,6 +806,17 @@ export default function StudioView() {
             <p className="hint" style={{ margin: '0 0 8px' }}>
               כל צילום של תושב שעבר את שער ה-AI בפטרול = דוגמת אימון (תמונה מלאה + תיבה). מדריך מייצא ← Colab ← מודל עיר משופר ← נטען אוטומטית לכל טלפון. 🔁
             </p>
+            {/* the Colab path, right where the photos are (was buried in patrol) */}
+            <div className="row" style={{ gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+              <button className="hot" style={{ fontSize: 13 }}
+                onClick={() => { setTrainScope('mine'); setShowTrainReal(true); }}>
+                🚀 אימון אישי — על התמונות שלי (קולאב)
+              </button>
+              <button className="primary" style={{ fontSize: 13 }}
+                onClick={() => { setTrainScope('all'); setShowTrainReal(true); }}>
+                🏫 אימון מאוחד — כל המאגר (קולאב)
+              </button>
+            </div>
             {cityPool ? (
               cityPool.total ? (
                 <div>
@@ -928,6 +943,7 @@ export default function StudioView() {
           </div>
         </div>
       </div>
+      {showTrainReal && <TrainReal scope={trainScope} onClose={() => setShowTrainReal(false)} />}
     </section>
   );
 }
