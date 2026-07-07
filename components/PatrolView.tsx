@@ -514,7 +514,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
       {/* 📱 mobile hubs — slide up above the map, below the tab bar */}
       {defaultCam && hub === 'train' && (
         <TrainingHub onClose={() => setHub(null)}
-          mission={mission || 'מעבר חציה'} myUntagged={myUntagged}
+          mission={mission || 'מעבר חציה'} onMission={setMission} myUntagged={myUntagged}
           onTrainer={() => setShowTrainer(true)} onTrainReal={() => setShowTrainReal(true)}
           onSeries={() => setSeries(true)} onTagger={() => setTagger(true)} />
       )}

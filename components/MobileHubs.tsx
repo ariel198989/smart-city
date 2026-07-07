@@ -93,6 +93,7 @@ export function BottomBar({ active, onTab }: { active: MobileTab; onTab: (t: Mob
 interface TrainHubProps {
   onClose: () => void;
   mission: string;           // the class the group agreed on
+  onMission: (m: string) => void;  // the class picker writes back here
   myUntagged: number | null; // my shots waiting for a bbox
   onTrainer: () => void;     // opens PocketTrainer
   onTrainReal: () => void;   // opens the cloud-training modal
@@ -100,7 +101,10 @@ interface TrainHubProps {
   onTagger: () => void;      // opens the phone tagger
 }
 
-export function TrainingHub({ onClose, mission, myUntagged, onTrainer, onTrainReal, onSeries, onTagger }: TrainHubProps) {
+// classroom presets — a student picks in one tap or types her own
+const CLASS_PRESETS = ['מעבר חציה', 'בור בכביש', 'תמרור', 'פסולת', 'ספסל שבור', 'תאורה שבורה', 'גרפיטי'];
+
+export function TrainingHub({ onClose, mission, onMission, myUntagged, onTrainer, onTrainReal, onSeries, onTagger }: TrainHubProps) {
   const model = useStore(modelStore);
   const pocket = useStore(pocketStore);
   const [pool, setPool] = useState<PoolStats | null>(null);
@@ -191,6 +195,20 @@ export function TrainingHub({ onClose, mission, myUntagged, onTrainer, onTrainRe
 
         {/* world 2: the group machine */}
         <div className="world-sep">🏭 אימון קבוצתי אמיתי — המכונה</div>
+
+        {/* step 0 — the class decides WHAT to train, right here on the phone */}
+        <div className="world hud pick">
+          <div className="world-head"><b>🎯 מה מאמנים היום?</b></div>
+          <div className="pick-chips">
+            {CLASS_PRESETS.map((c) => (
+              <button key={c} className={'pick-chip' + (mission === c ? ' on' : '')} onClick={() => onMission(c)}>{c}</button>
+            ))}
+          </div>
+          <input className="pick-free" placeholder="או כתבו קטגוריה משלכם…" defaultValue={CLASS_PRESETS.includes(mission) ? '' : mission}
+            onBlur={(e) => { const v = e.target.value.trim(); if (v) onMission(v); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
+          <p style={{ marginTop: 6 }}>כל הסדרה תצולם ותתויג כ<b>"{mission}"</b> — וכל הקבוצה בוחרת את אותה קטגוריה כדי שהמאגר יגדל ביחד.</p>
+        </div>
         {steps.map((s, i) => (
           <div key={i} className={'step' + (s.done ? ' done' : '')}>
             <div className="step-rail">
@@ -209,7 +227,7 @@ export function TrainingHub({ onClose, mission, myUntagged, onTrainer, onTrainRe
           </div>
         ))}
         <div className="hint" style={{ margin: '4px 2px 14px' }}>
-          💡 מחליפים קטגוריה? בוחרים 🎯 משימה במסך המפה — הסדרה מצטלמת לקטגוריה הנבחרת.
+          💡 ההמשך במחשב: סטודיו ← "📱 מהטלפון" לתיוג עדין, או "🚀 התחל אימון" כשהמאגר מוכן.
         </div>
       </div>
     </section>

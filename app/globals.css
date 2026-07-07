@@ -318,6 +318,17 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .tg-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:8px;padding:22px;text-align:center}
 
+/* 🎯 class picker (training hub step 0) */
+.world.pick{border-color:rgba(255,182,39,.3)}
+.pick-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.pick-chip{padding:8px 13px;font-size:12.5px;cursor:pointer;color:var(--ink);
+  background:rgba(53,225,255,.04);border:1px solid rgba(53,225,255,.22);min-height:36px}
+.pick-chip.on{background:var(--gold);color:#08131f;border-color:var(--gold);font-weight:700;
+  box-shadow:0 0 14px rgba(255,182,39,.45)}
+.pick-free{width:100%;background:rgba(3,10,21,.7);border:1px solid rgba(53,225,255,.22);
+  color:var(--ink);padding:10px 12px;font-size:13px;font-family:inherit}
+.pick-free::placeholder{color:var(--faint)}
+
 /* me-hub rows */
 .me-row{display:flex;align-items:center;gap:12px;width:100%;text-align:start;cursor:pointer;
   background:rgba(53,225,255,.03);border:1px solid rgba(53,225,255,.12);color:var(--ink);
