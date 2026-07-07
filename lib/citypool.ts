@@ -16,12 +16,14 @@ export interface PoolStats {
 // 1500 ≈ 300MB). Beyond that the export must move server-side
 // (Edge Function / worker) — newest-first keeps the freshest data in.
 async function fetchPoolRows(limit = 1500) {
+  // training-grade = full frame + a bbox. NOT confidence>0: human-tagged
+  // phone photos carry confidence 0 and are exactly the data we want —
+  // that filter silently excluded the whole series→tag flow.
   const { data, error } = await sb.from('sc_detections')
     .select('class_name, frame_path, bbox, confidence, detected_by, created_at')
     .not('frame_path', 'is', null)
     .not('bbox', 'is', null)
     .neq('status', 'rejected')
-    .gt('confidence', 0)
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) throw error;

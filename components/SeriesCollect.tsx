@@ -11,6 +11,7 @@ import { useStore, toast } from '@/lib/store';
 import { dataURLtoBlob } from '@/lib/util';
 import { getHeading } from '@/lib/compass';
 import { DEFAULT_CITY } from '@/lib/config';
+import { assessFrameQuality } from '@/lib/quality';
 
 const INTERVAL_MS = 1500;
 
@@ -27,6 +28,7 @@ export default function SeriesCollect({ className, getPos, onClose }: Props) {
   const [camErr, setCamErr] = useState('');
   const [running, setRunning] = useState(false);
   const [shots, setShots] = useState(0);
+  const [skipped, setSkipped] = useState(0);   // blur/dark frames the gate bounced
   const [thumbs, setThumbs] = useState<string[]>([]);
   const runningRef = useRef(false);
   const shotsRef = useRef(0);
@@ -77,6 +79,10 @@ export default function SeriesCollect({ className, getPos, onClose }: Props) {
     while (runningRef.current) {
       const durl = grab();
       if (durl) {
+        // the burst is the highest-volume inlet to the training pool —
+        // a motion-blurred circling frame must never become "data"
+        const q = await assessFrameQuality(durl);
+        if (!q.ok) { setSkipped((n) => n + 1); await new Promise((r) => setTimeout(r, INTERVAL_MS)); continue; }
         try {
           await saveFrame(durl);
           shotsRef.current += 1;
@@ -106,6 +112,7 @@ export default function SeriesCollect({ className, getPos, onClose }: Props) {
       <div className="series-hud">
         <div className="series-count"><b>{shots}</b><span>תמונות</span></div>
         {running && <div className="series-live">● מצלם כל {INTERVAL_MS / 1000} שנ' — הסתובבו סביב האובייקט</div>}
+        {skipped > 0 && <div className="hint" style={{ fontSize: 10.5 }}>🧹 {skipped} פריימים מטושטשים/חשוכים סוננו אוטומטית</div>}
         {!running && shots === 0 && <div className="hint" style={{ textAlign: 'center' }}>לחצו התחל, ולכו לאט סביב ה{className} — מכל הזוויות, מכל המרחקים</div>}
         {thumbs.length > 0 && (
           <div className="series-thumbs">
