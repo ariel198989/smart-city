@@ -37,72 +37,73 @@ export function BottomBar({ active, onTab }: { active: MobileTab; onTab: (t: Mob
   );
 }
 
-/* ─── the training journey, end-to-end, as one honest stepper ─── */
+/* ─── TWO WORLDS, cleanly separated:
+   🎓 personal pocket training (the feel, 30s, on-device) vs
+   🏭 the GROUP machine: shoot series → tag on phone → shared pool
+   (merging is automatic) → cloud training → model for everyone ─── */
 interface TrainHubProps {
   onClose: () => void;
+  mission: string;           // the class the group agreed on
+  myUntagged: number | null; // my shots waiting for a bbox
   onTrainer: () => void;     // opens PocketTrainer
-  onTrainReal: () => void;   // opens the 3-step real-training modal
+  onTrainReal: () => void;   // opens the cloud-training modal
+  onSeries: () => void;      // opens burst series capture
+  onTagger: () => void;      // opens the phone tagger
 }
 
-export function TrainingHub({ onClose, onTrainer, onTrainReal }: TrainHubProps) {
+export function TrainingHub({ onClose, mission, myUntagged, onTrainer, onTrainReal, onSeries, onTagger }: TrainHubProps) {
   const model = useStore(modelStore);
   const pocket = useStore(pocketStore);
   const [pool, setPool] = useState<PoolStats | null>(null);
-  const [untagged, setUntagged] = useState<number | null>(null);
   const [job, setJob] = useState<TrainJob | null | 'none'>(null);
   useEffect(() => {
     fetchPoolStats().then(setPool).catch(() => {});
-    fetchUntaggedPhoneShots(100).then((r) => setUntagged(r.length)).catch(() => {});
     fetchJobs(1).then((j) => setJob(j[0] || 'none')).catch(() => setJob('none'));
   }, []);
 
-  const hasPersonal = pocket.ready || model.ready;
   const tagged = pool?.total || 0;
+  const contributors = pool?.contributors || 0;
   const pendingJob = job && job !== 'none' && job.status === 'pending' ? job : null;
   const weakest = pool?.byClass.length ? Math.min(...pool.byClass.map((c) => c.count)) : 0;
+  const ready = tagged > 0 && weakest >= 50;
 
-  // whose turn is each step? phone 📱 / desktop 💻 / cloud ☁️ / done ✓
+  // the group machine, step by step — each tagged with WHOSE turn it is
   const steps = [
     {
-      icon: '📸', who: '📱 אתם', title: 'אוספים תמונות',
-      state: 'always' as const,
-      body: 'כל תפיסה בפטרול שעוברת את שער ה-AI מתויגת לבד ונכנסת למאגר העיר. צילומים חופשיים מחכים לתיוג במחשב.',
-      cta: { label: '🎥 לצאת לצלם', run: onClose },
-      done: tagged > 0 || (untagged || 0) > 0,
+      icon: '📸', who: '📱 אתם', title: `צלמו סדרה של ${mission}`,
+      body: 'המצלמה צולמת לבד כל 1.5 שניות — פשוט מסתובבים סביב האובייקט. 60 תמונות בדקה וחצי, מכל הזוויות.',
+      cta: { label: '📸 צלמו סדרה', run: onSeries, hot: false },
+      done: (myUntagged || 0) > 0 || tagged > 0,
     },
     {
-      icon: '🎓', who: '📱 אתם · 30 שניות', title: 'מודל כיס אישי',
-      state: 'always' as const,
-      body: hasPersonal
-        ? (model.ready ? `יש מודל עירוני פעיל: ${model.name}` : `המודל שלכם מזהה "${pocket.className}" — הוא שער התפיסה שלכם`)
-        : 'אימון ראשון על הטלפון: 8 צילומי מטרה + 8 רקע — ומרגישים איך AI לומד.',
-      cta: { label: hasPersonal ? '🎓 אמן מחדש / שפר' : '🎓 התחל אימון כיס', run: onTrainer },
-      done: hasPersonal,
+      icon: '🏷️', who: '📱 אתם', title: 'תייגו בטלפון',
+      body: myUntagged
+        ? `${myUntagged} תמונות שלכם מחכות לתיבה — גוררים אצבע סביב האובייקט, שמור, הבא. דקות ספורות.`
+        : 'אין תמונות בהמתנה כרגע. אחרי צילום סדרה — התיוג כאן. (תיוג עדין יותר אפשרי גם בדסקטופ בסטודיו.)',
+      cta: myUntagged ? { label: `🏷️ תייגו ${myUntagged} תמונות`, run: onTagger, hot: true } : null,
+      done: tagged > 0 && !myUntagged,
     },
     {
-      icon: '🏷️', who: '💻 דסקטופ', title: 'תיוג מדויק',
-      state: 'always' as const,
-      body: `${tagged} תמונות מתויגות בפול` +
-        (untagged ? ` · ${untagged} צילומים מהטלפון ממתינים לתיוג במחשב (סטודיו ← "📱 מהטלפון")` : '') +
-        (pool && weakest < 50 ? ` · יעד: 50+ לקטגוריה (הדלה ביותר: ${weakest})` : ''),
+      icon: '🤝', who: '🤖 אוטומטי', title: 'המאגר המשותף — האיחוד קורה לבד',
+      body: `כל תמונה מתויגת של כל חבר קבוצה נכנסת לאותו מאגר: כרגע ${tagged} תמונות מ-${contributors} תורמים` +
+        (pool && tagged > 0 ? ` · הקטגוריה הדלה: ${weakest} (יעד 50+, ‏150+ = מצוין)` : '') +
+        '. 60 תמונות שלך לבד = מודל חלש; 400 של כולם = מודל אמיתי.',
       cta: null,
-      done: tagged >= 8,
+      done: ready,
     },
     {
-      icon: '🚀', who: pendingJob ? '☁️ קולאב — תורו' : '📱 אתם', title: 'אימון אמיתי בענן',
-      state: 'always' as const,
+      icon: '🚀', who: pendingJob ? '☁️ הענן — תורו' : '📱 אתם', title: 'אימון בענן (GPU)',
       body: pendingJob
-        ? `משימה פתוחה (${pendingJob.image_count} תמונות) — פתחו את המחברת והריצו Run all (~15 דק'). המחברת מוצאת את המשימה לבד.`
-        : 'לוחצים כפתור — הטלפון אורז את מאגר העיר ופותח משימת אימון ל-GPU.',
-      cta: { label: pendingJob ? '☁️ המשך במחברת' : '🚀 התחל אימון אמיתי', run: onTrainReal },
+        ? `משימה פתוחה (${pendingJob.image_count} תמונות) — פתחו את המחברת, Run all, ‏~15 דק'. היא מוצאת את המשימה לבד.`
+        : 'כפתור אחד: הטלפון אורז את המאגר המשותף ופותח משימת אימון. ההמשך במחברת (מחשב או טלפון).',
+      cta: { label: pendingJob ? '☁️ המשך במחברת' : '🚀 התחל אימון קבוצתי', run: onTrainReal, hot: true },
       done: !!(job && job !== 'none' && job.status === 'done'),
     },
     {
-      icon: '📲', who: '🤖 אוטומטי', title: 'המודל חוזר לכל טלפון',
-      state: 'always' as const,
+      icon: '📲', who: '🤖 אוטומטי', title: 'המודל אצל כולם',
       body: model.ready
-        ? `✅ פעיל עכשיו: ${model.name} — כל תפיסה שלכם עוברת דרכו.`
-        : 'ברגע שמודל נרשם — כל טלפון בעיר מקבל אותו אוטומטית בכניסה הבאה.',
+        ? `✅ פעיל: ${model.name} — כל טלפון בעיר משתמש בו עכשיו.`
+        : 'כשהמודל נרשם — כל טלפון מקבל אותו אוטומטית, והמשחק נהיה חכם.',
       cta: null,
       done: model.ready,
     },
@@ -112,10 +113,24 @@ export function TrainingHub({ onClose, onTrainer, onTrainReal }: TrainHubProps) 
     <section className="hub">
       <header className="hub-head">
         <button className="ghost hub-close" onClick={onClose}>✕</button>
-        <b>🧠 מסע האימון</b>
-        <span>מהצילום הראשון ועד מודל שרץ אצל כולם</span>
+        <b>🧠 אימון</b>
+        <span>שני עולמות: להרגיש איך AI לומד · ולבנות מודל אמיתי ביחד</span>
       </header>
       <div className="hub-body">
+        {/* world 1: the personal feel — deliberately small and separate */}
+        <div className="world hud">
+          <div className="world-head">
+            <b>🎓 אימון אישי — להרגיש את זה</b>
+            <span className="step-who">📱 30 שניות · במכשיר</span>
+          </div>
+          <p>{pocket.ready ? `המודל האישי שלכם מזהה "${pocket.className}".` : 'מודל צעצוע שלומד על הטלפון — בלי ענן. ככה מבינים מה זה אימון.'}</p>
+          <button className="primary" style={{ width: '100%' }} onClick={onTrainer}>
+            {pocket.ready ? '🎓 אמן מחדש / שחק איתו' : '🎓 נסו — 30 שניות'}
+          </button>
+        </div>
+
+        {/* world 2: the group machine */}
+        <div className="world-sep">🏭 אימון קבוצתי אמיתי — המכונה</div>
         {steps.map((s, i) => (
           <div key={i} className={'step' + (s.done ? ' done' : '')}>
             <div className="step-rail">
@@ -129,12 +144,12 @@ export function TrainingHub({ onClose, onTrainer, onTrainReal }: TrainHubProps) 
                 <span className="step-who">{s.who}</span>
               </div>
               <p>{s.body}</p>
-              {s.cta && <button className={i === 3 ? 'hot' : 'primary'} style={{ width: '100%' }} onClick={s.cta.run}>{s.cta.label}</button>}
+              {s.cta && <button className={s.cta.hot ? 'hot' : 'primary'} style={{ width: '100%' }} onClick={s.cta.run}>{s.cta.label}</button>}
             </div>
           </div>
         ))}
         <div className="hint" style={{ margin: '4px 2px 14px' }}>
-          💡 הכלל: ירוק ✓ = השלב חי. הכיתוב ליד כל שלב אומר של מי התור — שלכם 📱, של המחשב 💻 או של הענן ☁️.
+          💡 מחליפים קטגוריה? בוחרים 🎯 משימה במסך המפה — הסדרה מצטלמת לקטגוריה הנבחרת.
         </div>
       </div>
     </section>

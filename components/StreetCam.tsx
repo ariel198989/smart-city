@@ -250,7 +250,8 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
         {heading != null && covered != null ? (
           <>
             <CompassBand heading={heading} covered={covered} />
-            <div className={'sc-zone ' + (zone || '')}>
+            <div className={'sc-zone ' + (zone || '')}
+              onClick={() => toast('🧭 הרדאר זוכר צילומים קודמים ברדיוס 30מ׳: אדום = מהכיוון הזה כבר צילמו כאן, ירוק = זווית שחסרה למודל. אין צילומים באזור → הכל ירוק.', true)}>
               {zone === 'red'
                 ? `⛔ ${SECTOR_NAMES[curSector!]} (${heading}°) כבר מכוסה — סובבו לירוק`
                 : covered.length

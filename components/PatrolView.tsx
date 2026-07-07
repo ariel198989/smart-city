@@ -20,6 +20,9 @@ import TrainReal from '@/components/TrainReal';
 import { startCompass, requestCompassPermission, getHeading, sectorOf, SECTOR_NAMES } from '@/lib/compass';
 import StreetCam from '@/components/StreetCam';
 import { BottomBar, TrainingHub, MeHub, type MobileTab } from '@/components/MobileHubs';
+import SeriesCollect from '@/components/SeriesCollect';
+import MobileTagger from '@/components/MobileTagger';
+import { sb } from '@/lib/db';
 
 type CatchResult =
   | { kind: 'pass'; cls: string; conf: number; credits: number; newAngle?: boolean; daily?: number }
@@ -91,6 +94,16 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
   const [dailyN, setDailyN] = useState(0);
   useEffect(() => { setStreak(touchStreak()); setDailyN(dailyProgress()); }, []);
   const [hub, setHub] = useState<'train' | 'me' | null>(null);
+  // 📸 series capture + 🏷️ phone tagging (the group-training machine)
+  const [series, setSeries] = useState(false);
+  const [tagger, setTagger] = useState(false);
+  const [myUntagged, setMyUntagged] = useState<number | null>(null);
+  useEffect(() => {
+    if (hub !== 'train' || !auth.user) return;
+    sb.from('sc_detections').select('id', { count: 'exact', head: true })
+      .eq('detected_by', auth.user.id).is('bbox', null).not('frame_path', 'is', null).neq('status', 'rejected')
+      .then(({ count }) => setMyUntagged(count ?? 0));
+  }, [hub, tagger, series, auth.user]);
   // 🗂️ personal catch log — the sync made visible ("where did my photos go?")
   const [myLog, setMyLog] = useState(false);
   const [myRows, setMyRows] = useState<any[] | null>(null);
@@ -612,8 +625,18 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
       {/* 📱 mobile hubs — slide up above the map, below the tab bar */}
       {defaultCam && hub === 'train' && (
         <TrainingHub onClose={() => setHub(null)}
-          onTrainer={() => setShowTrainer(true)} onTrainReal={() => setShowTrainReal(true)} />
+          mission={mission || 'מעבר חציה'} myUntagged={myUntagged}
+          onTrainer={() => setShowTrainer(true)} onTrainReal={() => setShowTrainReal(true)}
+          onSeries={() => setSeries(true)} onTagger={() => setTagger(true)} />
       )}
+      {series && (
+        <SeriesCollect className={mission || 'מעבר חציה'} getPos={() => posRef.current}
+          onClose={(n) => {
+            setSeries(false);
+            if (n > 0) { toast(`📸 ${n} תמונות נשמרו — עכשיו מתייגים!`, true); setTagger(true); }
+          }} />
+      )}
+      {tagger && <MobileTagger onClose={() => { setTagger(false); bumpData(); }} />}
       {defaultCam && hub === 'me' && (
         <MeHub onClose={() => setHub(null)}
           onMyLog={() => setMyLog(true)} onBoard={openBoard}
