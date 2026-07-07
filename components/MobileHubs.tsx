@@ -6,33 +6,82 @@
 // desktop / Colab). No hidden menus, no dead ends.
 import { useEffect, useState } from 'react';
 import { authStore, logout } from '@/lib/auth';
-import { useStore } from '@/lib/store';
+import { useStore, toast } from '@/lib/store';
 import { modelStore } from '@/lib/infer';
 import { pocketStore } from '@/lib/pocket';
 import { getHeading, SECTOR_NAMES, sectorOf } from '@/lib/compass';
 import { fetchPoolStats, fetchUntaggedPhoneShots, type PoolStats } from '@/lib/citypool';
 import { fetchJobs, type TrainJob } from '@/lib/trainjobs';
-import { publicUrl } from '@/lib/db';
+import { publicUrl, sb } from '@/lib/db';
 import { fetchPoolGallery } from '@/lib/citypool';
 import { DAILY_TARGET, DAILY_BONUS } from '@/lib/daily';
 
 export type MobileTab = 'map' | 'cam' | 'train' | 'me';
 
-/* ─── bottom tab bar — RTL order: map (home) on the right ─── */
+const fmtAgo = (iso: string) => {
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  return m < 60 ? `לפני ${m} דק'` : `לפני ${Math.round(m / 60)} שע'`;
+};
+
+// 🎖️ permanent progression — LIFETIME credits, survives the monthly
+// leaderboard reset (the audit's Sisyphus problem)
+const RANKS = [
+  { at: 0, name: 'טירון', icon: '🔰' },
+  { at: 60, name: 'צופה', icon: '👁️' },
+  { at: 150, name: 'סייר', icon: '🥾' },
+  { at: 300, name: 'סוכן', icon: '🕵️' },
+  { at: 550, name: 'סוכן בכיר', icon: '🎖️' },
+  { at: 900, name: 'מפקח', icon: '🛡️' },
+  { at: 1400, name: 'אגדה עירונית', icon: '🌟' },
+];
+export function rankOf(xp: number) {
+  let i = 0;
+  while (i + 1 < RANKS.length && xp >= RANKS[i + 1].at) i++;
+  const next = RANKS[i + 1] || null;
+  return { ...RANKS[i], level: i + 1, next, toNext: next ? next.at - xp : 0 };
+}
+
+/* ─── bottom tab bar — RTL order: map (home) on the right.
+   Custom monoline SVG icons (not emoji): consistent across every OS,
+   stroke inherits currentColor so active-state glow just works ─── */
+const ICONS: Record<MobileTab, React.ReactNode> = {
+  map: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round">
+      <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z" /><path d="M9 4v14M15 6v14" opacity=".55" />
+    </svg>
+  ),
+  cam: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round">
+      <rect x="3" y="7" width="18" height="13" rx="0" /><path d="m9 7 1.5-3h3L15 7" /><circle cx="12" cy="13.5" r="3.6" />
+    </svg>
+  ),
+  train: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round">
+      <circle cx="12" cy="12" r="3" /><circle cx="12" cy="12" r="7.5" opacity=".55" />
+      <path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3" />
+    </svg>
+  ),
+  me: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round">
+      <circle cx="12" cy="8" r="4" /><path d="M4.5 20.5c1.6-3.6 4.2-5 7.5-5s5.9 1.4 7.5 5" />
+    </svg>
+  ),
+};
+
 export function BottomBar({ active, onTab }: { active: MobileTab; onTab: (t: MobileTab) => void }) {
-  const tab = (id: MobileTab, icon: string, label: string) => (
-    <button className={'bb-tab' + (active === id ? ' on' : '')}
+  const tab = (id: MobileTab, label: string) => (
+    <button className={'bb-tab' + (active === id ? ' on' : '')} aria-label={label}
       onClick={() => { if (navigator.vibrate) navigator.vibrate(10); onTab(id); }}>
-      <span className="bb-ico">{icon}</span>
+      <span className="bb-ico">{ICONS[id]}</span>
       <span className="bb-lbl">{label}</span>
     </button>
   );
   return (
     <nav className="bottombar">
-      {tab('map', '🗺️', 'מפה')}
-      {tab('cam', '🎥', 'מצלמה')}
-      {tab('train', '🧠', 'אימון')}
-      {tab('me', '👤', 'אני')}
+      {tab('map', 'מפה')}
+      {tab('cam', 'מצלמה')}
+      {tab('train', 'אימון')}
+      {tab('me', 'אני')}
     </nav>
   );
 }
@@ -58,7 +107,16 @@ export function TrainingHub({ onClose, mission, myUntagged, onTrainer, onTrainRe
   const [job, setJob] = useState<TrainJob | null | 'none'>(null);
   useEffect(() => {
     fetchPoolStats().then(setPool).catch(() => {});
-    fetchJobs(1).then((j) => setJob(j[0] || 'none')).catch(() => setJob('none'));
+    // live job status — poll while the hub is open so "התחל אימון" never
+    // becomes a black hole (the audit's #2 finding)
+    let stop = false;
+    const tick = () => {
+      if (stop) return;
+      fetchJobs(1).then((j) => { if (!stop) setJob(j[0] || 'none'); }).catch(() => {});
+      setTimeout(tick, 20000);
+    };
+    tick();
+    return () => { stop = true; };
   }, []);
 
   const tagged = pool?.total || 0;
@@ -94,8 +152,10 @@ export function TrainingHub({ onClose, mission, myUntagged, onTrainer, onTrainRe
     {
       icon: '🚀', who: pendingJob ? '☁️ הענן — תורו' : '📱 אתם', title: 'אימון בענן (GPU)',
       body: pendingJob
-        ? `משימה פתוחה (${pendingJob.image_count} תמונות) — פתחו את המחברת, Run all, ‏~15 דק'. היא מוצאת את המשימה לבד.`
-        : 'כפתור אחד: הטלפון אורז את המאגר המשותף ופותח משימת אימון. ההמשך במחברת (מחשב או טלפון).',
+        ? `⏳ משימה פתוחה: ${pendingJob.image_count} תמונות · נפתחה ${fmtAgo(pendingJob.created_at)} — פתחו את המחברת, Run all, ‏~15 דק'. היא מוצאת את המשימה לבד. הסטטוס כאן מתעדכן חי.`
+        : job && job !== 'none' && job.status === 'done'
+          ? `🟢 האימון האחרון הושלם (${job.image_count} תמונות) — המודל נרשם. אפשר לפתוח סבב חדש כשיש עוד דאטה.`
+          : 'כפתור אחד: הטלפון אורז את המאגר המשותף ופותח משימת אימון. ההמשך במחברת (מחשב או טלפון).',
       cta: { label: pendingJob ? '☁️ המשך במחברת' : '🚀 התחל אימון קבוצתי', run: onTrainReal, hot: true },
       done: !!(job && job !== 'none' && job.status === 'done'),
     },
@@ -168,6 +228,14 @@ export function MeHub({ onClose, onMyLog, onBoard, credits, streak, dailyN }: Me
   const auth = useStore(authStore);
   const [pool, setPool] = useState(false);
   const [sensors, setSensors] = useState(false);
+  // lifetime XP = all-time credits (never resets — unlike the monthly board)
+  const [xp, setXp] = useState<number | null>(null);
+  useEffect(() => {
+    if (!auth.user) return;
+    sb.from('sc_detections').select('credits').eq('detected_by', auth.user.id).limit(1000)
+      .then(({ data }) => setXp((data || []).reduce((s: number, r: any) => s + (r.credits || 0), 0)));
+  }, [auth.user]);
+  const rank = xp != null ? rankOf(xp) : null;
 
   async function install() {
     const evt = (window as any).__scInstall;
@@ -193,15 +261,35 @@ export function MeHub({ onClose, onMyLog, onBoard, credits, streak, dailyN }: Me
         <span>{auth.user?.email || 'לא מחוברים — הצטרפו למשחק'}</span>
       </header>
       <div className="hub-body">
-        <div className="dw-stats" style={{ margin: '2px 2px 12px' }}>
-          <div className="dw-stat"><b>{credits}</b><span>💎 קרדיטים</span></div>
+        {/* 🎖️ permanent rank — survives the monthly reset */}
+        {rank && (
+          <div className="rank-card hud">
+            <span className="rank-ico">{rank.icon}</span>
+            <div className="rank-txt">
+              <b>{rank.name} · דרגה {rank.level}</b>
+              {rank.next
+                ? <i>עוד {rank.toNext} נק' נצברות לדרגת "{rank.next.name}" — הנקודות נשמרות לתמיד, גם אחרי איפוס החודש</i>
+                : <i>הדרגה הגבוהה ביותר — כל הכבוד! 🏆</i>}
+            </div>
+            <b className="rank-xp">{xp}</b>
+          </div>
+        )}
+        {rank?.next && (
+          <div className="rank-bar"><i style={{ width: Math.min(100, Math.round(((xp! - rank.at) / (rank.next.at - rank.at)) * 100)) + '%' }} /></div>
+        )}
+        <div className="dw-stats" style={{ margin: '10px 2px 12px' }}>
+          <div className="dw-stat"><b>{credits}</b><span>💎 החודש</span></div>
           <div className="dw-stat"><b>{streak}</b><span>🔥 רצף ימים</span></div>
           <div className="dw-stat"><b>{dailyN}/{DAILY_TARGET}</b><span>🎯 אתגר היום</span></div>
         </div>
         {row('🗂️', 'התמונות שלי', 'כל צילום — ומה קרה איתו', onMyLog)}
         {row('🏆', 'מובילי החודש', '3 הראשונים זוכים בפרס מהעירייה', onBoard)}
         {row('🏙️', 'מאגר העיר', 'התמונות של כל הקהילה', () => setPool(true))}
-        {row('🎯', 'האתגר היומי', `${DAILY_TARGET} תפיסות = +${DAILY_BONUS} 💎 כל אחת`, () => {}, dailyN >= DAILY_TARGET ? 'הושלם ✓' : `${dailyN}/${DAILY_TARGET}`)}
+        {row('🎯', 'האתגר היומי', `${DAILY_TARGET} תפיסות = +${DAILY_BONUS} 💎 כל אחת`,
+          () => toast(dailyN >= DAILY_TARGET
+            ? '🎉 השלמתם את האתגר של היום! מחר מתאפס — שמרו על הרצף 🔥'
+            : `עוד ${DAILY_TARGET - dailyN} תפיסות דרך שער ה-AI היום = +${(DAILY_TARGET - dailyN) * DAILY_BONUS} 💎. יאללה למצלמה! 🎥`, true),
+          dailyN >= DAILY_TARGET ? 'הושלם ✓' : `${dailyN}/${DAILY_TARGET}`)}
         {row('📲', 'התקנת האפליקציה', 'למסך הבית — כמו אפליקציה אמיתית', install)}
         {row('🧭', 'בדיקת חיישנים', 'מצפן · GPS — לפני יציאה לשטח', () => setSensors(true))}
         {auth.user

@@ -13,7 +13,9 @@
   --cy:#35E1FF; --cy-dim:rgba(53,225,255,.6); --cy-line:rgba(53,225,255,.35);
   --cy-faint:rgba(53,225,255,.14); --cy-soft:rgba(53,225,255,.12);
   --gold:#FFB627; --gold-line:rgba(255,182,39,.6); --gold-soft:rgba(255,182,39,.12);
-  --ink:#eafbff; --body:#bfe3f0; --muted:rgba(191,227,240,.55); --faint:rgba(191,227,240,.4);
+  /* contrast floor raised (audit): kids outdoors in sunlight — whisper-
+     text at .55 alpha failed them. Hierarchy kept via size, not opacity */
+  --ink:#eafbff; --body:#bfe3f0; --muted:rgba(191,227,240,.72); --faint:rgba(191,227,240,.52);
   --ok:#35E1FF; --warn:#FFB627; --danger:#FF6B6B;
   --tick:rgba(53,225,255,.7);
   --hatch-gold:repeating-linear-gradient(45deg,rgba(255,182,39,.16) 0 6px,transparent 6px 13px);
@@ -214,10 +216,11 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .bb-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
   background:none;border:none;cursor:pointer;color:var(--muted);
   transition:color .15s;position:relative;min-height:44px}
-.bb-tab .bb-ico{font-size:21px;filter:grayscale(.6) opacity(.75);transition:filter .15s,transform .15s}
-.bb-tab .bb-lbl{font-size:9.5px;letter-spacing:.08em}
+.bb-tab .bb-ico{width:23px;height:23px;display:block;transition:transform .15s,filter .15s}
+.bb-tab .bb-ico svg{width:100%;height:100%}
+.bb-tab .bb-lbl{font-size:10.5px;letter-spacing:.08em}
 .bb-tab.on{color:var(--cy)}
-.bb-tab.on .bb-ico{filter:none;transform:translateY(-1px) scale(1.08)}
+.bb-tab.on .bb-ico{transform:translateY(-1px) scale(1.08);filter:drop-shadow(0 0 7px rgba(53,225,255,.7))}
 .bb-tab.on::before{content:'';position:absolute;top:0;right:50%;transform:translateX(50%);
   width:26px;height:2px;background:var(--cy);box-shadow:0 0 10px var(--cy)}
 .bb-tab:active .bb-ico{transform:scale(.9)}
@@ -253,7 +256,7 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .step-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
 .step-ico{font-size:18px}
 .step-top b{font-size:13.5px;flex:1}
-.step-who{font-size:9.5px;color:var(--gold);border:1px solid rgba(255,182,39,.35);
+.step-who{font-size:10.5px;color:var(--gold);border:1px solid rgba(255,182,39,.35);
   padding:2px 6px;white-space:nowrap}
 .step-card p{font-size:11.5px;color:var(--muted);line-height:1.6;margin:0 0 8px}
 .step-card button{font-size:13px;padding:11px;min-height:44px}
@@ -309,6 +312,19 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
   padding:12px;margin-top:6px;transition:background .15s,transform .12s}
 .me-row:active{transform:scale(.985);background:rgba(53,225,255,.09)}
 
+/* 🎖️ permanent rank (lifetime XP — never resets) */
+.rank-card{display:flex;align-items:center;gap:12px;padding:12px;margin:2px 2px 6px;
+  background:linear-gradient(90deg,rgba(255,182,39,.07),rgba(53,225,255,.04))}
+.rank-ico{font-size:30px;filter:drop-shadow(0 0 10px rgba(255,182,39,.6))}
+.rank-txt{flex:1;min-width:0}
+.rank-txt b{display:block;font-size:14px;color:var(--gold)}
+.rank-txt i{display:block;font-style:normal;font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5}
+.rank-xp{font-family:'Space Grotesk',monospace;font-size:22px;color:var(--gold);
+  text-shadow:0 0 12px rgba(255,182,39,.5)}
+.rank-bar{height:4px;margin:0 2px;background:rgba(53,225,255,.1);overflow:hidden}
+.rank-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--cy));
+  box-shadow:0 0 8px rgba(255,182,39,.5);transition:width .6s cubic-bezier(.2,.8,.3,1)}
+
 /* lift game controls above the tab bar on mobile — all offsets derive
    from --bb-h so a bar tweak can never re-clip them */
 .mgame .pt-capture{bottom:calc(var(--bb-h) + 20px)}
@@ -325,7 +341,7 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
   padding:8px 4px;backdrop-filter:blur(3px)}
 .dw-stat b{display:block;font-family:'Space Grotesk',monospace;font-size:20px;color:var(--cy);
   text-shadow:0 0 12px rgba(53,225,255,.55);line-height:1.1}
-.dw-stat span{font-size:9.5px;color:var(--muted);letter-spacing:.06em}
+.dw-stat span{font-size:10.5px;color:var(--muted);letter-spacing:.06em}
 .dw-ico{font-size:22px;filter:drop-shadow(0 0 8px rgba(53,225,255,.45))}
 .dw-txt{flex:1;min-width:0}
 .dw-txt b{display:block;font-size:13.5px;letter-spacing:.02em}
@@ -339,7 +355,7 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .dw-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
 .dw-gimg{position:relative;aspect-ratio:1;overflow:hidden;border:1px solid rgba(53,225,255,.18)}
 .dw-gimg img{width:100%;height:100%;object-fit:cover}
-.dw-gimg span{position:absolute;bottom:0;inset-inline:0;font-size:8.5px;padding:2px 4px;
+.dw-gimg span{position:absolute;bottom:0;inset-inline:0;font-size:10px;padding:2px 4px;
   background:rgba(2,5,9,.75);color:var(--cy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (prefers-reduced-motion: reduce){
   .hub{animation:none}

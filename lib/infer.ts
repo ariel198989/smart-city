@@ -14,7 +14,25 @@ export const modelStore = createStore<{ ready: boolean; name: string; classes: s
 let tfModel: any = null;
 let inputSize = 640;
 
-const loadTF = async () => (await import('@tensorflow/tfjs'));
+// cheap-Android survival: if WebGL is broken/absent, fall back to the
+// CPU backend (slow but alive) instead of dying silently
+let backendReady: Promise<void> | null = null;
+export let inferBackend = '';
+async function ensureBackend(tf: any) {
+  if (!backendReady) {
+    backendReady = (async () => {
+      try {
+        await tf.setBackend('webgl'); await tf.ready();
+      } catch {
+        try { await tf.setBackend('cpu'); await tf.ready(); } catch { /* tf picks default */ }
+      }
+      inferBackend = tf.getBackend();
+    })();
+  }
+  return backendReady;
+}
+
+const loadTF = async () => { const tf = await import('@tensorflow/tfjs'); await ensureBackend(tf); return tf; };
 const loadZip = async () => (await import('jszip')).default;
 
 export function clsOf(i: number) {
@@ -124,13 +142,15 @@ export async function detectOnDataURL(dataURL: string, conf = 0.25) {
 }
 
 function nms(boxes: Box[], iouThr: number): Box[] {
+  // per-class: a strong crosswalk box must not erase an overlapping
+  // pothole — cross-class suppression eats real detections
   boxes.sort((a, b) => b.score - a.score);
   const keep: Box[] = [];
   let rest = boxes;
   while (rest.length) {
     const b = rest.shift()!;
     keep.push(b);
-    rest = rest.filter((o) => iou(b, o) < iouThr);
+    rest = rest.filter((o) => o.cls !== b.cls || iou(b, o) < iouThr);
   }
   return keep;
 }

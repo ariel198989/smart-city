@@ -119,6 +119,21 @@ export async function buildCityPoolZip(onProgress: (d: number, t: number) => voi
     `# Smart City — community training pool\npath: .\ntrain: images/train\nval: images/val\n\n` +
     `nc: ${names.length}\nnames: [${names.map((n) => `'${n}'`).join(', ')}]\n`);
 
+  // GROUP-AWARE 80/20 split: a burst series produces near-duplicate
+  // frames — scattering them across train AND val inflates val metrics
+  // (the model "recognizes" its own training frames). Whole groups
+  // (same shooter + class + 10-minute window) go to one side only.
+  const groupOf = (r: any) =>
+    `${r.detected_by || 'anon'}|${r.class_name}|${Math.floor(new Date(r.created_at).getTime() / 600000)}`;
+  const groups = [...new Set(rows.map(groupOf))];
+  const valGroups = new Set<string>();
+  let valTarget = Math.max(1, Math.round(rows.length * 0.2));
+  for (const g of groups) {
+    if (valTarget <= 0) break;
+    valGroups.add(g);
+    valTarget -= rows.filter((r: any) => groupOf(r) === g).length;
+  }
+
   let ok = 0;
   for (let i = 0; i < rows.length; i++) {
     const r: any = rows[i];
@@ -127,7 +142,7 @@ export async function buildCityPoolZip(onProgress: (d: number, t: number) => voi
       const res = await fetch(publicUrl(r.frame_path));
       if (!res.ok) continue;
       const bytes = new Uint8Array(await res.arrayBuffer());
-      const seg = (i % 5 === 0) ? 'val' : 'train';  // 80/20 split
+      const seg = valGroups.has(groupOf(r)) ? 'val' : 'train';
       const base = `pool_${String(i).padStart(4, '0')}`;
       zip.file(`images/${seg}/${base}.jpg`, bytes);
       const b = r.bbox || {};
