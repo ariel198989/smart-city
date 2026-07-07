@@ -79,6 +79,16 @@ export async function fetchDetections({ status = null as string | null, limit = 
   return data;
 }
 
+// "where did MY photos go" — the resident's personal catch log
+export async function fetchMyCatches(userId: string, limit = 20) {
+  const { data, error } = await sb.from('sc_detections')
+    .select('id, class_name, status, confidence, credits, crop_path, frame_path, created_at')
+    .eq('detected_by', userId)
+    .order('created_at', { ascending: false }).limit(limit);
+  if (error) throw error;
+  return data || [];
+}
+
 export async function insertDetection(row: object) {
   const { data, error } = await sb.from('sc_detections').insert(row).select().single();
   if (error) throw error;

@@ -4,7 +4,8 @@
 // photo-capture gated by the trained model, credits + monthly prizes.
 import { useEffect, useRef, useState } from 'react';
 import { MAP_STYLE, DEFAULT_CITY, CLASS_PALETTE } from '@/lib/config';
-import { insertDetection, uploadBlob } from '@/lib/db';
+import { insertDetection, uploadBlob, fetchMyCatches, publicUrl } from '@/lib/db';
+import { STATUS_META } from '@/lib/status';
 import { modelStore, detectOnDataURL, clsOf, cropDetection } from '@/lib/infer';
 import { authStore } from '@/lib/auth';
 import { useStore, toast, bumpData } from '@/lib/store';
@@ -25,6 +26,20 @@ type CatchResult =
   | { kind: 'angle'; covered: number[]; current: number }
   | { kind: 'feedback_sent'; msg: string }
   | { kind: 'ungated'; credits: number };
+
+// "המסע של התמונה" — answers the #1 confusion: what HAPPENED to my photo?
+function Journey({ steps }: { steps: { icon: string; label: string; done: boolean }[] }) {
+  return (
+    <div className="journey">
+      {steps.map((s, i) => (
+        <span key={i} className={'jy-step' + (s.done ? ' done' : '')}>
+          <i>{s.icon}</i>{s.label}
+          {i < steps.length - 1 && <b className="jy-arr">←</b>}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 // radar ring: which shooting angles are already covered around this hazard
 function AngleRadar({ covered, current }: { covered: number[]; current: number | null }) {
@@ -74,6 +89,14 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
   const [streak, setStreak] = useState(1);
   const [dailyN, setDailyN] = useState(0);
   useEffect(() => { setStreak(touchStreak()); setDailyN(dailyProgress()); }, []);
+  // 🗂️ personal catch log — the sync made visible ("where did my photos go?")
+  const [myLog, setMyLog] = useState(false);
+  const [myRows, setMyRows] = useState<any[] | null>(null);
+  useEffect(() => {
+    if (!myLog || !auth.user) return;
+    setMyRows(null);
+    fetchMyCatches(auth.user.id).then(setMyRows).catch(() => setMyRows([]));
+  }, [myLog, auth.user]);
   const [showBoard, setShowBoard] = useState(false);
   const [board, setBoard] = useState<{ name: string; credits: number; catches: number }[]>([]);
   const [myPool, setMyPool] = useState<number | null>(null);
@@ -386,6 +409,9 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
             title={`אתגר יומי: ${DAILY_TARGET} תפיסות דרך שער ה-AI = +${DAILY_BONUS} קרדיטים כל אחת`}>
             🎯 {dailyN}/{DAILY_TARGET}{dailyN >= DAILY_TARGET ? ' ✓' : ''}
           </div>
+          <div className="pt-chip" style={{ fontSize: 11 }} onClick={() => setMyLog(true)} title="כל התמונות שצילמתם ומה קרה עם כל אחת">
+            🗂️ שלי
+          </div>
           {model.ready ? (
             <select className="pt-mission" value={mission} onChange={(e) => setMission(e.target.value)} title="המשימה">
               {model.classes.map((c) => <option key={c} value={c}>🎯 {c}</option>)}
@@ -422,8 +448,15 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
             {result.newAngle && <div className="ptr-angle-bonus">📐 זווית חדשה! +5 בונוס</div>}
             {!!result.daily && <div className="ptr-angle-bonus">🎯 אתגר יומי! +{result.daily} בונוס</div>}
             <div>נתפס: <b>{result.cls}</b> · {Math.round(result.conf * 100)}%</div>
-            <div className="hint" style={{ fontSize: 11, margin: '4px 0' }}>🏙️ נוסף למאגר האימון העירוני · נשלח לאישור מדריך</div>
+            <Journey steps={[
+              { icon: '📸', label: 'צולם', done: true },
+              { icon: '🤖', label: 'AI אישר', done: true },
+              { icon: '📍', label: 'פין על המפה', done: true },
+              { icon: '🧠', label: 'בפול האימון', done: true },
+            ]} />
+            <div className="hint" style={{ fontSize: 11, margin: '4px 0' }}>רואים אותה עכשיו גם במפה בדסקטופ · המודל הבא של העיר ילמד ממנה</div>
             <button className="ghost" style={{ fontSize: 12 }} onClick={share}>📣 שתפו</button>
+            <button className="ghost" style={{ fontSize: 12 }} onClick={() => setMyLog(true)}>🗂️ התמונות שלי</button>
             <button className="ghost" style={{ fontSize: 12 }} onClick={() => setResult(null)}>המשך</button>
           </div>
         )}
@@ -467,7 +500,15 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
         {result?.kind === 'ungated' && (
           <div className="pt-result pass">
             <div className="ptr-big">+{result.credits} 💎</div>
-            <div>נשמר בלי סינון AI (אין עדיין מודל עירוני) — מדריך יבדוק.</div>
+            <div><b>התמונה נשמרה!</b> (עוד אין מודל עירוני שיבדוק אותה)</div>
+            <Journey steps={[
+              { icon: '📸', label: 'צולם', done: true },
+              { icon: '📍', label: 'פין על המפה', done: true },
+              { icon: '🧑‍🏫', label: 'בדיקת מדריך', done: false },
+              { icon: '🧠', label: 'אימון', done: false },
+            ]} />
+            <div className="hint" style={{ fontSize: 11, margin: '4px 0' }}>הפין כבר על המפה (גם בדסקטופ) · מדריך יאשר ואז התמונה תלמד את המודל</div>
+            <button className="ghost" style={{ fontSize: 12 }} onClick={() => setMyLog(true)}>🗂️ התמונות שלי</button>
             <button className="ghost" style={{ fontSize: 12 }} onClick={() => setResult(null)}>המשך</button>
           </div>
         )}
@@ -558,6 +599,39 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
 
       {showTrainer && <PocketTrainer mission={mission} onClose={() => setShowTrainer(false)} />}
       {showTrainReal && <TrainReal onClose={() => setShowTrainReal(false)} />}
+
+      {/* 🗂️ my catch log — every photo + exactly where it is in the pipeline */}
+      {myLog && (
+        <div className="modal-back" onClick={(e) => { if (e.target === e.currentTarget) setMyLog(false); }}>
+          <div className="card hud det-modal">
+            <button className="ghost mclose" onClick={() => setMyLog(false)}>✕</button>
+            <h3 style={{ fontSize: 14, letterSpacing: '.2em' }}>🗂️ התמונות שלי — ומה קרה עם כל אחת</h3>
+            {!auth.user && <div className="hint">התחברו כדי לראות את היומן שלכם</div>}
+            {auth.user && myRows === null && <div className="hint">טוען…</div>}
+            {auth.user && myRows?.length === 0 && <div className="hint">עוד לא צילמתם — צאו לפטרול! 📸</div>}
+            {myRows?.map((r: any) => (
+              <div key={r.id} className="boxrow" style={{ gap: 10, alignItems: 'center' }}>
+                {(r.crop_path || r.frame_path)
+                  ? <img src={publicUrl(r.crop_path || r.frame_path)} alt="" style={{ width: 46, height: 46, objectFit: 'cover', border: '1px solid var(--cy-line)' }} />
+                  : <span style={{ fontSize: 22 }}>📷</span>}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5 }}><b>{r.class_name}</b>{r.confidence ? ` · ${Math.round(r.confidence * 100)}%` : ''} · {r.credits || 0} 💎</div>
+                  <div className="hint" style={{ fontSize: 11 }}>
+                    {(STATUS_META[r.status]?.label || r.status)}
+                    {r.frame_path && r.status !== 'rejected' ? ' · 🧠 בפול האימון' : ''}
+                  </div>
+                </div>
+                <span className="muted" style={{ marginInlineStart: 'auto', fontSize: 10, whiteSpace: 'nowrap' }}>
+                  {new Date(r.created_at).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+            ))}
+            <div className="hint" style={{ marginTop: 8 }}>
+              אותם נתונים בדיוק מופיעים במפה ובלוח בדסקטופ — הכל מסונכרן חי 🔄
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* monthly leaderboard + city prizes */}
       {showBoard && (
