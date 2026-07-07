@@ -431,7 +431,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
             }
           }}>
             <div className="ptb-inner">
-              <img src="/agent.jpg" alt="" className="ptb-agent-img" />
+              <img src="/art/agent-kid.jpg" alt="" className="ptb-agent-img" />
               <div className="ptb-title">ברוך הבא לפטרול{auth.team ? ', ' + auth.team : ''}!</div>
               {model.ready ? (
                 <>
