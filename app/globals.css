@@ -27,6 +27,8 @@ html{scroll-behavior:smooth}
 body{margin:0;background:linear-gradient(155deg,var(--bg-0) 0%,var(--bg-1) 55%,var(--bg-2) 100%);
   background-attachment:fixed;color:var(--body);
   font-family:"Rubik",-apple-system,"Segoe UI","Heebo",Arial,sans-serif;line-height:1.55;
+  /* taste-pass: data digits align in columns; balanced headline wraps */
+  font-variant-numeric:tabular-nums;
   min-height:100vh;overflow-x:hidden}
 
 /* ---------- animated backdrop: particle field + wireframe skyline ---------- */
@@ -124,6 +126,9 @@ input[type=text],input[type=password]{background:rgba(3,10,21,.6);border:1px sol
 input:focus{outline:none;border-color:rgba(53,225,255,.6);box-shadow:0 0 12px rgba(53,225,255,.15)}
 select{background:rgba(3,10,21,.85);border:1px solid var(--cy-faint);color:var(--ink);border-radius:0;
   font-family:inherit;padding:7px 10px;font-size:13px}
+h1,h2,h3,h4,.ptb-title,.step-top b,.dw-txt b{text-wrap:balance}
+b[class*=stat],.hero-stat b,.series-count b,.dw-stat b,.rank-xp{letter-spacing:-.02em}
+button:active:not(:disabled){transform:scale(.985)}  /* every press answers back */
 button{font-family:inherit;font-size:13px;font-weight:500;letter-spacing:.04em;cursor:pointer;border-radius:0;
   padding:9px 16px;border:1px solid var(--cy-faint);background:rgba(53,225,255,.03);color:var(--body);transition:all .2s}
 button:hover:not(:disabled){border-color:rgba(53,225,255,.55);color:var(--ink);box-shadow:0 0 12px rgba(53,225,255,.18)}
@@ -227,10 +232,13 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 
 :root{--bb-h:calc(58px + env(safe-area-inset-bottom))}  /* bottom bar height, single source */
 
-/* full-screen hub: slides up, sits above the map, below the tab bar */
+/* full-screen hub: slides up, sits above the map, below the tab bar.
+   faint film-grain (SVG turbulence) — flat surfaces read sterile */
 .hub{position:fixed;inset:0;height:calc(100dvh - var(--bb-h));z-index:62;
   background:linear-gradient(180deg,rgba(4,11,22,.985),rgba(2,5,9,.995));
   display:flex;flex-direction:column;animation:hub-up .3s cubic-bezier(.32,.72,0,1)}
+.hub::before{content:'';position:absolute;inset:0;pointer-events:none;opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E")}
 @keyframes hub-up{from{transform:translateY(24px);opacity:0}}
 .hub-head{padding:calc(14px + env(safe-area-inset-top)) 16px 12px;
   border-bottom:1px solid rgba(53,225,255,.18);position:relative;

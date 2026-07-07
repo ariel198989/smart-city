@@ -97,7 +97,10 @@ export async function ensureCityModel(): Promise<{ ok: boolean; name?: string; e
   modelLoadTried = true;
   try {
     const models = await fetchModels();
-    const m = models.find((x: any) => x.zip_path);
+    // supply-chain gate: an ADMIN-approved model wins; before the first
+    // approval exists (cold start) the newest registered one still loads
+    const m = models.find((x: any) => x.zip_path && x.approved)
+      || models.find((x: any) => x.zip_path);
     if (!m) return { ok: false, error: 'אין עדיין מודל רשום — אמנו בסטודיו ולחצו "רשום כמודל הקבוצה"' };
     // model ZIPs are immutable (unique path per version) → cache-first:
     // slow 3G downloads the model ONCE, every later app open is instant
