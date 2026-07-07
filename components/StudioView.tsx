@@ -74,6 +74,7 @@ export default function StudioView() {
   const [cpMsg, setCpMsg] = useState('');
   const [feedback, setFeedback] = useState<any[]>([]);
   const [gallery, setGallery] = useState<any[]>([]);
+  const [poolScope, setPoolScope] = useState<'mine' | 'all'>('mine');  // default: your own data only
   const [shareMsg, setShareMsg] = useState('');
   const [canShare, setCanShare] = useState(false);
   const [modelMsg, setModelMsg] = useState('');
@@ -168,11 +169,21 @@ export default function StudioView() {
 
   // 📱 training that started on a phone continues here:
   // pull mobile shots that have no bbox yet straight into the tagging strip
+  // wipe the local tagging strip (the IndexedDB restore that surfaced a
+  // previous session's photos — e.g. the cucumber/bald-man leftover)
+  function clearStrip() {
+    if (!confirm('לנקות את רצועת התיוג? התמונות שלא יוצאו יימחקו מהמסך הזה.')) return;
+    setImages([]); setActiveId(null); setClasses([]); setSubject('');
+    idbSave({ images: [], classes: [], subject: '' });
+    setProgress('הרצועה נוקתה. 🧹');
+  }
+
   async function loadPhoneShots() {
-    setProgress('שולף צילומים מהטלפונים…');
+    setProgress('שולף את הצילומים שלך…');
     try {
-      const shots = await fetchUntaggedPhoneShots(60);
-      if (!shots.length) { setProgress('אין צילומי טלפון שממתינים לתיוג. 📱 צאו לצלם בפטרול!'); return; }
+      // only MY untagged shots — a student never inherits another's photos
+      const shots = await fetchUntaggedPhoneShots(60, auth.user?.id);
+      if (!shots.length) { setProgress('אין לך צילומים שממתינים לתיוג. 📱 צאו לצלם בפטרול!'); return; }
       let n = 0;
       for (const s of shots) {
         const durl = await urlToDataURL(publicUrl(s.frame_path || s.crop_path), IMG_W);
@@ -435,14 +446,17 @@ export default function StudioView() {
 
   async function loadCityPool() {
     try {
-      setCityPool(await fetchPoolStats());
-      setGallery(await fetchPoolGallery(12));
+      // scope 'mine' shows only THIS user's tagged photos — the classroom
+      // isolation fix (was: everyone saw everyone's data)
+      const owner = poolScope === 'mine' ? auth.user?.id : undefined;
+      setCityPool(await fetchPoolStats(owner));
+      setGallery(await fetchPoolGallery(12, owner));
       if (auth.admin) setFeedback(await fetchFeedback('pending'));
     } catch (e: any) { toast(e.message || e); }
   }
 
   // the pool is everyone's — load it on entry (actions stay admin-only)
-  useEffect(() => { loadCityPool(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [auth.admin]);
+  useEffect(() => { loadCityPool(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [auth.admin, poolScope, auth.user?.id]);
 
   // instructor verdict on a field dispute/negative
   async function judgeFeedback(fb: any, accept: boolean) {
@@ -683,6 +697,9 @@ export default function StudioView() {
             placeholder="קטגוריית מפגע חדשה… למשל: בור" style={{ flex: 1, minWidth: 170, maxWidth: 280 }} />
           <button className="primary" onClick={() => { addClass(newClass); setNewClass(''); }}>הוסף קטגוריה</button>
           <button className="ghost" onClick={toggleNegative}>🚫 רקע — אין מפגע</button>
+          {images.length > 0 && (
+            <button className="ghost" style={{ color: 'var(--gold)', marginInlineStart: 'auto' }} onClick={clearStrip}>🧹 נקה רצועה</button>
+          )}
         </div>
         <div className="classes">
           {classes.length ? classes.map((cl, i) => (
@@ -794,8 +811,12 @@ export default function StudioView() {
         {/* 🏙️ community pool — every resident catch trains the city model.
             Visible to EVERYONE (the loop must be felt); actions admin-only */}
         <div className="poolbox" style={{ borderTopColor: 'rgba(255,182,39,.35)' }}>
-            <div className="row" style={{ marginBottom: 8 }}>
-              <b style={{ fontSize: 14 }}>🏙️ מאגר העיר — אימון קהילתי</b>
+            <div className="row" style={{ marginBottom: 8, flexWrap: 'wrap' }}>
+              <b style={{ fontSize: 14 }}>{poolScope === 'mine' ? '🧒 התמונות שלי' : '🏙️ מאגר העיר — אימון קהילתי'}</b>
+              <div className="scope-toggle">
+                <button className={poolScope === 'mine' ? 'on' : ''} onClick={() => setPoolScope('mine')}>רק שלי</button>
+                <button className={poolScope === 'all' ? 'on' : ''} onClick={() => setPoolScope('all')}>כל הכיתה</button>
+              </div>
               <button className="ghost" style={{ fontSize: 12 }} onClick={loadCityPool}>רענן</button>
               {auth.admin && (
                 <button className="hot" style={{ fontSize: 12.5 }} disabled={!cityPool || !cityPool.total || cpBusy} onClick={exportCityPool}>
@@ -843,7 +864,7 @@ export default function StudioView() {
                     </div>
                   )}
                 </div>
-              ) : <span className="muted" style={{ fontSize: 13 }}>הפול ריק — כשתושבים יצלמו בפטרול, התמונות ייכנסו לכאן. 📱</span>
+              ) : <span className="muted" style={{ fontSize: 13 }}>{poolScope === 'mine' ? 'עוד לא צילמת ותייגת — צאו לפטרול, צלמו סדרה ותייגו. 📱' : 'הפול ריק — כשתושבים יצלמו בפטרול, התמונות ייכנסו לכאן. 📱'}</span>
             ) : <span className="muted" style={{ fontSize: 13 }}>טוען את מאגר העיר…</span>}
             {cpMsg && <div className="hint">{cpMsg}</div>}
 

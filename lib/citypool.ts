@@ -44,25 +44,27 @@ export async function fetchMyTaggedCount(userId: string): Promise<number> {
 // phone shots awaiting desktop tagging: full frames without a bbox
 // (pocket-gated + ungated catches) — "training starts on the phone,
 // continues on the web"
-export async function fetchUntaggedPhoneShots(limit = 100) {
-  const { data, error } = await sb.from('sc_detections')
+export async function fetchUntaggedPhoneShots(limit = 100, ownerId?: string) {
+  // ownerId: a student tags only HER OWN phone shots (classroom isolation).
+  // Without it every user would pull everyone else's untagged photos.
+  let q = sb.from('sc_detections')
     .select('id, class_name, frame_path, crop_path, created_at, team_name')
     .is('bbox', null)
-    .neq('status', 'rejected')
-    .order('created_at', { ascending: false })
-    .limit(limit);
+    .neq('status', 'rejected');
+  if (ownerId) q = q.eq('detected_by', ownerId);
+  const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
   if (error) throw error;
   return (data || []).filter((r: any) => r.frame_path || r.crop_path);
 }
 
 // recent pool photos — make the invisible dataset visible to everyone
-export async function fetchPoolGallery(limit = 12) {
-  const { data, error } = await sb.from('sc_detections')
+export async function fetchPoolGallery(limit = 12, ownerId?: string) {
+  let q = sb.from('sc_detections')
     .select('frame_path, class_name, created_at')
     .not('frame_path', 'is', null)
-    .neq('status', 'rejected')
-    .order('created_at', { ascending: false })
-    .limit(limit);
+    .neq('status', 'rejected');
+  if (ownerId) q = q.eq('detected_by', ownerId);
+  const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
   if (error) throw error;
   return data || [];
 }
@@ -78,8 +80,8 @@ export async function fetchMyContribution(userId: string) {
   return count || 0;
 }
 
-export async function fetchPoolStats(): Promise<PoolStats> {
-  const rows = await fetchPoolRows();
+export async function fetchPoolStats(ownerId?: string): Promise<PoolStats> {
+  const rows = await fetchPoolRows(1500, ownerId);
   const byClass: Record<string, number> = {};
   const people = new Set<string>();
   rows.forEach((r: any) => {

@@ -30,8 +30,16 @@ export default function Home() {
   useEffect(() => {
     initAuth();
     subscribeDetections();   // 🔄 phone catch → desktop map, live
-    // installable PWA
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+    // installable PWA — production only. In dev the SW intercepts
+    // Next's /_next/ chunks and breaks dynamic import() (ERR_FAILED),
+    // so on localhost we actively UNREGISTER any stale worker instead.
+    if ('serviceWorker' in navigator) {
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+      } else {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      }
+    }
     const onPrompt = (e: Event) => {
       e.preventDefault();
       setInstallEvt(e);
