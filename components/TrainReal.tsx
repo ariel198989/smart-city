@@ -102,11 +102,12 @@ export default function TrainReal({ onClose, scope = 'all' }: { onClose: () => v
           {progress && !busy && <div className="hint" style={{ marginTop: 6 }}>{progress}</div>}
         </div>
 
-        {/* step 2 */}
+        {/* step 2 — the only manual action; the notebook does the rest */}
         <div className="tr-step">
-          <b>② הריצו את המחברת (GPU חינם)</b>
+          <b>② הריצו את המחברת (GPU חינם) — וזהו!</b>
           <div className="hint" style={{ margin: '4px 0 6px' }}>
-            נפתחת בטאב חדש → ‏Runtime ← Run all. המחברת תמצא את המשימה שלכם לבד — בלי להעלות כלום. ‏~15 דק'.
+            נפתחת בטאב חדש → ‏Runtime ← Run all. המחברת מוצאת את המשימה שלכם, מתאמנת (~15 דק'),
+            <b> ורושמת את המודל בחזרה לעיר לבד</b> — בלי הורדה, בלי העלאה ידנית. כשהמשימה למטה תהפוך ל-🟢 — סיימתם.
           </div>
           <button className="primary" style={{ width: '100%' }} disabled={!pending}
             onClick={() => window.open(COLAB, '_blank')}>
@@ -114,16 +115,18 @@ export default function TrainReal({ onClose, scope = 'all' }: { onClose: () => v
           </button>
         </div>
 
-        {/* step 3 */}
-        <div className="tr-step">
-          <b>③ העלו את המודל שירד (yolo_tfjs_model.zip)</b>
-          <label className="hot" style={{ display: 'block', textAlign: 'center', cursor: 'pointer', padding: '11px', marginTop: 6, opacity: regBusy ? 0.5 : 1 }}>
-            {regBusy ? '🧠 בודק ומפרסם…' : '📂 בחר את קובץ המודל'}
+        {/* step 3 — fallback only */}
+        <details className="tr-step" style={{ opacity: .9 }}>
+          <summary style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--muted)' }}>
+            המחברת לא הצליחה לרשום לבד? העלו ידנית ⏷
+          </summary>
+          <label className="ghost" style={{ display: 'block', textAlign: 'center', cursor: 'pointer', padding: '11px', marginTop: 8, border: '1px solid var(--cy-faint)', opacity: regBusy ? 0.5 : 1 }}>
+            {regBusy ? '🧠 בודק ומפרסם…' : '📂 בחר את yolo_tfjs_model.zip'}
             <input type="file" accept=".zip" style={{ display: 'none' }} disabled={regBusy}
               onChange={(e) => { if (e.target.files?.[0]) register(e.target.files[0]); e.target.value = ''; }} />
           </label>
-          <div className="hint" style={{ marginTop: 4 }}>המודל נבדק על המכשיר לפני פרסום — ואז כל העיר מקבלת אותו אוטומטית. 🏙️</div>
-        </div>
+          <div className="hint" style={{ marginTop: 4 }}>המודל נבדק לפני פרסום — ואז כל העיר מקבלת אותו אוטומטית. 🏙️</div>
+        </details>
 
         {jobs.length > 0 && (
           <div style={{ marginTop: 10 }}>
