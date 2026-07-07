@@ -15,19 +15,30 @@ export interface PoolStats {
 // SCALE CEILING: the ZIP is assembled in device memory (~200KB/img →
 // 1500 ≈ 300MB). Beyond that the export must move server-side
 // (Edge Function / worker) — newest-first keeps the freshest data in.
-async function fetchPoolRows(limit = 1500) {
+async function fetchPoolRows(limit = 1500, ownerId?: string) {
   // training-grade = full frame + a bbox. NOT confidence>0: human-tagged
   // phone photos carry confidence 0 and are exactly the data we want —
   // that filter silently excluded the whole series→tag flow.
-  const { data, error } = await sb.from('sc_detections')
+  // ownerId: personal training — a student trains on HER photos first,
+  // the class merge comes as its own later step (pedagogy, Ariel).
+  let q = sb.from('sc_detections')
     .select('class_name, frame_path, bbox, confidence, detected_by, created_at')
     .not('frame_path', 'is', null)
     .not('bbox', 'is', null)
-    .neq('status', 'rejected')
-    .order('created_at', { ascending: false })
-    .limit(limit);
+    .neq('status', 'rejected');
+  if (ownerId) q = q.eq('detected_by', ownerId);
+  const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
   if (error) throw error;
   return data || [];
+}
+
+// how many TAGGED (training-grade) photos are mine
+export async function fetchMyTaggedCount(userId: string): Promise<number> {
+  const { count } = await sb.from('sc_detections')
+    .select('id', { count: 'exact', head: true })
+    .eq('detected_by', userId)
+    .not('frame_path', 'is', null).not('bbox', 'is', null).neq('status', 'rejected');
+  return count || 0;
 }
 
 // phone shots awaiting desktop tagging: full frames without a bbox
@@ -104,9 +115,9 @@ async function fetchAcceptedNegatives(limit = 800) {
 }
 
 // build a YOLO dataset ZIP from the whole city pool (full images + labels)
-export async function buildCityPoolZip(onProgress: (d: number, t: number) => void) {
+export async function buildCityPoolZip(onProgress: (d: number, t: number) => void, ownerId?: string) {
   const JSZip = (await import('jszip')).default;
-  const rows = await fetchPoolRows();
+  const rows = await fetchPoolRows(1500, ownerId);
   if (!rows.length) return null;
 
   // class index map

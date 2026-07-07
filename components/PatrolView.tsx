@@ -71,6 +71,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
   const pocket = useStore(pocketStore);
   const [showTrainer, setShowTrainer] = useState(false);
   const [showTrainReal, setShowTrainReal] = useState(false);
+  const [trainScope, setTrainScope] = useState<'mine' | 'all'>('all');
   const [briefed, setBriefed] = useState(true);
   const [briefReady, setBriefReady] = useState(false);
   const [camMode, setCamMode] = useState(false);
@@ -509,13 +510,14 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
       </p>
 
       {showTrainer && <PocketTrainer mission={mission} onClose={() => setShowTrainer(false)} />}
-      {showTrainReal && <TrainReal onClose={() => setShowTrainReal(false)} />}
+      {showTrainReal && <TrainReal scope={trainScope} onClose={() => setShowTrainReal(false)} />}
 
       {/* 📱 mobile hubs — slide up above the map, below the tab bar */}
       {defaultCam && hub === 'train' && (
         <TrainingHub onClose={() => setHub(null)}
           mission={mission || 'מעבר חציה'} onMission={setMission} myUntagged={myUntagged}
-          onTrainer={() => setShowTrainer(true)} onTrainReal={() => setShowTrainReal(true)}
+          onTrainer={() => setShowTrainer(true)}
+          onTrainReal={(s) => { setTrainScope(s); setShowTrainReal(true); }}
           onSeries={() => setSeries(true)} onTagger={() => setTagger(true)} />
       )}
       {series && (
@@ -615,7 +617,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
               </div>
             )}
             <button className="hot" style={{ width: '100%', marginTop: 10 }}
-              onClick={() => { setShowBoard(false); setShowTrainReal(true); }}>
+              onClick={() => { setShowBoard(false); setTrainScope('all'); setShowTrainReal(true); }}>
               🚀 התחל אימון אמיתי — מודל YOLO לעיר
             </button>
             <div className="hint" style={{ marginTop: 10 }}>

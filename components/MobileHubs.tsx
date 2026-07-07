@@ -95,8 +95,8 @@ interface TrainHubProps {
   mission: string;           // the class the group agreed on
   onMission: (m: string) => void;  // the class picker writes back here
   myUntagged: number | null; // my shots waiting for a bbox
-  onTrainer: () => void;     // opens PocketTrainer
-  onTrainReal: () => void;   // opens the cloud-training modal
+  onTrainer: () => void;                       // opens PocketTrainer
+  onTrainReal: (scope: 'mine' | 'all') => void; // personal / class-merged cloud training
   onSeries: () => void;      // opens burst series capture
   onTagger: () => void;      // opens the phone tagger
 }
@@ -146,22 +146,20 @@ export function TrainingHub({ onClose, mission, onMission, myUntagged, onTrainer
       done: tagged > 0 && !myUntagged,
     },
     {
-      icon: '🤝', who: '🤖 אוטומטי', title: 'המאגר המשותף — האיחוד קורה לבד',
-      body: `כל תמונה מתויגת של כל חבר קבוצה נכנסת לאותו מאגר: כרגע ${tagged} תמונות מ-${contributors} תורמים` +
-        (pool && tagged > 0 ? ` · הקטגוריה הדלה: ${weakest} (יעד 50+, ‏150+ = מצוין)` : '') +
-        '. 60 תמונות שלך לבד = מודל חלש; 400 של כולם = מודל אמיתי.',
-      cta: null,
-      done: ready,
+      icon: '🚀', who: pendingJob ? '☁️ הענן — תורו' : '📱 אתם לבד', title: 'אימון אישי אמיתי',
+      body: pendingJob
+        ? `⏳ משימה פתוחה: ${pendingJob.image_count} תמונות · נפתחה ${fmtAgo(pendingJob.created_at)} — הריצו את המחברת (Run all, ‏~15 דק'). הסטטוס מתעדכן כאן חי.`
+        : 'המודל הראשון שלכם — רק על התמונות שאתם תייגתם. עוברים לבד את כל המסלול: דאטה → ענן → מודל. (רמז: הוא ייצא חלש — וזה בדיוק השיעור.)',
+      cta: { label: pendingJob ? '☁️ המשך במחברת' : '🚀 אמנו מודל משלכם', run: () => onTrainReal('mine'), hot: true },
+      done: !!(job && job !== 'none' && job.status === 'done'),
     },
     {
-      icon: '🚀', who: pendingJob ? '☁️ הענן — תורו' : '📱 אתם', title: 'אימון בענן (GPU)',
-      body: pendingJob
-        ? `⏳ משימה פתוחה: ${pendingJob.image_count} תמונות · נפתחה ${fmtAgo(pendingJob.created_at)} — פתחו את המחברת, Run all, ‏~15 דק'. היא מוצאת את המשימה לבד. הסטטוס כאן מתעדכן חי.`
-        : job && job !== 'none' && job.status === 'done'
-          ? `🟢 האימון האחרון הושלם (${job.image_count} תמונות) — המודל נרשם. אפשר לפתוח סבב חדש כשיש עוד דאטה.`
-          : 'כפתור אחד: הטלפון אורז את המאגר המשותף ופותח משימת אימון. ההמשך במחברת (מחשב או טלפון).',
-      cta: { label: pendingJob ? '☁️ המשך במחברת' : '🚀 התחל אימון קבוצתי', run: onTrainReal, hot: true },
-      done: !!(job && job !== 'none' && job.status === 'done'),
+      icon: '🤝', who: '🏫 כל הכיתה', title: 'האיחוד — מודל מהמאגר של כולם',
+      body: `כל תמונה מתויגת של כל חבר קבוצה כבר במאגר אחד: ${tagged} תמונות מ-${contributors} תורמים` +
+        (pool && tagged > 0 ? ` · הקטגוריה הדלה: ${weakest} (יעד 50+, ‏150+ = מצוין)` : '') +
+        '. עכשיו מאמנים פעם אחת על הכל — ומשווים למודל האישי: 60 לבד נגד 400 ביחד.',
+      cta: { label: '🏫 התחל אימון כיתתי מאוחד', run: () => onTrainReal('all'), hot: false },
+      done: ready,
     },
     {
       icon: '📲', who: '🤖 אוטומטי', title: 'המודל אצל כולם',

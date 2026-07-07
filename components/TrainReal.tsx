@@ -8,9 +8,11 @@ import { COLAB } from '@/lib/config';
 import { authStore } from '@/lib/auth';
 import { useStore, toast, bumpData } from '@/lib/store';
 import { startTrainingJob, registerTrainedModel, fetchJobs, type TrainJob } from '@/lib/trainjobs';
-import { fetchPoolStats, type PoolStats } from '@/lib/citypool';
+import { fetchPoolStats, fetchMyTaggedCount, type PoolStats } from '@/lib/citypool';
 
-export default function TrainReal({ onClose }: { onClose: () => void }) {
+// scope 'mine' = a student's personal model on her own photos;
+// 'all' = the class-merged city dataset
+export default function TrainReal({ onClose, scope = 'all' }: { onClose: () => void; scope?: 'mine' | 'all' }) {
   const auth = useStore(authStore);
   const [jobs, setJobs] = useState<TrainJob[]>([]);
   const [progress, setProgress] = useState('');
@@ -18,10 +20,13 @@ export default function TrainReal({ onClose }: { onClose: () => void }) {
   const [regBusy, setRegBusy] = useState(false);
 
   const [pool, setPool] = useState<PoolStats | null>(null);
+  const [mine, setMine] = useState<number | null>(null);
   useEffect(() => {
     fetchJobs().then(setJobs).catch(() => {});
-    fetchPoolStats().then(setPool).catch(() => {});
-  }, []);
+    if (scope === 'all') fetchPoolStats().then(setPool).catch(() => {});
+    else if (auth.user) fetchMyTaggedCount(auth.user.id).then(setMine).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope]);
   const pending = jobs.find((j) => j.status === 'pending');
   // readiness: YOLO starts being useful ~50 imgs/class, strong at 150+
   const weakest = pool?.byClass.length ? Math.min(...pool.byClass.map((c) => c.count)) : 0;
@@ -34,7 +39,7 @@ export default function TrainReal({ onClose }: { onClose: () => void }) {
   async function start() {
     if (!auth.user) { toast('צריך להתחבר', true); authStore.set({ viewer: false }); return; }
     setBusy(true); setProgress('');
-    const r = await startTrainingJob(auth.user, auth.team || null, setProgress);
+    const r = await startTrainingJob(auth.user, auth.team || null, setProgress, scope);
     if ('error' in r) { setProgress('⚠️ ' + r.error); }
     else {
       setProgress('');
@@ -66,17 +71,23 @@ export default function TrainReal({ onClose }: { onClose: () => void }) {
         <div className="phase-head" style={{ marginBottom: 10 }}>
           <span className="ph-n">🚀</span>
           <div>
-            <b>אימון אמיתי — מודל YOLO לעיר</b>
-            <span className="why">3 צעדים: ① פתיחת משימה (הדאטה עולה לענן) ② הרצת המחברת — היא מוצאת את המשימה לבד ③ העלאת המודל שיורד. הכל מהטלפון.</span>
+            <b>{scope === 'mine' ? 'אימון אישי אמיתי — על התמונות שלך' : 'אימון כיתתי — מודל YOLO מהמאגר המשותף'}</b>
+            <span className="why">3 צעדים: ① פתיחת משימה (הדאטה עולה לענן) ② הרצת המחברת — היא מוצאת את המשימה לבד ③ העלאת המודל שיורד. אפשר מהטלפון; המחברת נוחה יותר במחשב.</span>
           </div>
         </div>
 
         {/* step 1 */}
         <div className="tr-step">
           <b>① פתחו משימת אימון</b>
-          {readiness && (
+          {scope === 'all' && readiness && (
             <div className={'ai-verdict ' + (readiness.level === 'great' ? 'pass' : readiness.level === 'low' || readiness.level === 'none' ? 'fail' : '')} style={{ marginTop: 6 }}>
               {readiness.level === 'none' ? '📭 ' : readiness.level === 'low' ? '📈 ' : '✅ '}{readiness.msg}
+            </div>
+          )}
+          {scope === 'mine' && mine !== null && (
+            <div className={'ai-verdict ' + (mine >= 20 ? 'pass' : 'fail')} style={{ marginTop: 6 }}>
+              {mine === 0 ? '📭 אין לך עדיין תמונות מתויגות — צלמו סדרה ותייגו קודם.'
+                : `🧒 המודל יתאמן על ${mine} התמונות שתייגת. ${mine < 20 ? 'זה מעט — הוא יהיה חלש, וזה בדיוק הלקח לקראת האיחוד הכיתתי 🎓' : 'יפה! יש עם מה לעבוד.'}`}
             </div>
           )}
           {pending ? (
