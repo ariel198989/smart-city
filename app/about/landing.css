@@ -98,6 +98,31 @@
 .ld-nums b i{font-style:normal;font-size:.45em;letter-spacing:0}
 .ld-nums span{display:block;margin-top:10px;font-size:12.5px;color:var(--mut);line-height:1.55}
 
+/* the municipal case — asymmetric value grid (money card leads) */
+.ld-value{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-flow:dense;gap:10px;margin-top:40px}
+.ld-val{border:1px solid rgba(53,225,255,.16);background:rgba(53,225,255,.025);padding:26px 24px;
+  transition:transform .5s cubic-bezier(.2,.8,.3,1),border-color .3s}
+.ld-val:hover{transform:translateY(-4px);border-color:rgba(53,225,255,.4)}
+.ld-val.big{grid-column:span 2;border-color:rgba(255,182,39,.35);background:rgba(255,182,39,.04)}
+.ld-val b{display:block;font-size:clamp(1.05rem,1.6vw,1.3rem);line-height:1.35;margin-bottom:10px;
+  text-wrap:balance}
+.ld-val.big b{font-size:clamp(1.25rem,2vw,1.65rem);color:var(--gold)}
+.ld-val p{margin:0;font-size:14px;line-height:1.75;color:var(--mut);text-wrap:pretty}
+.ld-val-banner{margin-top:10px;border:1px solid rgba(53,225,255,.25);padding:26px 28px;
+  background:linear-gradient(90deg,rgba(53,225,255,.06),rgba(2,5,9,.2)),url('/art/podium.jpg') center/cover;
+  position:relative;isolation:isolate}
+.ld-val-banner::before{content:'';position:absolute;inset:0;z-index:-1;background:rgba(2,5,9,.78)}
+.ld-val-banner p{margin:0;font-size:clamp(1rem,1.5vw,1.2rem);line-height:1.75;max-width:70ch}
+.ld-val-banner b{color:var(--cy)}
+@supports (animation-timeline: view()){
+  .ld-val{animation:ld-rise both;animation-timeline:view();animation-range:entry 0% entry 55%}
+}
+@media (prefers-reduced-motion: reduce){.ld-val{animation:none}}
+@media (max-width: 820px){
+  .ld-value{grid-template-columns:1fr}
+  .ld-val.big{grid-column:span 1}
+}
+
 /* municipality chapter */
 .ld-city-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:clamp(24px,4vw,60px);margin-top:36px}
 .ld-city-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
