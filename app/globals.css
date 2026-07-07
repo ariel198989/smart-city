@@ -80,6 +80,8 @@ body{margin:0;background:linear-gradient(155deg,var(--bg-0) 0%,var(--bg-1) 55%,v
   backdrop-filter:blur(10px);margin-bottom:12px}
 .logo-mark{width:26px;height:26px;margin-inline-end:9px;vertical-align:middle;
   filter:drop-shadow(0 0 7px rgba(53,225,255,.5))}
+/* the wordmark is Latin — without ltr isolation RTL flips it to "CITY SMART" */
+.logo,.logo-lg{direction:ltr;unicode-bidi:isolate}
 .logo,.logo-lg{font-family:"Space Grotesk","Rubik",sans-serif;font-weight:700;letter-spacing:.28em;
   font-size:19px;display:flex;align-items:center;gap:12px;color:var(--ink);white-space:nowrap}
 .logo-lg{font-size:26px;justify-content:center}

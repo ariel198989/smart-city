@@ -449,10 +449,13 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
                 <div className="ptb-hint">🎓 המודל האישי שלך פעיל: מזהה <b>{pocket.className}</b> — הוא ישמש כשער עד שיהיה מודל עירוני.</div>
               ) : (
                 <>
-                  <div className="ptb-hint">עוד אין מודל עירוני — אבל אפשר לאמן <b>מודל אישי על הטלפון תוך 30 שניות</b>! 📸</div>
+                  {/* copy rule (Ariel): a button promises an OUTCOME, not a feature */}
+                  <div className="ptb-hint">
+                    רואים מפגע ברחוב? מצלמים — <b>והוא הופך לנעץ על מפת העיר שהעירייה רואה.</b>
+                  </div>
                   <button className="hot" style={{ width: '100%', marginTop: 10 }}
                     onClick={() => setShowTrainer(true)}>
-                    🎓 אמן מודל כיס עכשיו
+                    🎓 קודם משהו מגניב: למדו את הטלפון לזהות בעצמו (30 שניות)
                   </button>
                 </>
               )}
@@ -462,7 +465,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
                 // mobile: the button tap is the user gesture → open the live camera now
                 if (defaultCam) { requestCompassPermission(); setCamMode(true); }
               }}>
-                {defaultCam ? 'יאללה, למצלמה! 🎥' : 'יאללה, לסיור! 🎮'}
+                {defaultCam ? '📸 יציאה לרחוב — מצלמים מפגע ראשון' : '🎮 יציאה לסיור במפה'}
               </button>
             </div>
           </div>
