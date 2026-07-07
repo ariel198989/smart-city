@@ -32,7 +32,11 @@ export default function Home() {
     subscribeDetections();   // 🔄 phone catch → desktop map, live
     // installable PWA
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
-    const onPrompt = (e: Event) => { e.preventDefault(); setInstallEvt(e); };
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallEvt(e);
+      (window as any).__scInstall = e;   // the drawer's install button reads this
+    };
     window.addEventListener('beforeinstallprompt', onPrompt);
     // phone = game-only experience (Pokémon-style patrol, no dashboard)
     const mq = window.matchMedia('(max-width: 767px)');

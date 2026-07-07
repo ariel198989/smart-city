@@ -19,6 +19,7 @@ import PocketTrainer from '@/components/PocketTrainer';
 import TrainReal from '@/components/TrainReal';
 import { startCompass, requestCompassPermission, getHeading, sectorOf, SECTOR_NAMES } from '@/lib/compass';
 import StreetCam from '@/components/StreetCam';
+import SideDrawer from '@/components/SideDrawer';
 
 type CatchResult =
   | { kind: 'pass'; cls: string; conf: number; credits: number; newAngle?: boolean; daily?: number }
@@ -89,6 +90,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
   const [streak, setStreak] = useState(1);
   const [dailyN, setDailyN] = useState(0);
   useEffect(() => { setStreak(touchStreak()); setDailyN(dailyProgress()); }, []);
+  const [drawer, setDrawer] = useState(false);
   // 🗂️ personal catch log — the sync made visible ("where did my photos go?")
   const [myLog, setMyLog] = useState(false);
   const [myRows, setMyRows] = useState<any[] | null>(null);
@@ -409,9 +411,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
             title={`אתגר יומי: ${DAILY_TARGET} תפיסות דרך שער ה-AI = +${DAILY_BONUS} קרדיטים כל אחת`}>
             🎯 {dailyN}/{DAILY_TARGET}{dailyN >= DAILY_TARGET ? ' ✓' : ''}
           </div>
-          <div className="pt-chip" style={{ fontSize: 11 }} onClick={() => setMyLog(true)} title="כל התמונות שצילמתם ומה קרה עם כל אחת">
-            🗂️ שלי
-          </div>
+          <button className="pt-chip pt-menu" onClick={() => setDrawer(true)} title="תפריט">☰</button>
           {model.ready ? (
             <select className="pt-mission" value={mission} onChange={(e) => setMission(e.target.value)} title="המשימה">
               {model.classes.map((c) => <option key={c} value={c}>🎯 {c}</option>)}
@@ -599,6 +599,13 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
 
       {showTrainer && <PocketTrainer mission={mission} onClose={() => setShowTrainer(false)} />}
       {showTrainReal && <TrainReal onClose={() => setShowTrainReal(false)} />}
+
+      {/* ☰ command drawer — training, pool, board, log, account */}
+      <SideDrawer open={drawer} onClose={() => setDrawer(false)}
+        credits={credits} streak={streak} dailyN={dailyN}
+        modelName={model.ready ? model.name : ''} pocketClass={pocket.ready ? pocket.className : ''}
+        onTrainer={() => setShowTrainer(true)} onTrainReal={() => setShowTrainReal(true)}
+        onBoard={openBoard} onMyLog={() => setMyLog(true)} />
 
       {/* 🗂️ my catch log — every photo + exactly where it is in the pipeline */}
       {myLog && (
