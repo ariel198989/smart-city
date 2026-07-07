@@ -16,24 +16,39 @@ export function distM(lat1: number, lng1: number, lat2: number, lng2: number): n
 export interface Spawn { id: string; lat: number; lng: number; kind: string }
 const spawnCache: Record<string, Spawn[]> = {};
 
+// Overpass mirrors — the main .de host often blocks CORS from the
+// browser; kumi/coffee send the CORS header. Try each, give up quietly.
+const OVERPASS_HOSTS = [
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass-api.de/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+];
+
 export async function fetchCrossingSpawns(centerLat: number, centerLng: number, radiusKm = 3): Promise<Spawn[]> {
   const key = `${centerLat.toFixed(2)}_${centerLng.toFixed(2)}`;
   if (spawnCache[key]) return spawnCache[key];
   const d = radiusKm / 111; // ~deg
   const bbox = `${centerLat - d},${centerLng - d},${centerLat + d},${centerLng + d}`;
   const q = `[out:json][timeout:20];node["highway"="crossing"](${bbox});out body 500;`;
-  const res = await fetch('https://overpass-api.de/api/interpreter', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: 'data=' + encodeURIComponent(q),
-  });
-  if (!res.ok) throw new Error('Overpass ' + res.status);
-  const json = await res.json();
-  const spawns: Spawn[] = (json.elements || []).map((e: any) => ({
-    id: 'osm' + e.id, lat: e.lat, lng: e.lon, kind: 'crossing',
-  }));
-  spawnCache[key] = spawns;
-  return spawns;
+  const body = 'data=' + encodeURIComponent(q);
+  for (const host of OVERPASS_HOSTS) {
+    try {
+      const res = await fetch(host, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+      });
+      if (!res.ok) continue;
+      const json = await res.json();
+      const spawns: Spawn[] = (json.elements || []).map((e: any) => ({
+        id: 'osm' + e.id, lat: e.lat, lng: e.lon, kind: 'crossing',
+      }));
+      spawnCache[key] = spawns;   // cache even an empty result — stop retrying
+      return spawns;
+    } catch { /* try the next mirror */ }
+  }
+  spawnCache[key] = [];   // all mirrors down — game plays fine without spawns
+  return [];
 }
 
 // mission class ↔ crossing spawns (Hebrew keyword match)
