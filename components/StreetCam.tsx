@@ -1,14 +1,12 @@
 'use client';
-// 🎥 Street Mode — walk with the camera OPEN, see the street live,
-// and the trained model detects hazards on the live feed in real time.
-// IMU angle guidance: a live AR compass band shows which shooting
-// angles are already covered (red = blocked) and steers you to the
-// open ones (green) BEFORE you shoot. Shutter locks on red.
+// 🎥 Street Mode / Recognize — walk with the camera OPEN and see the
+// trained model's live verdict on whatever it's pointed at. Pure
+// recognition: no "aim at X" instruction, no angle-coverage radar —
+// those live in SeriesCollect (the dedicated training-capture screen).
+// Here you point, it tells you what it sees, live.
 import { useEffect, useRef, useState } from 'react';
 import { modelStore, detectOnDataURL, drawDetections } from '@/lib/infer';
 import { useStore, toast } from '@/lib/store';
-import { getHeading, sectorOf, SECTOR_NAMES, requestCompassPermission } from '@/lib/compass';
-import { fetchCoveredSectors, distM } from '@/lib/patrol';
 
 interface Props {
   mission: string;
@@ -18,30 +16,6 @@ interface Props {
   getPos: () => { lat: number; lng: number } | null;
   blockReason: () => string | null;       // null = ok to shoot; else why not
   onNeedLogin: () => void;
-}
-
-// live AR compass band: 180° field, sectors slide as you rotate.
-// green = open angle (shoot here), red = already covered (blocked).
-function CompassBand({ heading, covered }: { heading: number; covered: number[] }) {
-  const W = 264, FOV = 180;
-  return (
-    <div className="cband" style={{ width: W }}>
-      {Array.from({ length: 8 }, (_, i) => {
-        const d = ((i * 45 - heading + 540) % 360) - 180;      // sector center vs view
-        if (Math.abs(d) > FOV / 2 + 22.5) return null;
-        const w = 45 / FOV * W;
-        const x = W / 2 + (d / FOV) * W - w / 2;
-        return (
-          <div key={i}
-            className={'cb-sec ' + (covered.includes(i) ? 'red' : 'green')}
-            style={{ left: x, width: w }}>
-            {i === 0 ? 'צ' : ''}
-          </div>
-        );
-      })}
-      <div className="cb-needle" />
-    </div>
-  );
 }
 
 export default function StreetCam({ mission, onCapture, onClose, busy, getPos, blockReason, onNeedLogin }: Props) {
@@ -60,54 +34,13 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
   const [liveHits, setLiveHits] = useState(0);
   const [liveLabel, setLiveLabel] = useState<{ name: string; score: number } | null>(null);
   const [scanning, setScanning] = useState(false);
-  const [heading, setHeading] = useState<number | null>(null);
-  const [covered, setCovered] = useState<number[] | null>(null);
-
-  // IMU heading poll (~8Hz — smooth band, cheap renders).
-  // noCompass flips on only after a grace period — sensors need a moment.
-  const [noCompass, setNoCompass] = useState(false);
-  useEffect(() => {
-    const t0 = Date.now();
-    const h = setInterval(() => {
-      const g = getHeading();
-      if (g != null) { setHeading(Math.round(g / 2) * 2); setNoCompass(false); }
-      else if (Date.now() - t0 > 3000) setNoCompass(true);
-    }, 120);
-    return () => clearInterval(h);
-  }, []);
-
-  // angle coverage around me — refetch after moving >20m (checked every 4s)
-  useEffect(() => {
-    let stop = false;
-    let last: { lat: number; lng: number } | null = null;
-    const tick = async () => {
-      if (stop) return;
-      const p = getPos();
-      if (p && mission && (!last || distM(last.lat, last.lng, p.lat, p.lng) > 20)) {
-        last = p;
-        try { setCovered(await fetchCoveredSectors(p.lat, p.lng, mission)); } catch { /* keep old */ }
-      }
-      setTimeout(tick, 4000);
-    };
-    tick();
-    return () => { stop = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mission]);
-
-  const curSector = heading != null ? sectorOf(heading) : null;
-  const zone: 'green' | 'red' | null =
-    heading != null && covered != null && curSector != null
-      ? (covered.includes(curSector) ? 'red' : 'green')
-      : null;
 
   // 🎯 AI auto-capture: the live model already judges every frame — when
-  // it's ≥85% sure it sees the mission target in an open angle, it takes
-  // the shot itself (1.5s cancellable countdown, 15s cooldown).
+  // it's ≥85% sure it sees the mission target, it takes the shot itself
+  // (1.5s cancellable countdown, 15s cooldown).
   const [autoCap, setAutoCap] = useState<string | null>(null);   // pending frame
   const autoLastRef = useRef(0);
   const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const zoneRef = useRef(zone);
-  zoneRef.current = zone;
   const busyRef = useRef(busy);
   busyRef.current = busy;
   function armAutoCapture(durl: string) {
@@ -194,13 +127,11 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
           const top = [...boxes].sort((a: any, b: any) => b.score - a.score)[0];
           setLiveLabel(top ? { name: names[top.cls] || ('קטגוריה ' + (top.cls + 1)), score: top.score } : null);
           if (boxes.length && navigator.vibrate) navigator.vibrate(30);
-          // auto-capture: strong mission hit + open angle + all gates green
-          const strong = boxes
-            .filter((b: any) => !mission || names[b.cls] === mission || String(b.cls) === mission)
-            .sort((a: any, b: any) => b.score - a.score)[0];
-          if (strong && strong.score >= 0.85
-              && zoneRef.current !== 'red' && !busyRef.current
-              && !autoTimerRef.current
+          // auto-capture: any confident detection, gates permitting
+          // (pure recognition — no single "mission" class restriction,
+          // since a model can now hold several trained objects at once)
+          if (top && top.score >= 0.85
+              && !busyRef.current && !autoTimerRef.current
               && Date.now() - autoLastRef.current > 15000
               && !blockReason()) {
             armAutoCapture(durl);
@@ -221,26 +152,20 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
       if (navigator.vibrate) navigator.vibrate([50, 40, 50]);
       return;
     }
-    // IMU gate: pointing into an already-covered angle → blocked before the shot
-    if (zone === 'red') {
-      toast('⛔ הזווית הזאת כבר מכוסה — סובבו עד שהפס יהיה ירוק', true);
-      if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
-      return;
-    }
     const durl = grabFrame(0.85, 900);
     if (!durl) { toast('המצלמה עוד לא מוכנה — חכו רגע'); return; }
     onCapture(durl);
   }
 
   return (
-    <div className={'streetcam' + (zone ? ' zone-' + zone : '')}>
+    <div className="streetcam">
       <video ref={videoRef} playsInline muted />
       <canvas ref={overlayRef} className="sc-overlay" />
 
       <div className="sc-top">
         <button className="ghost sc-close" onClick={onClose}>✕ מפה</button>
         <div className="pt-chip">
-          {model.ready ? (scanning && !liveHits ? '🤖 סורק…' : '🎥 מצב רחוב') : '🎥 בלי AI חי — אין מודל'}
+          {model.ready ? (scanning && !liveHits ? '🤖 סורק…' : '🎥 זיהוי חי') : '🎥 בלי AI חי — אין מודל'}
         </div>
       </div>
 
@@ -251,34 +176,9 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
           <span>{Math.round(liveLabel.score * 100)}%{liveHits > 1 ? ` · ${liveHits} עצמים` : ''}</span>
         </div>
       )}
-      {mission && !liveLabel && <div className="sc-mission">🎯 כוונו על: {mission}</div>}
-
-      {/* IMU angle guidance — ALWAYS visible with an explicit state, so
-          "does the meter even work?" is answerable at a glance:
-          live degrees prove the compass is alive as you rotate */}
-      <div className="sc-angle">
-        {heading != null && covered != null ? (
-          <>
-            <CompassBand heading={heading} covered={covered} />
-            <div className={'sc-zone ' + (zone || '')}
-              onClick={() => toast('🧭 הרדאר זוכר צילומים קודמים ברדיוס 30מ׳: אדום = מהכיוון הזה כבר צילמו כאן, ירוק = זווית שחסרה למודל. אין צילומים באזור → הכל ירוק.', true)}>
-              {zone === 'red'
-                ? `⛔ ${SECTOR_NAMES[curSector!]} (${heading}°) כבר מכוסה — סובבו לירוק`
-                : covered.length
-                  ? `✅ ${SECTOR_NAMES[curSector!]} (${heading}°) — זווית פתוחה, צלמו!`
-                  : `🧭 ${SECTOR_NAMES[curSector!]} (${heading}°) · אין עדיין צילומים ב-30מ' — כל הזוויות פתוחות`}
-            </div>
-          </>
-        ) : heading != null ? (
-          <div className="sc-zone">
-            🧭 מצפן פעיל — {SECTOR_NAMES[curSector!]} ({heading}°) · {gpsReady ? 'טוען מפת כיסוי…' : 'ממתין ל-GPS לכיסוי זוויות'}
-          </div>
-        ) : noCompass ? (
-          <div className="sc-zone red" onClick={() => requestCompassPermission()} style={{ cursor: 'pointer' }}>
-            🧭 אין מצפן — הנחיית הזוויות כבויה (iPhone: הקישו לאישור חיישנים)
-          </div>
-        ) : null}
-      </div>
+      {/* pure recognition: nothing else is prescribed. No target text,
+          no angle radar — you point, it tells you what it sees. */}
+      {!model.ready && <div className="sc-mission">אין מודל עדיין — אמנו אחד ב-🧠 אימון</div>}
 
       {camErr && <div className="sc-err">{camErr}</div>}
 
@@ -297,15 +197,15 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
       </div>
 
       <button
-        className={'pt-capture sc-shutter' + (busy ? ' busy' : '') + (zone === 'red' ? ' locked' : '') + (!gpsReady ? ' waiting' : '')}
+        className={'pt-capture sc-shutter' + (busy ? ' busy' : '') + (!gpsReady ? ' waiting' : '')}
         onClick={shutter} disabled={busy}>
-        {busy ? '🤖' : zone === 'red' ? '⛔' : !gpsReady ? '🛰️' : '📸'}
+        {busy ? '🤖' : !gpsReady ? '🛰️' : '📸'}
       </button>
       <div className="pt-capture-lbl" style={{ zIndex: 12 }}>
         {busy ? 'ה-AI בודק…'
-          : zone === 'red' ? 'זווית חסומה — סובבו'
           : !gpsReady ? 'ממתין ל-GPS — צאו החוצה / אשרו מיקום'
-          : 'צלמו כשהמפגע בפריים'}
+          : liveLabel ? `נראה: ${liveLabel.name} — צלמו לשמור`
+          : 'כוונו על משהו כדי לזהות'}
       </div>
     </div>
   );
