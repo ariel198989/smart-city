@@ -295,6 +295,21 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .series-live{font-size:11.5px;color:#ff6b6b;background:rgba(3,10,21,.72);padding:6px 12px;
   animation:sc-dot 1.2s ease-in-out infinite}
 .sr-ring{filter:drop-shadow(0 0 10px rgba(53,225,255,.35))}
+
+/* 🎯 object switcher in series capture (multi-class training) */
+.series-classes{position:absolute;top:calc(52px + env(safe-area-inset-top));inset-inline:10px;z-index:6;
+  display:flex;gap:6px;overflow-x:auto;padding:4px 2px;scrollbar-width:none}
+.series-classes::-webkit-scrollbar{display:none}
+.sr-cls{flex-shrink:0;padding:8px 13px;font-size:12.5px;min-height:38px;cursor:pointer;
+  color:var(--ink);background:rgba(3,10,21,.78);border:1px solid rgba(53,225,255,.3);backdrop-filter:blur(4px)}
+.sr-cls.on{background:var(--gold);color:#08131f;border-color:var(--gold);font-weight:700;
+  box-shadow:0 0 14px rgba(255,182,39,.5)}
+.series-hud.with-cls{top:calc(140px + env(safe-area-inset-top))}
+
+/* label chips inside the tagger (multi-class) */
+.tg-classes{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;
+  background:rgba(4,11,22,.98);border-bottom:1px solid rgba(53,225,255,.14)}
+.tg-classes::-webkit-scrollbar{display:none}
 .series-thumbs{display:flex;gap:5px}
 .series-thumbs img{width:44px;height:44px;object-fit:cover;border:1px solid rgba(53,225,255,.35)}
 .sc-shutter.rec{border-color:#ff6b6b;box-shadow:0 0 24px rgba(255,80,80,.55)}

@@ -48,12 +48,12 @@ function AngleRing({ cov, cur }: { cov: number[]; cur: number | null }) {
 }
 
 interface Props {
-  className: string;
+  classNames: string[];   // multi-object session: shoot a series PER object
   getPos: () => { lat: number; lng: number } | null;
   onClose: (collected: number) => void;
 }
 
-export default function SeriesCollect({ className, getPos, onClose }: Props) {
+export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
   const auth = useStore(authStore);
   const videoRef = useRef<HTMLVideoElement>(null);
   const grabRef = useRef<HTMLCanvasElement | null>(null);
@@ -65,9 +65,27 @@ export default function SeriesCollect({ className, getPos, onClose }: Props) {
   const runningRef = useRef(false);
   const shotsRef = useRef(0);
 
-  // 🧭 angle coverage — counts per 8 compass sectors
-  const covRef = useRef<number[]>(Array(8).fill(0));
+  // 🎯 which object is being photographed right now
+  const [activeIdx, setActiveIdx] = useState(0);
+  const activeRef = useRef(0);
+  const className = classNames[activeIdx] || classNames[0] || 'מפגע';
+  // per-object shot counts (shown on the switcher chips)
+  const perClassRef = useRef<Record<string, number>>({});
+  const [perClass, setPerClass] = useState<Record<string, number>>({});
+
+  // 🧭 angle coverage — per OBJECT, 8 compass sectors each
+  // (switching object switches to ITS radar; coming back restores it)
+  const covMapRef = useRef<Record<string, number[]>>({});
+  const covFor = (cls: string) => (covMapRef.current[cls] ||= Array(8).fill(0));
+  const covRef = { get current() { return covFor(classNames[activeRef.current] || 'מפגע'); } };
   const [cov, setCov] = useState<number[]>(Array(8).fill(0));
+
+  function switchClass(i: number) {
+    activeRef.current = i;
+    setActiveIdx(i);
+    setCov([...covFor(classNames[i])]);
+    if (navigator.vibrate) navigator.vibrate(15);
+  }
   const [heading, setHeading] = useState<number | null>(null);
   useEffect(() => {
     requestCompassPermission();
@@ -105,13 +123,13 @@ export default function SeriesCollect({ className, getPos, onClose }: Props) {
     return cv.toDataURL('image/jpeg', 0.82);
   }
 
-  async function saveFrame(durl: string, hd: number | null) {
+  async function saveFrame(durl: string, hd: number | null, cls: string) {
     const at = getPos() || { lat: DEFAULT_CITY.center_lat, lng: DEFAULT_CITY.center_lng };
     const stamp = Date.now() + '_' + Math.random().toString(36).slice(2, 7);
     const framePath = `pool/s_${stamp}.jpg`;
     await uploadBlob(framePath, dataURLtoBlob(durl), 'image/jpeg');
     await insertDetection({
-      lat: at.lat, lng: at.lng, class_name: className, confidence: 0,
+      lat: at.lat, lng: at.lng, class_name: cls, confidence: 0,
       frame_path: framePath, detected_by: authStore.get().user!.id,
       team_name: authStore.get().team || null, credits: 0, heading: hd,
     });
@@ -133,9 +151,12 @@ export default function SeriesCollect({ className, getPos, onClose }: Props) {
         const q = await assessFrameQuality(durl);
         if (!q.ok) { setSkipped((n) => n + 1); await new Promise((r) => setTimeout(r, INTERVAL_MS)); continue; }
         try {
-          await saveFrame(durl, hd);
+          const cls = classNames[activeRef.current] || classNames[0] || 'מפגע';
+          await saveFrame(durl, hd, cls);
           shotsRef.current += 1;
           setShots(shotsRef.current);
+          perClassRef.current[cls] = (perClassRef.current[cls] || 0) + 1;
+          setPerClass({ ...perClassRef.current });
           if (sec != null) { covRef.current[sec] += 1; setCov([...covRef.current]); }
           setThumbs((t) => [durl, ...t].slice(0, 6));
           if (navigator.vibrate) navigator.vibrate(20);
@@ -166,7 +187,18 @@ export default function SeriesCollect({ className, getPos, onClose }: Props) {
         <div className="pt-chip">📸 סדרת אימון: {className}</div>
       </div>
 
-      <div className="series-hud">
+      {/* 🎯 object switcher — shoot a series per object, one model learns all */}
+      {classNames.length > 1 && (
+        <div className="series-classes">
+          {classNames.map((c, i) => (
+            <button key={c} className={'sr-cls' + (i === activeIdx ? ' on' : '')} onClick={() => switchClass(i)}>
+              {c}{perClass[c] ? ` · ${perClass[c]}` : ''}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className={'series-hud' + (classNames.length > 1 ? ' with-cls' : '')}>
         <div className="series-count"><b>{shots}</b><span>תמונות</span></div>
 
         {hasCompass ? (

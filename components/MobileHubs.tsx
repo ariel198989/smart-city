@@ -92,8 +92,8 @@ export function BottomBar({ active, onTab }: { active: MobileTab; onTab: (t: Mob
    (merging is automatic) → cloud training → model for everyone ─── */
 interface TrainHubProps {
   onClose: () => void;
-  mission: string;           // the class the group agreed on
-  onMission: (m: string) => void;  // the class picker writes back here
+  classes: string[];                    // the session's object LIST (multi-class)
+  onClasses: (c: string[]) => void;     // add/remove objects
   myUntagged: number | null; // my shots waiting for a bbox
   onTrainer: () => void;                       // opens PocketTrainer
   onTrainReal: (scope: 'mine' | 'all') => void; // personal / class-merged cloud training
@@ -104,7 +104,12 @@ interface TrainHubProps {
 // classroom presets — a student picks in one tap or types her own
 const CLASS_PRESETS = ['מעבר חציה', 'בור בכביש', 'תמרור', 'פסולת', 'ספסל שבור', 'תאורה שבורה', 'גרפיטי'];
 
-export function TrainingHub({ onClose, mission, onMission, myUntagged, onTrainer, onTrainReal, onSeries, onTagger }: TrainHubProps) {
+export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer, onTrainReal, onSeries, onTagger }: TrainHubProps) {
+  const mission = classes[0] || 'מעבר חציה';
+  const addClass = (v: string) => {
+    const c = v.trim();
+    if (c && !classes.includes(c)) onClasses([...classes, c]);
+  };
   const model = useStore(modelStore);
   const pocket = useStore(pocketStore);
   const [pool, setPool] = useState<PoolStats | null>(null);
@@ -132,8 +137,11 @@ export function TrainingHub({ onClose, mission, onMission, myUntagged, onTrainer
   // the group machine, step by step — each tagged with WHOSE turn it is
   const steps = [
     {
-      icon: '📸', who: '📱 אתם', title: `צלמו סדרה של ${mission}`,
-      body: 'המצלמה צולמת לבד כל 1.5 שניות — פשוט מסתובבים סביב האובייקט. 60 תמונות בדקה וחצי, מכל הזוויות.',
+      icon: '📸', who: '📱 אתם',
+      title: classes.length > 1 ? `צלמו סדרה לכל אובייקט (${classes.length})` : `צלמו סדרה של ${mission}`,
+      body: classes.length > 1
+        ? 'המצלמה צולמת לבד כל 1.5 שניות. בוחרים אובייקט בצ\'יפ שלמעלה, מקיפים אותו — ואז עוברים לאובייקט הבא. רדאר זוויות נפרד לכל אחד.'
+        : 'המצלמה צולמת לבד כל 1.5 שניות — פשוט מסתובבים סביב האובייקט. 60 תמונות בדקה וחצי, מכל הזוויות.',
       cta: { label: '📸 צלמו סדרה', run: onSeries, hot: false },
       done: (myUntagged || 0) > 0 || tagged > 0,
     },
@@ -234,18 +242,33 @@ export function TrainingHub({ onClose, mission, onMission, myUntagged, onTrainer
         {/* world 2: the group machine */}
         <div className="world-sep">🏭 אימון קבוצתי אמיתי — המכונה</div>
 
-        {/* step 0 — the class decides WHAT to train, right here on the phone */}
+        {/* step 0 — the session's OBJECT LIST. One model, many objects:
+            e.g. "אצבע אחת", "2 אצבעות"… shoot a series per object. */}
         <div className="world hud pick">
-          <div className="world-head"><b>🎯 מה מאמנים היום?</b></div>
+          <div className="world-head"><b>🎯 מה מאמנים היום?</b><span className="step-who">אפשר כמה אובייקטים</span></div>
+          {classes.length > 0 && (
+            <div className="pick-list">
+              {classes.map((c) => (
+                <span key={c} className="pick-sel">
+                  {c}
+                  <button aria-label={'הסר ' + c} onClick={() => onClasses(classes.filter((x) => x !== c))}>✕</button>
+                </span>
+              ))}
+            </div>
+          )}
           <div className="pick-chips">
-            {CLASS_PRESETS.map((c) => (
-              <button key={c} className={'pick-chip' + (mission === c ? ' on' : '')} onClick={() => onMission(c)}>{c}</button>
+            {CLASS_PRESETS.filter((c) => !classes.includes(c)).map((c) => (
+              <button key={c} className="pick-chip" onClick={() => addClass(c)}>+ {c}</button>
             ))}
           </div>
-          <input className="pick-free" placeholder="או כתבו קטגוריה משלכם…" defaultValue={CLASS_PRESETS.includes(mission) ? '' : mission}
-            onBlur={(e) => { const v = e.target.value.trim(); if (v) onMission(v); }}
+          <input className="pick-free" placeholder='הוסיפו אובייקט משלכם… למשל: "אצבע אחת" (Enter)'
+            onBlur={(e) => { addClass(e.target.value); e.target.value = ''; }}
             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
-          <p style={{ marginTop: 6 }}>כל הסדרה תצולם ותתויג כ<b>"{mission}"</b> — וכל הקבוצה בוחרת את אותה קטגוריה כדי שהמאגר יגדל ביחד.</p>
+          <p style={{ marginTop: 6 }}>
+            {classes.length > 1
+              ? <>מודל <b>אחד</b> ילמד את כל {classes.length} האובייקטים — במסך הצילום מחליפים אובייקט בצ'יפ ומצלמים סדרה לכל אחד.</>
+              : <>כל הסדרה תצולם ותתויג כ<b>"{mission}"</b>. רוצים שהמודל יבדיל בין כמה דברים (למשל אצבע אחת מול שתיים)? הוסיפו עוד אובייקטים.</>}
+          </p>
         </div>
         {steps.map((s, i) => (
           <div key={i} className={'step' + (s.done ? ' done' : '')}>

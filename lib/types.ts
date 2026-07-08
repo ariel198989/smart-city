@@ -31,6 +31,7 @@ export interface CityModel {
   classes: string[];
   zip_path: string;
   approved: boolean;
+  scope: 'team' | 'city';    // team = only that group loads it; city = admin-designated global
   accuracy: number | null;   // mAP50 (0..1) from training
   image_count: number | null;
   honest_val: boolean | null;   // true = trained with a real held-out test set

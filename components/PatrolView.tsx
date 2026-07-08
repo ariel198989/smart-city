@@ -47,6 +47,20 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
   const [dailyN, setDailyN] = useState(0);
   useEffect(() => { setStreak(touchStreak()); setDailyN(dailyProgress()); }, []);
   const [hub, setHub] = useState<'train' | 'me' | null>(null);
+  // 🎯 the training session's class LIST — multi-object training
+  // (e.g. "אצבע אחת", "2 אצבעות"…): one model learns them all.
+  const [trainClasses, setTrainClasses] = useState<string[]>(['מעבר חציה']);
+  useEffect(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('sc_train_classes_v1') || 'null');
+      if (Array.isArray(s) && s.length) { setTrainClasses(s); setMission((m) => m || s[0]); }
+    } catch { /* corrupt */ }
+  }, []);
+  function updateTrainClasses(c: string[]) {
+    setTrainClasses(c);
+    if (c[0]) setMission(c[0]);   // game mission follows the first object
+    try { localStorage.setItem('sc_train_classes_v1', JSON.stringify(c)); } catch { /* private mode */ }
+  }
   // 📸 series capture + 🏷️ phone tagging (the group-training machine)
   const [series, setSeries] = useState(false);
   const [tagger, setTagger] = useState(false);
@@ -515,19 +529,20 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
       {/* 📱 mobile hubs — slide up above the map, below the tab bar */}
       {defaultCam && hub === 'train' && (
         <TrainingHub onClose={() => setHub(null)}
-          mission={mission || 'מעבר חציה'} onMission={setMission} myUntagged={myUntagged}
+          classes={trainClasses} onClasses={updateTrainClasses} myUntagged={myUntagged}
           onTrainer={() => setShowTrainer(true)}
           onTrainReal={(s) => { setTrainScope(s); setShowTrainReal(true); }}
           onSeries={() => setSeries(true)} onTagger={() => setTagger(true)} />
       )}
       {series && (
-        <SeriesCollect className={mission || 'מעבר חציה'} getPos={() => posRef.current}
+        <SeriesCollect classNames={trainClasses.length ? trainClasses : [mission || 'מעבר חציה']}
+          getPos={() => posRef.current}
           onClose={(n) => {
             setSeries(false);
             if (n > 0) { toast(`📸 ${n} תמונות נשמרו — עכשיו מתייגים!`, true); setTagger(true); }
           }} />
       )}
-      {tagger && <MobileTagger onClose={() => { setTagger(false); bumpData(); }} />}
+      {tagger && <MobileTagger classNames={trainClasses} onClose={() => { setTagger(false); bumpData(); }} />}
       {defaultCam && hub === 'me' && (
         <MeHub onClose={() => setHub(null)}
           onMyLog={() => setMyLog(true)} onBoard={openBoard}

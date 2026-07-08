@@ -104,19 +104,28 @@ export async function fetchCoveredSectors(lat: number, lng: number, className: s
   return [...sectors];
 }
 
-// ---- auto-load the latest registered city model ("המטריצה הקיימת") ----
-let modelLoadTried = false;
+// ---- auto-load the group's registered model ("המטריצה הקיימת") ----
+// TEAM-scoped (Ariel): a model belongs to the group that trained it.
+// A fresh user in another group must NOT inherit someone else's model —
+// they play ungated until THEIR group trains one. The only global
+// fallback is a model an admin explicitly marked scope='city'.
+let modelTriedFor: string | null = null;
 export async function ensureCityModel(): Promise<{ ok: boolean; name?: string; error?: string }> {
+  const { authStore } = await import('./auth');   // lazy: avoid import cycles
+  const me = authStore.get();
+  const key = `${me.user?.id || 'anon'}|${me.team || ''}`;
   if (modelStore.get().ready) return { ok: true, name: modelStore.get().name };
-  if (modelLoadTried) return { ok: false, error: 'כבר נוסה' };
-  modelLoadTried = true;
+  if (modelTriedFor === key) return { ok: false, error: 'כבר נוסה' };
+  modelTriedFor = key;
   try {
     const models = await fetchModels();
-    // supply-chain gate: an ADMIN-approved model wins; before the first
-    // approval exists (cold start) the newest registered one still loads
-    const m = models.find((x: any) => x.zip_path && x.approved)
-      || models.find((x: any) => x.zip_path);
-    if (!m) return { ok: false, error: 'אין עדיין מודל רשום — אמנו בסטודיו ולחצו "רשום כמודל הקבוצה"' };
+    const myTeam = me.team || null;
+    const mine = (x: any) =>
+      x.owner === me.user?.id ||
+      (myTeam && (x.team_name === myTeam || x.team_name === 'אישי · ' + myTeam));
+    const m = models.find((x: any) => x.zip_path && x.approved && mine(x))
+      || models.find((x: any) => x.zip_path && x.approved && x.scope === 'city');
+    if (!m) return { ok: false, error: 'לקבוצה שלכם אין עדיין מודל — צלמו, תייגו ואמנו אחד! 🚀' };
     // model ZIPs are immutable (unique path per version) → cache-first:
     // slow 3G downloads the model ONCE, every later app open is instant
     const url = publicUrl(m.zip_path);
@@ -143,7 +152,7 @@ export async function ensureCityModel(): Promise<{ ok: boolean; name?: string; e
     });
     return { ok: true, name: m.name || m.team_name };
   } catch (e: any) {
-    modelLoadTried = false;   // a flaky download shouldn't block retry for the whole session
+    modelTriedFor = null;   // a flaky download shouldn't block retry for the whole session
     return { ok: false, error: e.message || String(e) };
   }
 }

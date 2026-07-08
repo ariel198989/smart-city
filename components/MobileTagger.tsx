@@ -23,12 +23,14 @@ async function fetchMineUntagged(userId: string, limit = 200): Promise<Row[]> {
 
 type Box = { x: number; y: number; w: number; h: number } | null;
 
-export default function MobileTagger({ onClose }: { onClose: () => void }) {
+export default function MobileTagger({ onClose, classNames = [] }: { onClose: () => void; classNames?: string[] }) {
   const auth = useStore(authStore);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [idx, setIdx] = useState(0);
   const [box, setBox] = useState<Box>(null);
   const [lastBox, setLastBox] = useState<Box>(null);   // series photos → similar boxes; reuse
+  // multi-class: the label being drawn (defaults to the photo's own class)
+  const [label, setLabel] = useState<string>('');
   const [busy, setBusy] = useState(false);
   const [doneN, setDoneN] = useState(0);
   const imgWrap = useRef<HTMLDivElement>(null);
@@ -40,6 +42,10 @@ export default function MobileTagger({ onClose }: { onClose: () => void }) {
   }, [auth.user]);
 
   const cur = rows && rows[idx];
+  // label follows each photo's own class by default; the chips can override
+  useEffect(() => { if (cur) setLabel(cur.class_name); }, [cur?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
+  // chips: this photo's class + the session's objects (unique, order kept)
+  const labelChoices = [...new Set([...(cur ? [cur.class_name] : []), ...classNames])];
 
   function relPoint(e: React.TouchEvent | React.MouseEvent): { x: number; y: number } {
     const r = imgWrap.current!.getBoundingClientRect();
@@ -67,7 +73,11 @@ export default function MobileTagger({ onClose }: { onClose: () => void }) {
     if (!cur || !useBox) return;
     setBusy(true);
     try {
-      await updateDetection(cur.id, { bbox: useBox });
+      // bbox + the chosen label (multi-class: the chips may override the
+      // class the photo was shot under)
+      const patch: any = { bbox: useBox };
+      if (label && label !== cur.class_name) patch.class_name = label;
+      await updateDetection(cur.id, patch);
       setLastBox(useBox);
       setDoneN((n) => n + 1);
       if (navigator.vibrate) navigator.vibrate(30);
@@ -120,6 +130,14 @@ export default function MobileTagger({ onClose }: { onClose: () => void }) {
 
         {cur && !finished && (
           <>
+            {/* multi-object: pick which label this photo gets */}
+            {labelChoices.length > 1 && (
+              <div className="tg-classes">
+                {labelChoices.map((c) => (
+                  <button key={c} className={'sr-cls' + (label === c ? ' on' : '')} onClick={() => setLabel(c)}>{c}</button>
+                ))}
+              </div>
+            )}
             <div className="tg-stage" ref={imgWrap}
               onTouchStart={start} onTouchMove={move} onTouchEnd={end}
               onMouseDown={start} onMouseMove={move} onMouseUp={end}>
@@ -129,10 +147,10 @@ export default function MobileTagger({ onClose }: { onClose: () => void }) {
                   left: box.x * 100 + '%', top: box.y * 100 + '%',
                   width: box.w * 100 + '%', height: box.h * 100 + '%',
                 }}>
-                  <span>{cur.class_name}</span>
+                  <span>{label || cur.class_name}</span>
                 </div>
               )}
-              {!box && <div className="tg-guide">✍️ גררו אצבע מסביב ל<b>{cur.class_name}</b></div>}
+              {!box && <div className="tg-guide">✍️ גררו אצבע מסביב ל<b>{label || cur.class_name}</b></div>}
             </div>
             <div className="tg-actions">
               <button className="hot" disabled={!box || busy} onClick={() => save(box)}>
