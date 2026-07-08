@@ -136,15 +136,26 @@ export async function buildCityPoolZip(onProgress: (d: number, t: number) => voi
   // frames — scattering them across train AND val inflates val metrics
   // (the model "recognizes" its own training frames). Whole groups
   // (same shooter + class + 10-minute window) go to one side only.
+  //
+  // STRATIFIED PER CLASS (critical): a naive global split can send ALL of
+  // a class's groups to val, leaving that class with ZERO training images
+  // → the model never learns it (ap50=0, "dead class") and then predicts
+  // garbage with confidence. So we hold out val groups WITHIN each class,
+  // and never take a class's last remaining train group.
   const groupOf = (r: any) =>
     `${r.detected_by || 'anon'}|${r.class_name}|${Math.floor(new Date(r.created_at).getTime() / 600000)}`;
-  const groups = [...new Set(rows.map(groupOf))];
+  const groupsByClass: Record<string, string[]> = {};
+  rows.forEach((r: any) => {
+    const g = groupOf(r);
+    (groupsByClass[r.class_name] ||= []);
+    if (!groupsByClass[r.class_name].includes(g)) groupsByClass[r.class_name].push(g);
+  });
   const valGroups = new Set<string>();
-  let valTarget = Math.max(1, Math.round(rows.length * 0.2));
-  for (const g of groups) {
-    if (valTarget <= 0) break;
-    valGroups.add(g);
-    valTarget -= rows.filter((r: any) => groupOf(r) === g).length;
+  for (const cls of Object.keys(groupsByClass)) {
+    const gs = groupsByClass[cls];
+    if (gs.length <= 1) continue;                       // one group → keep in TRAIN (stay learnable)
+    const take = Math.min(Math.max(1, Math.floor(gs.length * 0.2)), gs.length - 1); // never empty the train side
+    for (let i = 0; i < take; i++) valGroups.add(gs[i]);
   }
 
   let ok = 0;
