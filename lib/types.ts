@@ -32,6 +32,8 @@ export interface CityModel {
   zip_path: string;
   approved: boolean;
   accuracy: number | null;   // mAP50 (0..1) from training
+  image_count: number | null;
+  honest_val: boolean | null;   // true = trained with a real held-out test set
   created_at: string;
 }
 

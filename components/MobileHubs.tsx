@@ -179,28 +179,45 @@ export function TrainingHub({ onClose, mission, onMission, myUntagged, onTrainer
         <span>שני עולמות: להרגיש איך AI לומד · ולבנות מודל אמיתי ביחד</span>
       </header>
       <div className="hub-body">
-        {/* the answer to "where's my model + how good is it" */}
-        <div className={'model-card hud' + (model.ready ? ' live' : '')}>
-          {model.ready ? (
-            <>
-              <div className="mc-top">
-                <span className="mc-dot" />
-                <b>מודל פעיל בעיר</b>
-                <span className="mc-acc">{model.accuracy != null ? `דיוק ${Math.round(model.accuracy * 100)}%` : 'דיוק לא נמדד'}</span>
-              </div>
-              <div className="mc-name">{model.name}</div>
-              <div className="mc-classes">
-                {model.classes.map((c) => <span key={c} className="mc-cls">{c}</span>)}
-              </div>
-              {model.accuracy != null && (
-                <div className="mc-bar"><i style={{ width: Math.round(model.accuracy * 100) + '%' }} /></div>
+        {/* the answer to "where's my model + how good is it" — HONESTLY.
+            weak model → says so + sends you to shoot more, never fakes success */}
+        {(() => {
+          const ic = model.imageCount, hv = model.honestVal;
+          const verdict = !model.ready ? null
+            : ic == null ? { t: 'unknown', msg: 'איכות לא נמדדה (מודל ישן).' }
+            : (ic < 30 || hv === false) ? { t: 'weak', msg: `⚠️ מודל ניסיוני — אומן על ${ic} תמונות בלבד${hv === false ? ', בלי סט בדיקה אמיתי' : ''}. סביר שהוא "שינן" ולא באמת הבין. כדי שיהיה אמין — צלמו עוד תמונות מגוונות (עכברים שונים, רקעים שונים).` }
+            : ic < 100 ? { t: 'basic', msg: `מודל בסיסי — ${ic} תמונות. עובד על מקרים דומים; עוד תמונות מגוונות ישפרו אותו הרבה.` }
+            : { t: 'strong', msg: `מודל חזק — ${ic} תמונות עם סט בדיקה אמיתי. 💪` };
+          const optimistic = model.accuracy != null && hv === false;
+          return (
+            <div className={'model-card hud' + (model.ready ? ' live' : '') + (verdict?.t === 'weak' ? ' warn' : '')}>
+              {model.ready ? (
+                <>
+                  <div className="mc-top">
+                    <span className="mc-dot" />
+                    <b>מודל פעיל בעיר</b>
+                    <span className="mc-acc">{model.accuracy != null ? `דיוק ${Math.round(model.accuracy * 100)}%${optimistic ? '*' : ''}` : 'דיוק לא נמדד'}</span>
+                  </div>
+                  <div className="mc-name">{model.name}</div>
+                  <div className="mc-classes">
+                    {model.classes.map((c) => <span key={c} className="mc-cls">{c}</span>)}
+                  </div>
+                  {model.accuracy != null && (
+                    <div className="mc-bar"><i style={{ width: Math.round(model.accuracy * 100) + '%' }} /></div>
+                  )}
+                  {optimistic && <p className="mc-hint" style={{ opacity: .8 }}>*הציון אופטימי — נמדד על מעט תמונות בלי סט בדיקה נפרד.</p>}
+                  <div className={'mc-verdict ' + (verdict!.t)}>{verdict!.msg}</div>
+                  {(verdict!.t === 'weak' || verdict!.t === 'basic') && (
+                    <button className="hot" style={{ width: '100%', marginTop: 8 }} onClick={onSeries}>📸 צלמו עוד תמונות לשיפור</button>
+                  )}
+                  <p className="mc-hint">בדיקה כנה: צלמו {model.classes[0] || 'את זה'} <b>אחר</b> (צבע/רקע שונה). אם עדיין מזהה — באמת למד. 🎯</p>
+                </>
+              ) : (
+                <div className="mc-empty">🧠 עוד אין מודל פעיל בעיר. אמנו אחד למטה ⬇️ — וכשהאימון נגמר הוא יופיע כאן עם ציון כנה.</div>
               )}
-              <p className="mc-hint">צלמו {model.classes[0] || 'את זה'} במצלמה — הוא אמור לזהות. משהו אחר — ייחסם. 🎯</p>
-            </>
-          ) : (
-            <div className="mc-empty">🧠 עוד אין מודל פעיל בעיר. אמנו אחד למטה ⬇️ (מודל אישי או כיתתי) — וכשהאימון נגמר הוא יופיע כאן.</div>
-          )}
-        </div>
+            </div>
+          );
+        })()}
 
         {/* world 1: the personal feel — deliberately small and separate */}
         <div className="world hud">
