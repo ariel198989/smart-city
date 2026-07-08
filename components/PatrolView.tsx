@@ -26,6 +26,11 @@ import { sb } from '@/lib/db';
 
 import ResultCards, { type CatchResult } from '@/components/ResultCards';
 
+// route the mobile landing exactly ONCE per page load — immune to React
+// strict-mode's dev double-invoke (which otherwise re-reads the flag we
+// just set and falls through to the camera branch)
+let didInitialRoute = false;
+
 export default function PatrolView({ defaultCam = false }: { defaultCam?: boolean }) {
   const auth = useStore(authStore);
   const model = useStore(modelStore);
@@ -151,8 +156,17 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
       let seen = false;
       try { seen = sessionStorage.getItem('sc_briefed') === '1'; } catch { /* private mode */ }
       setBriefed(seen);
-      // 📱 mobile default = street camera (returning user goes straight in)
-      if (seen && defaultCam) setCamMode(true);
+      // 📱 first run ever → land on the TRAINING hub (a fresh group has no
+      // model yet, so the camera would be empty — training is step one).
+      let onboarded = true;
+      try { onboarded = localStorage.getItem('sc_onboarded') === '1'; } catch { /* private mode */ }
+      if (!didInitialRoute) {
+        didInitialRoute = true;
+        if (defaultCam && !onboarded) {
+          setBriefed(true); setHub('train');
+          try { localStorage.setItem('sc_onboarded', '1'); sessionStorage.setItem('sc_briefed', '1'); } catch { /* private mode */ }
+        } else if (seen && defaultCam) setCamMode(true);   // returning user → camera
+      }
     });
 
     return () => {

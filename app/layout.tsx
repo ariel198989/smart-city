@@ -26,7 +26,18 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = { themeColor: '#020509' };
+// width+initialScale are REQUIRED — exporting a viewport object replaces
+// Next's default, so without these the phone renders at ~980px and forces
+// pinch-zoom. maximumScale + userScalable lock it to an app-like fit;
+// viewportFit:cover powers our env(safe-area-inset-*) offsets.
+export const viewport: Viewport = {
+  themeColor: '#020509',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
