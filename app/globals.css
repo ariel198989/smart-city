@@ -307,6 +307,22 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .series-hud{top:calc(96px + env(safe-area-inset-top))!important}
 .series-hud.with-cls{top:calc(150px + env(safe-area-inset-top))!important}
 
+/* 🧑‍🏫 live variety coach — tells the student WHAT to change next */
+.sr-coach{text-align:center;padding:12px 18px;max-width:320px;background:rgba(3,10,21,.82);
+  border:1px solid var(--gold);box-shadow:0 0 22px rgba(255,182,39,.3);backdrop-filter:blur(6px);
+  animation:sc-live-pop .25s ease-out}
+.sr-coach b{display:block;font-size:16.5px;color:var(--gold);line-height:1.45}
+.sr-coach span{display:block;margin-top:4px;font-size:11.5px;color:var(--muted)}
+.sr-coach-bar{height:4px;margin-top:8px;background:rgba(255,255,255,.1);overflow:hidden}
+.sr-coach-bar i{display:block;height:100%;background:var(--gold);transition:width .4s ease-out}
+.sr-coach.done{border-color:#7CFFCB;box-shadow:0 0 22px rgba(124,255,203,.35)}
+.sr-coach.done b{color:#7CFFCB}
+.sr-steps{display:flex;gap:5px;justify-content:center}
+.sr-step{width:30px;height:30px;display:grid;place-items:center;font-size:14px;
+  border:1px solid rgba(255,255,255,.15);background:rgba(3,10,21,.6);opacity:.4}
+.sr-step.cur{opacity:1;border-color:var(--gold);box-shadow:0 0 10px rgba(255,182,39,.4)}
+.sr-step.done{opacity:.85;border-color:rgba(124,255,203,.5);background:rgba(124,255,203,.08)}
+
 /* 🔴 live detection readout — big class name as you point the camera */
 .sc-live-label{position:absolute;top:calc(96px + env(safe-area-inset-top));right:50%;transform:translateX(50%);
   z-index:8;pointer-events:none;text-align:center;padding:10px 22px;white-space:nowrap;

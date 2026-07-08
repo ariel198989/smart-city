@@ -1,51 +1,35 @@
 'use client';
-// 📸 Series Collect — ANGLE-AWARE burst capture for training data.
-// You circle the object; the camera auto-shoots every ~1.5s, BUT it
-// tracks which of 8 compass sectors you've already captured and stops
-// shooting from a covered angle — steering you to the sides you're
-// missing. Angle-diverse data is what makes a YOLO model actually work.
+// 📸 Series Collect — VARIETY-COACHED burst capture for training data.
+// The camera auto-shoots every ~1.5s while a live coach tells you what
+// to change NEXT: move the OBJECT (not the phone), swap background,
+// change distance, lighting, hands. Variety is what makes a YOLO model
+// generalize — and the coach bakes the protocol into the flow, so a
+// student never has to remember it. (The old compass radar asked you to
+// rotate the PHONE through impossible angles — wrong tool for handheld
+// objects. Moving the object/scene is the real diversity.)
 import { useEffect, useRef, useState } from 'react';
 import { insertDetection, uploadBlob } from '@/lib/db';
 import { authStore } from '@/lib/auth';
 import { useStore, toast } from '@/lib/store';
 import { dataURLtoBlob } from '@/lib/util';
-import { getHeading, sectorOf, requestCompassPermission, SECTOR_NAMES } from '@/lib/compass';
 import { DEFAULT_CITY } from '@/lib/config';
 import { assessFrameQuality } from '@/lib/quality';
 
 const INTERVAL_MS = 1500;
-const PER_SECTOR = 8;      // shots per angle before it's "covered" (8×8 ≈ 64)
+const PER_STEP = 8;        // shots per variety step (8 steps × 8 ≈ 64/object)
 
-// top-down radar: which sides of the object are covered (cyan) vs missing (gold dashed)
-function AngleRing({ cov, cur }: { cov: number[]; cur: number | null }) {
-  const wedge = (i: number) => {
-    const a0 = ((i * 45 - 22.5) - 90) * Math.PI / 180;
-    const a1 = ((i * 45 + 22.5) - 90) * Math.PI / 180;
-    const r = 42, cx = 50, cy = 50;
-    return `M${cx},${cy} L${cx + r * Math.cos(a0)},${cy + r * Math.sin(a0)} A${r},${r} 0 0 1 ${cx + r * Math.cos(a1)},${cy + r * Math.sin(a1)} Z`;
-  };
-  return (
-    <svg viewBox="0 0 100 100" className="sr-ring" width="118" height="118">
-      {Array.from({ length: 8 }, (_, i) => {
-        const full = cov[i] >= PER_SECTOR;
-        const partial = cov[i] > 0 && !full;
-        return (
-          <path key={i} d={wedge(i)}
-            fill={full ? 'rgba(53,225,255,.4)' : partial ? 'rgba(53,225,255,.15)' : 'rgba(255,182,39,.06)'}
-            stroke={full ? 'rgba(53,225,255,.8)' : 'rgba(255,182,39,.45)'}
-            strokeWidth=".8" strokeDasharray={full ? '0' : '2 2'} />
-        );
-      })}
-      {cur != null && (
-        <line x1="50" y1="50"
-          x2={50 + 46 * Math.cos((cur - 90) * Math.PI / 180)}
-          y2={50 + 46 * Math.sin((cur - 90) * Math.PI / 180)}
-          stroke="#FFB627" strokeWidth="2.6" strokeLinecap="round" />
-      )}
-      <circle cx="50" cy="50" r="4" fill="#FFB627" />
-    </svg>
-  );
-}
+// the variety protocol, one nudge at a time — ordered so the biggest
+// generalization wins come first (backgrounds > angles > lighting)
+const STEPS = [
+  { icon: '🎯', tip: 'צלמו ישר — האובייקט במרכז הפריים' },
+  { icon: '🔄', tip: 'סובבו/הטו את האובייקט עצמו — לא את הטלפון!' },
+  { icon: '🤏', tip: 'התקרבו — שהאובייקט ימלא חצי מסך' },
+  { icon: '🚶', tip: 'התרחקו צעד-שניים — שייראה קטן יותר' },
+  { icon: '🖼️', tip: 'עברו לרקע אחר — שולחן / קיר / רצפה' },
+  { icon: '↕️', tip: 'הטו את הטלפון מעט מלמעלה, ואחר-כך מעט מלמטה' },
+  { icon: '💡', tip: 'עברו למקום עם תאורה שונה — חלון / צל' },
+  { icon: '🔁', tip: 'סבב חופשי — שלבו הכל: רקע חדש + מרחק + הטיה' },
+];
 
 interface Props {
   classNames: string[];   // multi-object session: shoot a series PER object
@@ -69,29 +53,23 @@ export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
   const [activeIdx, setActiveIdx] = useState(0);
   const activeRef = useRef(0);
   const className = classNames[activeIdx] || classNames[0] || 'מפגע';
-  // per-object shot counts (shown on the switcher chips)
+  // per-object shot counts — they also drive the coach step per object
   const perClassRef = useRef<Record<string, number>>({});
   const [perClass, setPerClass] = useState<Record<string, number>>({});
 
-  // 🧭 angle coverage — per OBJECT, 8 compass sectors each
-  // (switching object switches to ITS radar; coming back restores it)
-  const covMapRef = useRef<Record<string, number[]>>({});
-  const covFor = (cls: string) => (covMapRef.current[cls] ||= Array(8).fill(0));
-  const covRef = { get current() { return covFor(classNames[activeRef.current] || 'מפגע'); } };
-  const [cov, setCov] = useState<number[]>(Array(8).fill(0));
+  // 🧑‍🏫 coach step for the ACTIVE object (advances every PER_STEP shots)
+  const countOf = (cls: string) => perClassRef.current[cls] || 0;
+  const stepIdx = Math.min(Math.floor(countOf(className) / PER_STEP), STEPS.length - 1);
+  const stepDone = countOf(className) - stepIdx * PER_STEP;
+  const allDone = countOf(className) >= STEPS.length * PER_STEP;
+  const lastStepRef = useRef(0);
 
   function switchClass(i: number) {
     activeRef.current = i;
     setActiveIdx(i);
-    setCov([...covFor(classNames[i])]);
+    lastStepRef.current = Math.min(Math.floor(countOf(classNames[i]) / PER_STEP), STEPS.length - 1);
     if (navigator.vibrate) navigator.vibrate(15);
   }
-  const [heading, setHeading] = useState<number | null>(null);
-  useEffect(() => {
-    requestCompassPermission();
-    const h = setInterval(() => setHeading(getHeading()), 150);
-    return () => clearInterval(h);
-  }, []);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -123,7 +101,7 @@ export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
     return cv.toDataURL('image/jpeg', 0.82);
   }
 
-  async function saveFrame(durl: string, hd: number | null, cls: string) {
+  async function saveFrame(durl: string, cls: string) {
     const at = getPos() || { lat: DEFAULT_CITY.center_lat, lng: DEFAULT_CITY.center_lng };
     const stamp = Date.now() + '_' + Math.random().toString(36).slice(2, 7);
     const framePath = `pool/s_${stamp}.jpg`;
@@ -131,35 +109,30 @@ export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
     await insertDetection({
       lat: at.lat, lng: at.lng, class_name: cls, confidence: 0,
       frame_path: framePath, detected_by: authStore.get().user!.id,
-      team_name: authStore.get().team || null, credits: 0, heading: hd,
+      team_name: authStore.get().team || null, credits: 0, heading: null,
     });
   }
 
   async function loop() {
     while (runningRef.current) {
-      const hd = getHeading();
-      const sec = hd != null ? sectorOf(hd) : null;
-      // 🧭 angle gate: if we know the direction and this side is already
-      // covered, DON'T shoot — nudge to a missing angle instead
-      if (sec != null && covRef.current[sec] >= PER_SECTOR) {
-        if (navigator.vibrate) navigator.vibrate(8);
-        await new Promise((r) => setTimeout(r, 350));
-        continue;
-      }
       const durl = grab();
       if (durl) {
         const q = await assessFrameQuality(durl);
         if (!q.ok) { setSkipped((n) => n + 1); await new Promise((r) => setTimeout(r, INTERVAL_MS)); continue; }
         try {
           const cls = classNames[activeRef.current] || classNames[0] || 'מפגע';
-          await saveFrame(durl, hd, cls);
+          await saveFrame(durl, cls);
           shotsRef.current += 1;
           setShots(shotsRef.current);
           perClassRef.current[cls] = (perClassRef.current[cls] || 0) + 1;
           setPerClass({ ...perClassRef.current });
-          if (sec != null) { covRef.current[sec] += 1; setCov([...covRef.current]); }
           setThumbs((t) => [durl, ...t].slice(0, 6));
-          if (navigator.vibrate) navigator.vibrate(20);
+          // step just advanced? big buzz — the coach has a NEW instruction
+          const ns = Math.min(Math.floor((perClassRef.current[cls]) / PER_STEP), STEPS.length - 1);
+          if (ns !== lastStepRef.current && activeRef.current === classNames.indexOf(cls)) {
+            lastStepRef.current = ns;
+            if (navigator.vibrate) navigator.vibrate([60, 50, 60]);
+          } else if (navigator.vibrate) navigator.vibrate(20);
         } catch (e: any) { toast('שמירה: ' + (e.message || e)); }
       }
       await new Promise((r) => setTimeout(r, INTERVAL_MS));
@@ -172,15 +145,8 @@ export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
     else { runningRef.current = true; setRunning(true); loop(); }
   }
 
-  const hasCompass = heading != null;
-  const curSector = heading != null ? sectorOf(heading) : null;
-  const coveredCount = covRef.current.filter((c) => c >= PER_SECTOR).length;
-  const zone: 'green' | 'red' | null =
-    curSector != null ? (covRef.current[curSector] >= PER_SECTOR ? 'red' : 'green') : null;
-  const missing = Array.from({ length: 8 }, (_, i) => i).filter((i) => covRef.current[i] < PER_SECTOR);
-
   return (
-    <div className={'streetcam' + (running && zone ? ' zone-' + zone : '')} style={{ zIndex: 70 }}>
+    <div className="streetcam" style={{ zIndex: 70 }}>
       <video ref={videoRef} playsInline muted />
       <div className="sc-top">
         <button className="ghost sc-close" onClick={() => { runningRef.current = false; onClose(shotsRef.current); }}>✕ סיום</button>
@@ -201,26 +167,29 @@ export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
       <div className={'series-hud' + (classNames.length > 1 ? ' with-cls' : '')}>
         <div className="series-count"><b>{shots}</b><span>תמונות</span></div>
 
-        {hasCompass ? (
-          <>
-            <AngleRing cov={cov} cur={heading} />
-            <div className="series-count" style={{ padding: '6px 18px', borderColor: 'rgba(53,225,255,.4)' }}>
-              <b style={{ fontSize: 22, color: 'var(--cy)' }}>{coveredCount}/8</b><span>זוויות כוסו</span>
-            </div>
-            {running && (
-              <div className={'sc-zone ' + (zone || '')} style={{ maxWidth: 300 }}>
-                {zone === 'red'
-                  ? `⛔ ${SECTOR_NAMES[curSector!]} כבר מכוסה — סובבו לצד שחסר`
-                  : `✅ ${SECTOR_NAMES[curSector!]} — צלמו! חסרים: ${missing.map((i) => SECTOR_NAMES[i]).join(' · ') || 'סיימתם! 🎉'}`}
-              </div>
-            )}
-          </>
-        ) : (
-          running && <div className="series-live">● מצלם כל {INTERVAL_MS / 1000} שנ' — הסתובבו סביב האובייקט (אין מצפן — צלמו מכל הזוויות ידנית)</div>
-        )}
+        {/* 🧑‍🏫 the live variety coach — WHAT to change right now */}
+        <div className={'sr-coach' + (allDone ? ' done' : '')} key={allDone ? 'done' : stepIdx}>
+          {allDone ? (
+            <>
+              <b>🏆 {STEPS.length * PER_STEP}+ תמונות מגוונות ל"{className}"!</b>
+              <span>{classNames.length > 1 ? 'עברו לאובייקט הבא בצ\'יפים למעלה ⬆️' : 'אפשר לסיים — או להמשיך חופשי'}</span>
+            </>
+          ) : (
+            <>
+              <b>{STEPS[stepIdx].icon} {STEPS[stepIdx].tip}</b>
+              <span>שלב {stepIdx + 1}/{STEPS.length} · עוד {PER_STEP - stepDone} תמונות ומתקדמים</span>
+              <div className="sr-coach-bar"><i style={{ width: (stepDone / PER_STEP) * 100 + '%' }} /></div>
+            </>
+          )}
+        </div>
+        <div className="sr-steps">
+          {STEPS.map((s, i) => (
+            <span key={i} className={'sr-step' + (i < stepIdx || allDone ? ' done' : i === stepIdx ? ' cur' : '')}>{s.icon}</span>
+          ))}
+        </div>
 
         {skipped > 0 && <div className="hint" style={{ fontSize: 10.5 }}>🧹 {skipped} פריימים מטושטשים/חשוכים סוננו</div>}
-        {!running && shots === 0 && <div className="hint" style={{ textAlign: 'center' }}>לחצו התחל, ולכו לאט סביב ה{className} — הרדאר יראה אילו זוויות כבר כיסיתם.</div>}
+        {!running && shots === 0 && <div className="hint" style={{ textAlign: 'center' }}>לחצו התחל — המאמן יגיד לכם בדיוק מה לשנות בכל שלב: רקע, מרחק, הטיה.</div>}
         {thumbs.length > 0 && (
           <div className="series-thumbs">{thumbs.map((t, i) => <img key={i} src={t} alt="" />)}</div>
         )}
@@ -232,7 +201,7 @@ export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
         {running ? '⏸' : '▶'}
       </button>
       <div className="pt-capture-lbl" style={{ zIndex: 12 }}>
-        {running ? (zone === 'red' ? 'זווית מכוסה — סובבו' : 'לחצו להפסקה') : shots ? 'המשך · או ✕ לסיום ותיוג' : 'התחל צילום אוטומטי'}
+        {running ? 'לחצו להפסקה' : shots ? 'המשך · או ✕ לסיום ותיוג' : 'התחל צילום אוטומטי'}
       </div>
     </div>
   );
