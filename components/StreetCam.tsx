@@ -58,6 +58,7 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
   const runningRef = useRef(true);
   const [camErr, setCamErr] = useState('');
   const [liveHits, setLiveHits] = useState(0);
+  const [liveLabel, setLiveLabel] = useState<{ name: string; score: number } | null>(null);
   const [scanning, setScanning] = useState(false);
   const [heading, setHeading] = useState<number | null>(null);
   const [covered, setCovered] = useState<number[] | null>(null);
@@ -188,9 +189,12 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
           ov.width = v.clientWidth; ov.height = v.clientHeight;
           drawDetections(ov, boxes);
           setLiveHits(boxes.length);
+          const names = modelStore.get().classes;
+          // 🔴 live readout — the strongest detection's CLASS NAME, big
+          const top = [...boxes].sort((a: any, b: any) => b.score - a.score)[0];
+          setLiveLabel(top ? { name: names[top.cls] || ('קטגוריה ' + (top.cls + 1)), score: top.score } : null);
           if (boxes.length && navigator.vibrate) navigator.vibrate(30);
           // auto-capture: strong mission hit + open angle + all gates green
-          const names = modelStore.get().classes;
           const strong = boxes
             .filter((b: any) => !mission || names[b.cls] === mission || String(b.cls) === mission)
             .sort((a: any, b: any) => b.score - a.score)[0];
@@ -236,12 +240,18 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
       <div className="sc-top">
         <button className="ghost sc-close" onClick={onClose}>✕ מפה</button>
         <div className="pt-chip">
-          {model.ready
-            ? (liveHits ? `🎯 ${liveHits} זיהויים בפריים!` : scanning ? '🤖 סורק את הרחוב…' : '🎥 מצב רחוב')
-            : '🎥 מצב רחוב (בלי AI חי — אין מודל)'}
+          {model.ready ? (scanning && !liveHits ? '🤖 סורק…' : '🎥 מצב רחוב') : '🎥 בלי AI חי — אין מודל'}
         </div>
       </div>
-      {mission && <div className="sc-mission">🎯 המשימה: {mission}</div>}
+
+      {/* 🔴 live class readout — updates as you point (e.g. "אצבע אחת") */}
+      {model.ready && liveLabel && (
+        <div className="sc-live-label">
+          <b>{liveLabel.name}</b>
+          <span>{Math.round(liveLabel.score * 100)}%{liveHits > 1 ? ` · ${liveHits} עצמים` : ''}</span>
+        </div>
+      )}
+      {mission && !liveLabel && <div className="sc-mission">🎯 כוונו על: {mission}</div>}
 
       {/* IMU angle guidance — ALWAYS visible with an explicit state, so
           "does the meter even work?" is answerable at a glance:

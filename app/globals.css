@@ -297,14 +297,24 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .sr-ring{filter:drop-shadow(0 0 10px rgba(53,225,255,.35))}
 
 /* 🎯 object switcher in series capture (multi-class training) */
-.series-classes{position:absolute;top:calc(52px + env(safe-area-inset-top));inset-inline:10px;z-index:6;
+.series-classes{position:absolute;top:calc(62px + env(safe-area-inset-top));inset-inline:10px;z-index:7;
   display:flex;gap:6px;overflow-x:auto;padding:4px 2px;scrollbar-width:none}
 .series-classes::-webkit-scrollbar{display:none}
 .sr-cls{flex-shrink:0;padding:8px 13px;font-size:12.5px;min-height:38px;cursor:pointer;
   color:var(--ink);background:rgba(3,10,21,.78);border:1px solid rgba(53,225,255,.3);backdrop-filter:blur(4px)}
 .sr-cls.on{background:var(--gold);color:#08131f;border-color:var(--gold);font-weight:700;
   box-shadow:0 0 14px rgba(255,182,39,.5)}
-.series-hud.with-cls{top:calc(140px + env(safe-area-inset-top))}
+.series-hud{top:calc(96px + env(safe-area-inset-top))!important}
+.series-hud.with-cls{top:calc(150px + env(safe-area-inset-top))!important}
+
+/* 🔴 live detection readout — big class name as you point the camera */
+.sc-live-label{position:absolute;top:calc(96px + env(safe-area-inset-top));right:50%;transform:translateX(50%);
+  z-index:8;pointer-events:none;text-align:center;padding:10px 22px;white-space:nowrap;
+  background:rgba(3,10,21,.72);border:1px solid var(--gold);backdrop-filter:blur(6px);
+  box-shadow:0 0 26px rgba(255,182,39,.4);animation:sc-live-pop .2s ease-out}
+.sc-live-label b{font-size:22px;color:var(--gold);text-shadow:0 0 14px rgba(255,182,39,.6);display:block}
+.sc-live-label span{font-family:'Space Grotesk',monospace;font-size:12px;color:var(--muted)}
+@keyframes sc-live-pop{from{transform:translateX(50%) scale(.9);opacity:.4}}
 
 /* label chips inside the tagger (multi-class) */
 .tg-classes{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;
@@ -740,9 +750,10 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .streetcam{position:absolute;inset:0;z-index:10;background:#000}
 .streetcam video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .streetcam .sc-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
-.streetcam .sc-top{position:absolute;top:10px;inset-inline:10px;z-index:3;display:flex;gap:8px;align-items:center;justify-content:space-between}
-.streetcam .sc-close{background:rgba(3,10,21,.8);border:1px solid var(--cy-faint);padding:7px 12px;font-size:12px}
-.streetcam .sc-mission{position:absolute;top:52px;right:50%;transform:translateX(50%);z-index:3;
+/* +safe-area so ✕/סיום clears the phone's status-bar clock (the notch) */
+.streetcam .sc-top{position:absolute;top:calc(10px + env(safe-area-inset-top));inset-inline:10px;z-index:8;display:flex;gap:8px;align-items:center;justify-content:space-between}
+.streetcam .sc-close{background:rgba(3,10,21,.8);border:1px solid var(--cy-faint);padding:10px 14px;font-size:13px;min-height:42px}
+.streetcam .sc-mission{position:absolute;top:calc(60px + env(safe-area-inset-top));right:50%;transform:translateX(50%);z-index:3;
   background:rgba(3,10,21,.8);border:1px solid var(--gold-line);color:var(--gold);
   padding:5px 14px;font-size:12px;font-weight:600;white-space:nowrap}
 .streetcam .sc-err{position:absolute;top:45%;inset-inline:24px;z-index:3;text-align:center;
