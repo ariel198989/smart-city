@@ -383,6 +383,22 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .mc-hint{font-size:11.5px;color:var(--muted);margin:6px 0 0;line-height:1.6}
 .mc-empty{font-size:12.5px;color:var(--muted);line-height:1.7}
 .model-card.warn{border-color:rgba(255,107,107,.5);background:linear-gradient(200deg,rgba(255,107,107,.08),rgba(2,5,9,.3))}
+/* 📊 per-class training feedback — the model tells you what to shoot next */
+.mc-stats{margin-top:10px;border:1px solid var(--cy-faint);background:rgba(53,225,255,.03);padding:8px}
+.mc-stats-head{font-size:11px;color:var(--muted);margin-bottom:6px}
+.mc-stat{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:'name bar num' 'fix fix fix';
+  gap:2px 8px;align-items:center;width:100%;padding:6px 8px;margin-bottom:4px;text-align:right;
+  background:rgba(3,10,21,.5);border:1px solid rgba(124,255,203,.25);color:inherit}
+.mc-stat:disabled{opacity:1}
+.mc-stat.weak{border-color:rgba(255,107,107,.45);background:rgba(255,107,107,.06)}
+.mcs-name{grid-area:name;font-size:12.5px;font-weight:700}
+.mcs-bar{grid-area:bar;height:5px;background:rgba(255,255,255,.08);overflow:hidden}
+.mcs-bar i{display:block;height:100%;background:#7CFFCB}
+.mc-stat.weak .mcs-bar i{background:#ff6b6b}
+.mcs-num{grid-area:num;font-family:'Space Grotesk',monospace;font-size:11.5px;color:var(--muted)}
+.mcs-fix{grid-area:fix;font-size:11px;color:#7CFFCB;text-align:right}
+.mc-stat.weak .mcs-fix{color:#ffb3b3;text-decoration:underline}
+
 .mc-verdict{font-size:12px;line-height:1.65;padding:8px 10px;margin-top:8px;border:1px solid}
 .mc-verdict.weak{color:#ffb3b3;border-color:rgba(255,107,107,.4);background:rgba(255,107,107,.07)}
 .mc-verdict.basic{color:var(--gold);border-color:rgba(255,182,39,.35);background:rgba(255,182,39,.05)}

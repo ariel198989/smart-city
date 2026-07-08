@@ -8,11 +8,14 @@ import { normalizeHebrewCount } from './text';
 
 export interface Box { x: number; y: number; w: number; h: number; cls: number; score: number }
 
+export interface ClassStat { name: string; ap50: number | null; boxes: number | null }
+
 export const modelStore = createStore<{
   ready: boolean; name: string; classes: string[];
   accuracy: number | null; imageCount: number | null; honestVal: boolean | null;
+  classStats: ClassStat[] | null;   // per-class training feedback → "shoot more of X"
 }>({
-  ready: false, name: '', classes: [], accuracy: null, imageCount: null, honestVal: null,
+  ready: false, name: '', classes: [], accuracy: null, imageCount: null, honestVal: null, classStats: null,
 });
 
 let tfModel: any = null;

@@ -546,7 +546,15 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
           classes={trainClasses} onClasses={updateTrainClasses} myUntagged={myUntagged}
           onTrainer={() => setShowTrainer(true)}
           onTrainReal={(s) => { setTrainScope(s); setShowTrainReal(true); }}
-          onSeries={() => setSeries(true)} onTagger={() => setTagger(true)} />
+          onSeries={(focusClass) => {
+            // a weak-class tap jumps straight to shooting THAT object:
+            // put it first so SeriesCollect opens with it active
+            if (focusClass) {
+              const rest = trainClasses.filter((c) => c !== focusClass);
+              updateTrainClasses([focusClass, ...rest]);
+            }
+            setSeries(true);
+          }} onTagger={() => setTagger(true)} />
       )}
       {series && (
         <SeriesCollect classNames={trainClasses.length ? trainClasses : [mission || 'מעבר חציה']}

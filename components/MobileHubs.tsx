@@ -98,7 +98,7 @@ interface TrainHubProps {
   myUntagged: number | null; // my shots waiting for a bbox
   onTrainer: () => void;                       // opens PocketTrainer
   onTrainReal: (scope: 'mine' | 'all') => void; // personal / class-merged cloud training
-  onSeries: () => void;      // opens burst series capture
+  onSeries: (focusClass?: string) => void;  // opens burst series capture (optionally jump to one class)
   onTagger: () => void;      // opens the phone tagger
 }
 
@@ -143,7 +143,7 @@ export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer
       body: classes.length > 1
         ? 'המצלמה צולמת לבד כל 1.5 שניות. בוחרים אובייקט בצ\'יפ שלמעלה, מקיפים אותו — ואז עוברים לאובייקט הבא. רדאר זוויות נפרד לכל אחד.'
         : 'המצלמה צולמת לבד כל 1.5 שניות — פשוט מסתובבים סביב האובייקט. 60 תמונות בדקה וחצי, מכל הזוויות.',
-      cta: { label: '📸 צלמו סדרה', run: onSeries, hot: false },
+      cta: { label: '📸 צלמו סדרה', run: () => onSeries(), hot: false },
       done: (myUntagged || 0) > 0 || tagged > 0,
     },
     {
@@ -215,9 +215,34 @@ export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer
                     <div className="mc-bar"><i style={{ width: Math.round(model.accuracy * 100) + '%' }} /></div>
                   )}
                   {optimistic && <p className="mc-hint" style={{ opacity: .8 }}>*הציון אופטימי — נמדד על מעט תמונות בלי סט בדיקה נפרד.</p>}
+
+                  {/* 📊 per-class feedback — the training loop closed: the
+                      model itself tells the class WHICH object to shoot
+                      more of. Tap a weak row → jump straight to shooting
+                      that exact object. */}
+                  {model.classStats && (
+                    <div className="mc-stats">
+                      <div className="mc-stats-head">מה המודל למד — לפי אובייקט:</div>
+                      {model.classStats.map((s) => {
+                        const nm = normalizeHebrewCount(s.name);
+                        const pct = s.ap50 != null ? Math.round(s.ap50 * 100) : null;
+                        const weak = (pct != null && pct < 50) || (s.boxes != null && s.boxes < 20);
+                        return (
+                          <button key={s.name} className={'mc-stat' + (weak ? ' weak' : '')}
+                            onClick={() => weak && onSeries(nm)} disabled={!weak}>
+                            <span className="mcs-name">{nm}</span>
+                            <span className="mcs-bar"><i style={{ width: (pct ?? 4) + '%' }} /></span>
+                            <span className="mcs-num">{pct != null ? pct + '%' : '—'}</span>
+                            <span className="mcs-fix">{weak ? `📸 צלמו עוד (יש ${s.boxes ?? '?'} תמונות)` : '✓ חזק'}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   <div className={'mc-verdict ' + (verdict!.t)}>{verdict!.msg}</div>
                   {(verdict!.t === 'weak' || verdict!.t === 'basic') && (
-                    <button className="hot" style={{ width: '100%', marginTop: 8 }} onClick={onSeries}>📸 צלמו עוד תמונות לשיפור</button>
+                    <button className="hot" style={{ width: '100%', marginTop: 8 }} onClick={() => onSeries()}>📸 צלמו עוד תמונות לשיפור</button>
                   )}
                   <p className="mc-hint">בדיקה כנה: צלמו {model.classes[0] || 'את זה'} <b>אחר</b> (צבע/רקע שונה). אם עדיין מזהה — באמת למד. 🎯</p>
                 </>
