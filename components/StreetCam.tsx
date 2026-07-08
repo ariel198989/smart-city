@@ -32,7 +32,7 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
   const runningRef = useRef(true);
   const [camErr, setCamErr] = useState('');
   const [liveHits, setLiveHits] = useState(0);
-  const [liveLabel, setLiveLabel] = useState<{ name: string; score: number } | null>(null);
+  const [liveLabel, setLiveLabel] = useState<{ name: string; score: number; unsure: boolean } | null>(null);
   const [scanning, setScanning] = useState(false);
 
   // 🎯 AI auto-capture: the live model already judges every frame — when
@@ -117,16 +117,22 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
         setScanning(true);
         const durl = grabFrame(0.7, 640);
         if (durl) {
-          const { boxes } = await detectOnDataURL(durl, 0.35);
+          // low floor (0.15): a weak/small-dataset model's TRUE best guess
+          // often sits under the old 0.35 gate — that gate was silently
+          // hiding it and showing nothing at all. We still draw a solid
+          // box only for confident hits, but the LABEL always shows the
+          // model's actual best guess (honest: flagged "unsure" if weak).
+          const { boxes, top } = await detectOnDataURL(durl, 0.15);
           if (!runningRef.current) break;
           ov.width = v.clientWidth; ov.height = v.clientHeight;
-          drawDetections(ov, boxes);
-          setLiveHits(boxes.length);
+          const confident = boxes.filter((b) => b.score >= 0.35);
+          drawDetections(ov, confident);
+          setLiveHits(confident.length);
           const names = modelStore.get().classes;
-          // 🔴 live readout — the strongest detection's CLASS NAME, big
-          const top = [...boxes].sort((a: any, b: any) => b.score - a.score)[0];
-          setLiveLabel(top ? { name: names[top.cls] || ('קטגוריה ' + (top.cls + 1)), score: top.score } : null);
-          if (boxes.length && navigator.vibrate) navigator.vibrate(30);
+          setLiveLabel(top
+            ? { name: names[top.cls] || ('קטגוריה ' + (top.cls + 1)), score: top.score, unsure: top.score < 0.35 }
+            : null);
+          if (confident.length && navigator.vibrate) navigator.vibrate(30);
           // auto-capture: any confident detection, gates permitting
           // (pure recognition — no single "mission" class restriction,
           // since a model can now hold several trained objects at once)
@@ -169,10 +175,11 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
         </div>
       </div>
 
-      {/* 🔴 live class readout — updates as you point (e.g. "אצבע אחת") */}
+      {/* 🔴 live class readout — updates as you point (e.g. "אצבע אחת").
+          honest about weak guesses instead of showing nothing at all. */}
       {model.ready && liveLabel && (
-        <div className="sc-live-label">
-          <b>{liveLabel.name}</b>
+        <div className={'sc-live-label' + (liveLabel.unsure ? ' unsure' : '')}>
+          <b>{liveLabel.unsure ? `אולי ${liveLabel.name}?` : liveLabel.name}</b>
           <span>{Math.round(liveLabel.score * 100)}%{liveHits > 1 ? ` · ${liveHits} עצמים` : ''}</span>
         </div>
       )}
@@ -204,7 +211,7 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
       <div className="pt-capture-lbl" style={{ zIndex: 12 }}>
         {busy ? 'ה-AI בודק…'
           : !gpsReady ? 'ממתין ל-GPS — צאו החוצה / אשרו מיקום'
-          : liveLabel ? `נראה: ${liveLabel.name} — צלמו לשמור`
+          : liveLabel ? (liveLabel.unsure ? `לא בטוח (${liveLabel.name}?) — התקרבו או שנו זווית` : `נראה: ${liveLabel.name} — צלמו לשמור`)
           : 'כוונו על משהו כדי לזהות'}
       </div>
     </div>

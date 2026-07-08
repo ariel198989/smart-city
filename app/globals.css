@@ -315,6 +315,10 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .sc-live-label b{font-size:22px;color:var(--gold);text-shadow:0 0 14px rgba(255,182,39,.6);display:block}
 .sc-live-label span{font-family:'Space Grotesk',monospace;font-size:12px;color:var(--muted)}
 @keyframes sc-live-pop{from{transform:translateX(50%) scale(.9);opacity:.4}}
+/* unsure guess: honest low-confidence framing (cyan, dashed) instead of
+   the confident gold treatment — never hide the model's real behavior */
+.sc-live-label.unsure{border:1px dashed var(--cy);box-shadow:0 0 18px rgba(53,225,255,.3)}
+.sc-live-label.unsure b{font-size:18px;color:var(--cy);text-shadow:0 0 10px rgba(53,225,255,.5)}
 
 /* label chips inside the tagger (multi-class) */
 .tg-classes{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;
