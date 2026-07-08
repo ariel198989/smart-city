@@ -31,6 +31,7 @@ export interface CityModel {
   classes: string[];
   zip_path: string;
   approved: boolean;
+  accuracy: number | null;   // mAP50 (0..1) from training
   created_at: string;
 }
 

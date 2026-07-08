@@ -294,6 +294,7 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .series-count span{font-size:10px;color:var(--muted);letter-spacing:.2em}
 .series-live{font-size:11.5px;color:#ff6b6b;background:rgba(3,10,21,.72);padding:6px 12px;
   animation:sc-dot 1.2s ease-in-out infinite}
+.sr-ring{filter:drop-shadow(0 0 10px rgba(53,225,255,.35))}
 .series-thumbs{display:flex;gap:5px}
 .series-thumbs img{width:44px;height:44px;object-fit:cover;border:1px solid rgba(53,225,255,.35)}
 .sc-shutter.rec{border-color:#ff6b6b;box-shadow:0 0 24px rgba(255,80,80,.55)}
@@ -318,6 +319,23 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .tg-actions .hot,.tg-actions .primary{grid-column:1 / -1}
 .tg-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:8px;padding:22px;text-align:center}
+
+/* 🧠 active-model card (training hub top) — "where's my model + score" */
+.model-card{padding:13px;margin-bottom:12px;background:rgba(53,225,255,.04)}
+.model-card.live{border-color:rgba(255,182,39,.4);background:linear-gradient(200deg,rgba(255,182,39,.06),rgba(53,225,255,.03))}
+.mc-top{display:flex;align-items:center;gap:8px;font-size:13px}
+.mc-top b{flex:1}
+.mc-dot{width:9px;height:9px;border-radius:50%;background:#7CFFCB;box-shadow:0 0 8px #7CFFCB;
+  animation:sc-dot 1.6s ease-in-out infinite}
+.mc-acc{font-family:'Space Grotesk',monospace;font-size:12.5px;color:var(--gold);font-weight:700}
+.mc-name{font-size:15px;font-weight:700;margin:6px 0 6px;color:var(--ink)}
+.mc-classes{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.mc-cls{font-size:12px;padding:4px 10px;border:1px solid var(--cy-line);background:rgba(53,225,255,.06);color:var(--cy)}
+.mc-bar{height:6px;background:rgba(53,225,255,.12);overflow:hidden;margin-bottom:8px}
+.mc-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--cy));
+  box-shadow:0 0 8px rgba(255,182,39,.5);transition:width .6s cubic-bezier(.2,.8,.3,1)}
+.mc-hint{font-size:11.5px;color:var(--muted);margin:0;line-height:1.6}
+.mc-empty{font-size:12.5px;color:var(--muted);line-height:1.7}
 
 /* scope toggle (studio pool: mine / whole class) */
 .scope-toggle{display:inline-flex;border:1px solid rgba(53,225,255,.3)}

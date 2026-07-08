@@ -7,8 +7,8 @@ import { createStore } from './store';
 
 export interface Box { x: number; y: number; w: number; h: number; cls: number; score: number }
 
-export const modelStore = createStore<{ ready: boolean; name: string; classes: string[] }>({
-  ready: false, name: '', classes: [],
+export const modelStore = createStore<{ ready: boolean; name: string; classes: string[]; accuracy: number | null }>({
+  ready: false, name: '', classes: [], accuracy: null,
 });
 
 let tfModel: any = null;

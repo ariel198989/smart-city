@@ -135,8 +135,10 @@ export async function ensureCityModel(): Promise<{ ok: boolean; name?: string; e
       } catch { /* cache full — model still loads */ }
     }
     await loadModelFromZip(await res.blob(), m.name || m.team_name, Array.isArray(m.classes) ? m.classes : []);
+    modelStore.set({ accuracy: (m as any).accuracy ?? null });   // show "how good" in the app
     return { ok: true, name: m.name || m.team_name };
   } catch (e: any) {
+    modelLoadTried = false;   // a flaky download shouldn't block retry for the whole session
     return { ok: false, error: e.message || String(e) };
   }
 }
