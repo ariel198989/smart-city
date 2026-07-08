@@ -35,6 +35,40 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
   const [liveLabel, setLiveLabel] = useState<{ name: string; score: number; unsure: boolean } | null>(null);
   const [scanning, setScanning] = useState(false);
 
+  // 🧮 temporal smoothing: single frames are noisy (a weak model flickers
+  // its top guess every tick). We show the MAJORITY class of the last 6
+  // frames instead — and if nothing clears a real floor (0.2) we honestly
+  // show "not recognizing" rather than a sticky random guess at 10%.
+  const histRef = useRef<{ cls: number; score: number }[]>([]);
+  function smoothedTop(): { cls: number; score: number } | null {
+    const good = histRef.current.filter((h) => h.score >= 0.2);
+    if (good.length < 3) return null;               // not enough signal yet
+    const byCls: Record<number, { n: number; sum: number }> = {};
+    good.forEach((h) => {
+      byCls[h.cls] = byCls[h.cls] || { n: 0, sum: 0 };
+      byCls[h.cls].n++; byCls[h.cls].sum += h.score;
+    });
+    const bestCls = Object.entries(byCls).sort((a, b) => b[1].n - a[1].n || b[1].sum - a[1].sum)[0];
+    return { cls: +bestCls[0], score: bestCls[1].sum / bestCls[1].n };
+  }
+
+  // 🎉 wow moment: a strong hit gets a big center flash, not just the
+  // small top chip — the "look, it actually recognized it!" demo beat.
+  const [wow, setWow] = useState<{ name: string; score: number; k: number } | null>(null);
+  const wowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wowLastNameRef = useRef<{ name: string; at: number } | null>(null);
+  function fireWow(name: string, score: number) {
+    // re-trigger the pop even on the same class (new key), but don't
+    // spam it every ~450ms loop tick while the hand stays still
+    const last = wowLastNameRef.current;
+    if (last && last.name === name && Date.now() - last.at < 1800) return;
+    wowLastNameRef.current = { name, at: Date.now() };
+    setWow({ name, score, k: Date.now() });
+    if (wowTimerRef.current) clearTimeout(wowTimerRef.current);
+    wowTimerRef.current = setTimeout(() => setWow(null), 1400);
+  }
+  useEffect(() => () => { if (wowTimerRef.current) clearTimeout(wowTimerRef.current); }, []);
+
   // 🎯 AI auto-capture: the live model already judges every frame — when
   // it's ≥85% sure it sees the mission target, it takes the shot itself
   // (1.5s cancellable countdown, 15s cooldown).
@@ -129,10 +163,22 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
           drawDetections(ov, confident);
           setLiveHits(confident.length);
           const names = modelStore.get().classes;
-          setLiveLabel(top
-            ? { name: names[top.cls] || ('קטגוריה ' + (top.cls + 1)), score: top.score, unsure: top.score < 0.35 }
+          // feed the smoothing window, then display the MAJORITY of the
+          // last 6 frames — not the raw per-frame guess (which flickers,
+          // or worse, sits frozen on class-prior noise at ~10%).
+          if (top) {
+            histRef.current.push({ cls: top.cls, score: top.score });
+            if (histRef.current.length > 6) histRef.current.shift();
+          }
+          const sm = smoothedTop();
+          setLiveLabel(sm
+            ? { name: names[sm.cls] || ('קטגוריה ' + (sm.cls + 1)), score: sm.score, unsure: sm.score < 0.35 }
             : null);
           if (confident.length && navigator.vibrate) navigator.vibrate(30);
+          if (sm && sm.score >= 0.55) {
+            fireWow(names[sm.cls] || ('קטגוריה ' + (sm.cls + 1)), sm.score);
+            if (navigator.vibrate) navigator.vibrate([25, 40, 60]);
+          }
           // auto-capture: any confident detection, gates permitting
           // (pure recognition — no single "mission" class restriction,
           // since a model can now hold several trained objects at once)
@@ -174,6 +220,14 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
           {model.ready ? (scanning && !liveHits ? '🤖 סורק…' : '🎥 זיהוי חי') : '🎥 בלי AI חי — אין מודל'}
         </div>
       </div>
+
+      {/* 🎉 the wow moment — big center flash on a strong hit */}
+      {wow && (
+        <div className="sc-wow" key={wow.k}>
+          <b>{wow.name}</b>
+          <span>{Math.round(wow.score * 100)}% בטוח</span>
+        </div>
+      )}
 
       {/* 🔴 live class readout — updates as you point (e.g. "אצבע אחת").
           honest about weak guesses instead of showing nothing at all. */}

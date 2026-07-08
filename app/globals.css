@@ -320,6 +320,23 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .sc-live-label.unsure{border:1px dashed var(--cy);box-shadow:0 0 18px rgba(53,225,255,.3)}
 .sc-live-label.unsure b{font-size:18px;color:var(--cy);text-shadow:0 0 10px rgba(53,225,255,.5)}
 
+/* 🎉 the demo wow moment — a strong hit flashes big and center, then
+   fades. Distinct from the small persistent top chip on purpose: this
+   is the beat an audience actually notices. */
+.sc-wow{position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);z-index:9;
+  pointer-events:none;text-align:center;animation:sc-wow-pop .5s cubic-bezier(.2,1.4,.4,1) forwards,
+  sc-wow-fade .5s ease-in 900ms forwards}
+.sc-wow b{display:block;font-size:52px;font-weight:800;color:var(--gold);
+  text-shadow:0 0 24px rgba(255,182,39,.85),0 0 60px rgba(255,182,39,.4);
+  filter:drop-shadow(0 4px 12px rgba(0,0,0,.5))}
+.sc-wow span{display:block;margin-top:4px;font-family:'Space Grotesk',monospace;
+  font-size:15px;color:var(--cy);text-shadow:0 0 10px rgba(53,225,255,.6)}
+@keyframes sc-wow-pop{0%{transform:translate(-50%,-50%) scale(.4);opacity:0}
+  60%{transform:translate(-50%,-50%) scale(1.15);opacity:1}
+  100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
+@keyframes sc-wow-fade{from{opacity:1}to{opacity:0}}
+@media (prefers-reduced-motion: reduce){.sc-wow{animation:sc-wow-fade 1.4s ease-in forwards}}
+
 /* label chips inside the tagger (multi-class) */
 .tg-classes{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;
   background:rgba(4,11,22,.98);border-bottom:1px solid rgba(53,225,255,.14)}

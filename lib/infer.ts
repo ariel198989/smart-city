@@ -4,6 +4,7 @@
 import { CLASS_PALETTE } from './config';
 import { classColor } from './util';
 import { createStore } from './store';
+import { normalizeHebrewCount } from './text';
 
 export interface Box { x: number; y: number; w: number; h: number; cls: number; score: number }
 
@@ -70,6 +71,7 @@ export async function loadModelFromZip(fileOrBlob: Blob, name = 'model', fallbac
     classes = (await zip.files[clsTxt].async('text')).split('\n').map((s) => s.trim()).filter(Boolean);
   }
   if (!classes.length) classes = fallbackClasses;
+  classes = classes.map(normalizeHebrewCount);
 
   tfModel = await tf.loadGraphModel(makeLoader(modelArtifacts, fileMap) as any);
   const inShape = tfModel.inputs[0].shape;

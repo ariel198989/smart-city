@@ -15,6 +15,7 @@ import { fetchJobs, type TrainJob } from '@/lib/trainjobs';
 import { publicUrl, sb } from '@/lib/db';
 import { fetchPoolGallery } from '@/lib/citypool';
 import { DAILY_TARGET, DAILY_BONUS } from '@/lib/daily';
+import { normalizeHebrewCount } from '@/lib/text';
 
 export type MobileTab = 'map' | 'cam' | 'train' | 'me';
 
@@ -107,7 +108,7 @@ const CLASS_PRESETS = ['מעבר חציה', 'בור בכביש', 'תמרור', '
 export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer, onTrainReal, onSeries, onTagger }: TrainHubProps) {
   const mission = classes[0] || 'מעבר חציה';
   const addClass = (v: string) => {
-    const c = v.trim();
+    const c = normalizeHebrewCount(v.trim());
     if (c && !classes.includes(c)) onClasses([...classes, c]);
   };
   const model = useStore(modelStore);
