@@ -14,15 +14,12 @@ export interface DemoHazard {
   lng: number;
 }
 
+// 6 well-spread incidents (was 10 — the center got too crowded, tags overlapped)
 export const DEMO_HAZARDS: DemoHazard[] = [
   { id: 'dm1',  class_name: 'מעבר חציה דהוי',    trait: 'צבע מחוק ~70% · רח\' הרצל, ליד בי"ס', severity: 'גבוהה',  agoMin: 42,  lat: 31.52361, lng: 34.59474 },
-  { id: 'dm2',  class_name: 'בור בכביש',          trait: 'עומק ~12 ס"מ · רח\' ההגנה',          severity: 'גבוהה',  agoMin: 95,  lat: 31.52541, lng: 34.59523 },
   { id: 'dm3',  class_name: 'תאורה שבורה',        trait: 'עמוד כבוי · רח\' גיורא יוספטל',       severity: 'בינונית', agoMin: 180, lat: 31.52852, lng: 34.59027 },
   { id: 'dm4',  class_name: 'פסולת בשטח ציבורי',  trait: 'ערימה גדולה · רח\' שלום איפרגן',      severity: 'בינונית', agoMin: 240, lat: 31.52646, lng: 34.58903 },
-  { id: 'dm5',  class_name: 'תמרור פגום',         trait: 'תמרור עצור מעוקם · כיכר רחבעם זאבי',  severity: 'גבוהה',  agoMin: 310, lat: 31.52578, lng: 34.59677 },
   { id: 'dm6',  class_name: 'ספסל שבור',          trait: 'קרש חסר · רח\' הבנים, גינה ציבורית',  severity: 'נמוכה',  agoMin: 420, lat: 31.52063, lng: 34.59842 },
-  { id: 'dm7',  class_name: 'גרפיטי',             trait: 'קיר מבנה ציבור · רח\' באבא יגו',      severity: 'נמוכה',  agoMin: 510, lat: 31.53068, lng: 34.58963 },
-  { id: 'dm8',  class_name: 'מעבר חציה דהוי',    trait: 'צבע מחוק ~40% · רח\' יהודה הלוי',     severity: 'בינונית', agoMin: 600, lat: 31.52519, lng: 34.59860 },
   { id: 'dm9',  class_name: 'בור מים',            trait: 'שלולית עומדת · רח\' מבצע סיני, חשש לנזילה', severity: 'גבוהה', agoMin: 720, lat: 31.52785, lng: 34.59678 },
   { id: 'dm10', class_name: 'מדרכה שקועה',        trait: 'הפרש ~5 ס"מ · רח\' יצחק שמיר',        severity: 'בינונית', agoMin: 850, lat: 31.52689, lng: 34.60053 },
 ];
