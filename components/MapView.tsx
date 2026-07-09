@@ -97,16 +97,22 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
         });
         refresh(map, maplibregl);
 
-        // 🎬 cinematic descent into the command view (desktop, motion allowed)
-        if (cinematic.current.desktop && !cinematic.current.rm && !cinematic.current.done) {
+        // 🎬 entrance: when the demo incident layer is on, frame the
+        // incidents themselves (that's the whole point of this view). Only
+        // fall back to the generic cinematic descent when demo is off.
+        if (!cinematic.current.done) {
           cinematic.current.done = true;
-          setTimeout(() => {
-            map.flyTo({
-              center: [DEFAULT_CITY.center_lng, DEFAULT_CITY.center_lat],
-              zoom: DEFAULT_CITY.zoom, pitch: 52, bearing: -14,
-              duration: 3600, essential: false,
-            });
-          }, 450);
+          if (showDemoRef.current) {
+            setTimeout(() => fitDemoBounds(map, maplibregl), 400);
+          } else if (cinematic.current.desktop && !cinematic.current.rm) {
+            setTimeout(() => {
+              map.flyTo({
+                center: [DEFAULT_CITY.center_lng, DEFAULT_CITY.center_lat],
+                zoom: DEFAULT_CITY.zoom, pitch: 52, bearing: -14,
+                duration: 3600, essential: false,
+              });
+            }, 450);
+          }
         }
 
         // marching-ants border on the focus zone (dasharray step animation)
@@ -204,9 +210,21 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
         `<span class="pt-meta"><i style="background:${sevColor[h.severity]}"></i>חומרה ${h.severity} · ${fmtAgoMin(h.agoMin)}</span>`;
       el.appendChild(tag);
       return new maplibregl.Marker({ element: el, anchor: 'bottom' })
-        .setLngLat([DEFAULT_CITY.center_lng + h.dlng, DEFAULT_CITY.center_lat + h.dlat])
+        .setLngLat([h.lng, h.lat])
         .addTo(map);
     });
+  }
+  // 🎯 frame the incidents so "open the map → see them spread across the
+  // streets" always holds, regardless of the map's current zoom/center.
+  function fitDemoBounds(map: any, maplibregl: any) {
+    try {
+      const b = new maplibregl.LngLatBounds();
+      DEMO_HAZARDS.forEach((h) => b.extend([h.lng, h.lat]));
+      map.fitBounds(b, {
+        padding: { top: 150, bottom: 90, left: 110, right: 110 },
+        maxZoom: 15.6, duration: cinematic.current.rm ? 0 : 1400,
+      });
+    } catch { /* map not ready — pins are still placed correctly */ }
   }
   const showDemoRef = useRef(showDemo);
   showDemoRef.current = showDemo;
@@ -214,7 +232,10 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
     // DOM markers don't need the style loaded — never gate on it
     // (isStyleLoaded() flickers false on slow tiles → pins silently vanish)
     const m = mapRef.current;
-    if (m) renderDemo(m.map, m.maplibregl);
+    if (m) {
+      renderDemo(m.map, m.maplibregl);
+      if (showDemo) setTimeout(() => fitDemoBounds(m.map, m.maplibregl), 60);  // frame incidents on enable
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showDemo]);
 

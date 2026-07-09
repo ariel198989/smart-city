@@ -1,28 +1,30 @@
-// 🎭 Demo hazard layer — the VISION of the live city map: real-looking
-// urban hazards spread across Sderot streets, each pin carrying a visible
-// info tag (what + characteristic + severity). Shown while real street
-// data is still thin; clearly tagged "דמו" so nobody mistakes it for live.
+// 🎭 Demo hazard layer — the VISION of the live city map: urban hazards
+// pinned at REAL Sderot street locations (coords sampled from OpenStreetMap
+// roads), each carrying a visible info tag (what + where + characteristic +
+// severity). Shown while real street data is still thin; clearly tagged
+// "דמו" so nobody mistakes it for live. Pins sit ON actual roads, exactly
+// where such a hazard would be photographed.
 export interface DemoHazard {
   id: string;
   class_name: string;
-  trait: string;              // המאפיין — the human-readable detail
+  trait: string;              // המאפיין — human-readable detail incl. street
   severity: 'גבוהה' | 'בינונית' | 'נמוכה';
-  agoMin: number;             // "reported X minutes ago"
-  dlat: number;               // offset from city center
-  dlng: number;
+  agoMin: number;
+  lat: number;                // real coordinate on a Sderot street
+  lng: number;
 }
 
 export const DEMO_HAZARDS: DemoHazard[] = [
-  { id: 'dm1', class_name: 'מעבר חציה דהוי', trait: 'צבע מחוק ~70% · ליד בי"ס', severity: 'גבוהה',  agoMin: 42,  dlat:  0.0028, dlng: -0.0031 },
-  { id: 'dm2', class_name: 'בור בכביש',      trait: 'עומק ~12 ס"מ · נתיב ימני', severity: 'גבוהה',  agoMin: 95,  dlat: -0.0021, dlng:  0.0038 },
-  { id: 'dm3', class_name: 'תאורה שבורה',    trait: 'עמוד כבוי · חניון ציבורי', severity: 'בינונית', agoMin: 180, dlat:  0.0044, dlng:  0.0022 },
-  { id: 'dm4', class_name: 'פסולת בשטח ציבורי', trait: 'ערימה גדולה · פינת רחוב', severity: 'בינונית', agoMin: 240, dlat: -0.0038, dlng: -0.0026 },
-  { id: 'dm5', class_name: 'תמרור פגום',     trait: 'עצור מעוקם · צומת', severity: 'גבוהה',  agoMin: 310, dlat:  0.0012, dlng:  0.0051 },
-  { id: 'dm6', class_name: 'ספסל שבור',      trait: 'קרש חסר · גינה ציבורית', severity: 'נמוכה',  agoMin: 420, dlat: -0.0047, dlng:  0.0014 },
-  { id: 'dm7', class_name: 'גרפיטי',         trait: 'קיר מבנה ציבור · ~4 מ"ר', severity: 'נמוכה',  agoMin: 510, dlat:  0.0035, dlng: -0.0048 },
-  { id: 'dm8', class_name: 'מעבר חציה דהוי', trait: 'צבע מחוק ~40% · ליד קופ"ח', severity: 'בינונית', agoMin: 600, dlat: -0.0009, dlng: -0.0055 },
-  { id: 'dm9', class_name: 'בור מים',        trait: 'שלולית עומדת · חשש לנזילת צנרת', severity: 'גבוהה', agoMin: 720, dlat: -0.0052, dlng: -0.0007 },
-  { id: 'dm10', class_name: 'מדרכה שקועה',   trait: 'הפרש ~5 ס"מ · נגישות', severity: 'בינונית', agoMin: 850, dlat:  0.0056, dlng: -0.0012 },
+  { id: 'dm1',  class_name: 'מעבר חציה דהוי',    trait: 'צבע מחוק ~70% · רח\' הרצל, ליד בי"ס', severity: 'גבוהה',  agoMin: 42,  lat: 31.52361, lng: 34.59474 },
+  { id: 'dm2',  class_name: 'בור בכביש',          trait: 'עומק ~12 ס"מ · רח\' ההגנה',          severity: 'גבוהה',  agoMin: 95,  lat: 31.52541, lng: 34.59523 },
+  { id: 'dm3',  class_name: 'תאורה שבורה',        trait: 'עמוד כבוי · רח\' גיורא יוספטל',       severity: 'בינונית', agoMin: 180, lat: 31.52852, lng: 34.59027 },
+  { id: 'dm4',  class_name: 'פסולת בשטח ציבורי',  trait: 'ערימה גדולה · רח\' שלום איפרגן',      severity: 'בינונית', agoMin: 240, lat: 31.52646, lng: 34.58903 },
+  { id: 'dm5',  class_name: 'תמרור פגום',         trait: 'תמרור עצור מעוקם · כיכר רחבעם זאבי',  severity: 'גבוהה',  agoMin: 310, lat: 31.52578, lng: 34.59677 },
+  { id: 'dm6',  class_name: 'ספסל שבור',          trait: 'קרש חסר · רח\' הבנים, גינה ציבורית',  severity: 'נמוכה',  agoMin: 420, lat: 31.52063, lng: 34.59842 },
+  { id: 'dm7',  class_name: 'גרפיטי',             trait: 'קיר מבנה ציבור · רח\' באבא יגו',      severity: 'נמוכה',  agoMin: 510, lat: 31.53068, lng: 34.58963 },
+  { id: 'dm8',  class_name: 'מעבר חציה דהוי',    trait: 'צבע מחוק ~40% · רח\' יהודה הלוי',     severity: 'בינונית', agoMin: 600, lat: 31.52519, lng: 34.59860 },
+  { id: 'dm9',  class_name: 'בור מים',            trait: 'שלולית עומדת · רח\' מבצע סיני, חשש לנזילה', severity: 'גבוהה', agoMin: 720, lat: 31.52785, lng: 34.59678 },
+  { id: 'dm10', class_name: 'מדרכה שקועה',        trait: 'הפרש ~5 ס"מ · רח\' יצחק שמיר',        severity: 'בינונית', agoMin: 850, lat: 31.52689, lng: 34.60053 },
 ];
 
 export function fmtAgoMin(min: number): string {
