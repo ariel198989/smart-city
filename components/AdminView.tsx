@@ -9,12 +9,16 @@ import { useStore, toast } from '@/lib/store';
 import { sb } from '@/lib/db';
 import { SUPER_ADMIN } from '@/lib/config';
 import { fetchClasses, createClass, setClassActive, type WorkshopClass } from '@/lib/classes';
+import { publicUrl } from '@/lib/db';
 
 interface ClassStats {
   students: number; photos: number; tagged: number; today: number;
   model: { id: string; name: string; accuracy: number | null; approved: boolean; created_at: string } | null;
 }
 interface JobRow { id: string; team_name: string; status: string; image_count: number; created_at: string; completed_at: string | null }
+interface PhotoRow { id: string; frame_path: string; class_name: string; team_name: string | null; created_at: string }
+
+const PAGE = 60;
 
 export default function AdminView() {
   const auth = useStore(authStore);
@@ -81,6 +85,62 @@ export default function AdminView() {
   async function toggleModel(id: string, approved: boolean) {
     const { error } = await sb.from('sc_models').update({ approved: !approved }).eq('id', id);
     if (error) toast('מודל: ' + error.message, true); else await loadAll();
+  }
+
+  // ── photo gallery: every saved frame, filter by class, download ────
+  const [photos, setPhotos] = useState<PhotoRow[]>([]);
+  const [photoTeam, setPhotoTeam] = useState('');       // '' = all classes
+  const [photoTotal, setPhotoTotal] = useState(0);
+  const [zipBusy, setZipBusy] = useState('');
+  async function loadPhotos(team = photoTeam, offset = 0) {
+    let q = sb.from('sc_detections')
+      .select('id, frame_path, class_name, team_name, created_at', { count: 'exact' })
+      .not('frame_path', 'is', null)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + PAGE - 1);
+    if (team) q = q.or(`team_name.eq."${team}",team_name.eq."אישי · ${team}"`);
+    const { data, count, error } = await q;
+    if (error) { toast('גלריה: ' + error.message, true); return; }
+    setPhotoTotal(count || 0);
+    setPhotos(offset === 0 ? (data || []) as PhotoRow[] : [...photos, ...(data || []) as PhotoRow[]]);
+  }
+  useEffect(() => { if (isSuper) loadPhotos(photoTeam, 0); /* eslint-disable-next-line */ }, [isSuper, photoTeam]);
+
+  // download everything matching the filter as one ZIP (up to 1000)
+  async function downloadZip() {
+    setZipBusy('אוסף רשימה…');
+    try {
+      let q = sb.from('sc_detections')
+        .select('frame_path, class_name, created_at')
+        .not('frame_path', 'is', null)
+        .order('created_at', { ascending: false }).limit(1000);
+      if (photoTeam) q = q.or(`team_name.eq."${photoTeam}",team_name.eq."אישי · ${photoTeam}"`);
+      const { data, error } = await q;
+      if (error) throw error;
+      const rows = data || [];
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      let ok = 0;
+      for (let i = 0; i < rows.length; i++) {
+        setZipBusy(`מוריד ${i + 1}/${rows.length}…`);
+        try {
+          const res = await fetch(publicUrl(rows[i].frame_path));
+          if (!res.ok) continue;
+          const safe = (rows[i].class_name || 'ללא').replace(/[\\/:*?"<>|]/g, '_');
+          zip.file(`${safe}/${String(i).padStart(4, '0')}.jpg`, await res.arrayBuffer());
+          ok++;
+        } catch { /* skip broken frame */ }
+      }
+      setZipBusy('אורז…');
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `smartcity-photos${photoTeam ? '-' + photoTeam : ''}.zip`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast(`✅ ${ok} תמונות ירדו כ-ZIP`);
+    } catch (e: any) { toast('ZIP: ' + (e.message || e), true); }
+    setZipBusy('');
   }
 
   // ── gate ────────────────────────────────────────────────────────────
@@ -181,6 +241,33 @@ export default function AdminView() {
         ))}
         {jobs.length === 0 && <p className="hint">אין אימונים עדיין</p>}
       </div>
+
+      {/* 📸 photo gallery — every saved frame, filter by class, download */}
+      <h2 className="admin-sub">גלריית תמונות <span className="admin-count">{photoTotal}</span></h2>
+      <div className="admin-galbar hud">
+        <select value={photoTeam} onChange={(e) => setPhotoTeam(e.target.value)}>
+          <option value="">כל הכיתות</option>
+          {classes.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+        </select>
+        <button className="primary" disabled={!!zipBusy || photoTotal === 0} onClick={downloadZip}>
+          {zipBusy || `⬇️ הורד הכל כ-ZIP (${Math.min(photoTotal, 1000)})`}
+        </button>
+      </div>
+      <div className="admin-gallery">
+        {photos.map((ph) => (
+          <a key={ph.id} className="ag-item" href={publicUrl(ph.frame_path)} download target="_blank" rel="noreferrer"
+            title={`${ph.class_name} · ${ph.team_name || ''} · לחיצה = פתיחה/הורדה`}>
+            <img src={publicUrl(ph.frame_path)} alt={ph.class_name} loading="lazy" />
+            <span className="ag-cls">{ph.class_name}</span>
+          </a>
+        ))}
+        {photos.length === 0 && <p className="hint">אין תמונות בסינון הזה</p>}
+      </div>
+      {photos.length < photoTotal && (
+        <button className="ghost admin-more" onClick={() => loadPhotos(photoTeam, photos.length)}>
+          טען עוד ({photos.length}/{photoTotal})
+        </button>
+      )}
     </div>
   );
 }
