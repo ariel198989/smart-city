@@ -210,14 +210,20 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .cov-dot{width:7px;height:7px;border-radius:50%;background:var(--cy);opacity:.85;cursor:pointer;
   box-shadow:0 0 8px var(--cy);animation:sc-dot 1.6s ease-in-out infinite}
 
-/* 🎭 demo hazard pin + always-visible info tag (the target map look) */
-.demo-pin{position:relative;width:38px;height:54px;z-index:4;cursor:default;
-  filter:drop-shadow(0 4px 10px rgba(0,0,0,.55));animation:demo-drop .5s cubic-bezier(.2,1.3,.4,1) both}
+/* 🎭 demo hazard pins — manually-projected overlay over the map canvas */
+.demo-layer{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:4}
+.demo-pin{position:absolute;top:0;left:0;width:38px;height:54px;pointer-events:auto;cursor:default;
+  filter:drop-shadow(0 4px 10px rgba(0,0,0,.55));will-change:transform}
 .demo-pin svg{display:block;animation:demo-bob 2.6s ease-in-out infinite}
 @keyframes demo-drop{from{transform:translateY(-26px);opacity:0}to{transform:none;opacity:1}}
 @keyframes demo-bob{0%,100%{transform:none}50%{transform:translateY(-3px)}}
 @media (prefers-reduced-motion: reduce){.demo-pin,.demo-pin svg{animation:none}}
 .demo-pin .pin-tag{bottom:44px;right:30px}
+/* maplibre positions markers in LTR pixel space — under the app's global
+   dir=rtl the marker pane origin mirrors and every pin lands at one edge.
+   Force the map LTR; keep Hebrew popups/tags RTL. */
+.maplibregl-map{direction:ltr}
+.maplibregl-popup-content,.pin-tag{direction:rtl}
 .pin-tag{position:absolute;bottom:16px;right:14px;min-width:150px;max-width:196px;
   background:rgba(3,10,21,.9);border:1px solid rgba(53,225,255,.3);backdrop-filter:blur(5px);
   padding:7px 10px 8px;text-align:right;direction:rtl;pointer-events:none;line-height:1.35;

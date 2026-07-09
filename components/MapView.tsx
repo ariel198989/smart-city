@@ -10,6 +10,15 @@ import { DEMO_HAZARDS, fmtAgoMin } from '@/lib/demoHazards';
 
 export const cityStore = createStore<{ city: any; flyAt: number }>({ city: DEFAULT_CITY, flyAt: 0 });
 
+// centroid + zoom that frames all demo incidents (they sit on real Sderot
+// streets ~1km apart). Used as the initial camera so the map OPENS on the
+// pins — no dependence on post-load fly animations.
+const DEMO_CENTER: [number, number] = [
+  DEMO_HAZARDS.reduce((s, h) => s + h.lng, 0) / DEMO_HAZARDS.length,
+  DEMO_HAZARDS.reduce((s, h) => s + h.lat, 0) / DEMO_HAZARDS.length,
+];
+const DEMO_ZOOM = 15.1;
+
 const esc = (s: unknown) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
@@ -34,7 +43,7 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
   const [legend, setLegend] = useState<{ name: string; n: number }[]>([]);
   const [showHeat, setShowHeat] = useState(false);
   const [showCover, setShowCover] = useState(true);
-  const [showSat, setShowSat] = useState(false);
+  const [showSat, setShowSat] = useState(true);   // satellite basemap by default
   // 🎭 demo hazard pins with visible info tags — the target look of the
   // live map while real street data is still thin. Clearly badged "דמו".
   const [showDemo, setShowDemo] = useState(true);
@@ -53,12 +62,14 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
       cinematic.current.rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       cinematic.current.desktop = window.matchMedia('(min-width: 768px)').matches;
       const cine = cinematic.current.desktop && !cinematic.current.rm;
+      // demo on → open already framed on the incidents (no fly needed);
+      // demo off → the usual cinematic descent into the city.
+      const demoStart = showDemoRef.current;
       const map = new maplibregl.Map({
         container: mapEl.current,
         style: MAP_STYLE as any,
-        center: [DEFAULT_CITY.center_lng, DEFAULT_CITY.center_lat],
-        // cinematic entrance: start wide & flat, fly down into the city
-        zoom: cine ? 11.8 : DEFAULT_CITY.zoom,
+        center: demoStart ? DEMO_CENTER : [DEFAULT_CITY.center_lng, DEFAULT_CITY.center_lat],
+        zoom: demoStart ? DEMO_ZOOM : (cine ? 11.8 : DEFAULT_CITY.zoom),
         pitch: 0,
         attributionControl: { compact: true } as any,
       });
@@ -96,6 +107,13 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
           },
         });
         refresh(map, maplibregl);
+
+        // satellite is the default basemap — apply immediately on load
+        // (the showSat effect can fire before the style is ready)
+        if (showSat) {
+          ['satellite', 'labels'].forEach((id) => map.getLayer(id) && map.setLayoutProperty(id, 'visibility', 'visible'));
+          if (map.getLayer('carto')) map.setLayoutProperty('carto', 'visibility', 'none');
+        }
 
         // 🎬 entrance: when the demo incident layer is on, frame the
         // incidents themselves (that's the whole point of this view). Only
@@ -186,44 +204,59 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
     requestAnimationFrame(loop);
   }
 
-  // 🎭 demo hazard pins — pin + always-visible info tag (class, trait,
-  // severity, when), spread on real streets around the city center
-  function renderDemo(map: any, maplibregl: any) {
-    demoRef.current.forEach((m) => m.remove());
-    demoRef.current = [];
-    if (!showDemoRef.current) return;
-    const sevColor: Record<string, string> = { 'גבוהה': '#FF6B6B', 'בינונית': '#FFB627', 'נמוכה': '#35E1FF' };
-    demoRef.current = DEMO_HAZARDS.map((h) => {
-      // 📍 BIG red teardrop pin — an incident marker you can't miss
-      const el = document.createElement('div');
-      el.className = 'demo-pin';
-      el.innerHTML =
-        `<svg viewBox="0 0 24 34" width="38" height="54" aria-hidden="true">` +
-        `<path d="M12 1C6 1 1.5 5.6 1.5 11.4c0 7.6 8.6 19 10.5 21.6 1.9-2.6 10.5-14 10.5-21.6C22.5 5.6 18 1 12 1Z" ` +
-        `fill="#e63946" stroke="#7f1d1d" stroke-width="1.2"/>` +
-        `<circle cx="12" cy="11.4" r="4.4" fill="#fff"/></svg>`;
-      const tag = document.createElement('div');
-      tag.className = 'pin-tag';
-      tag.innerHTML =
-        `<span class="pt-demo">דמו</span><b>${esc(h.class_name)}</b>` +
-        `<span class="pt-trait">${esc(h.trait)}</span>` +
-        `<span class="pt-meta"><i style="background:${sevColor[h.severity]}"></i>חומרה ${h.severity} · ${fmtAgoMin(h.agoMin)}</span>`;
-      el.appendChild(tag);
-      return new maplibregl.Marker({ element: el, anchor: 'bottom' })
-        .setLngLat([h.lng, h.lat])
-        .addTo(map);
-    });
+  // 🎭 demo hazard pins — rendered as a MANUALLY-PROJECTED overlay, not
+  // maplibregl.Marker. Markers freeze at a stale screen position when the
+  // map is created in a hidden/0-size tab (and RTL mirrors their origin),
+  // leaving every pin stacked at one edge. Here we position each pin from
+  // map.project() on every map 'render', which is always correct.
+  const demoElsRef = useRef<{ el: HTMLDivElement; h: typeof DEMO_HAZARDS[number] }[]>([]);
+  const demoLayerRef = useRef<HTMLDivElement | null>(null);
+  const demoOnRenderRef = useRef<(() => void) | null>(null);
+  function renderDemo(map: any, _maplibregl?: any) {
+    // build the overlay + pin elements once
+    if (!demoLayerRef.current) {
+      const layer = document.createElement('div');
+      layer.className = 'demo-layer';
+      (map.getCanvasContainer() as HTMLElement).appendChild(layer);
+      demoLayerRef.current = layer;
+      const sevColor: Record<string, string> = { 'גבוהה': '#FF6B6B', 'בינונית': '#FFB627', 'נמוכה': '#35E1FF' };
+      demoElsRef.current = DEMO_HAZARDS.map((h) => {
+        const el = document.createElement('div');
+        el.className = 'demo-pin';
+        el.innerHTML =
+          `<svg viewBox="0 0 24 34" width="38" height="54" aria-hidden="true">` +
+          `<path d="M12 1C6 1 1.5 5.6 1.5 11.4c0 7.6 8.6 19 10.5 21.6 1.9-2.6 10.5-14 10.5-21.6C22.5 5.6 18 1 12 1Z" ` +
+          `fill="#e63946" stroke="#7f1d1d" stroke-width="1.2"/>` +
+          `<circle cx="12" cy="11.4" r="4.4" fill="#fff"/></svg>` +
+          `<div class="pin-tag"><span class="pt-demo">דמו</span><b>${esc(h.class_name)}</b>` +
+          `<span class="pt-trait">${esc(h.trait)}</span>` +
+          `<span class="pt-meta"><i style="background:${sevColor[h.severity]}"></i>חומרה ${h.severity} · ${fmtAgoMin(h.agoMin)}</span></div>`;
+        layer.appendChild(el);
+        return { el, h };
+      });
+      const reposition = () => {
+        for (const { el, h } of demoElsRef.current) {
+          const p = map.project([h.lng, h.lat]);
+          // anchor the teardrop tip at the coordinate (bottom-center)
+          el.style.transform = `translate(${Math.round(p.x)}px, ${Math.round(p.y)}px) translate(-50%, -100%)`;
+        }
+      };
+      demoOnRenderRef.current = reposition;
+      map.on('render', reposition);
+      map.on('move', reposition);
+      reposition();
+    }
+    demoLayerRef.current.style.display = showDemoRef.current ? '' : 'none';
+    demoOnRenderRef.current?.();
   }
   // 🎯 frame the incidents so "open the map → see them spread across the
-  // streets" always holds, regardless of the map's current zoom/center.
-  function fitDemoBounds(map: any, maplibregl: any) {
+  // streets" always holds. Deterministic setCenter+zoom on the incident
+  // centroid — fitBounds' padding math is unreliable on this short map
+  // (it zoomed way out, clustering the pins to a few px).
+  function fitDemoBounds(map: any, _maplibregl?: any) {
     try {
-      const b = new maplibregl.LngLatBounds();
-      DEMO_HAZARDS.forEach((h) => b.extend([h.lng, h.lat]));
-      map.fitBounds(b, {
-        padding: { top: 150, bottom: 90, left: 110, right: 110 },
-        maxZoom: 15.6, duration: cinematic.current.rm ? 0 : 1400,
-      });
+      map.easeTo({ center: DEMO_CENTER, zoom: DEMO_ZOOM, pitch: 0, bearing: 0,
+        duration: cinematic.current.rm ? 0 : 1200 });
     } catch { /* map not ready — pins are still placed correctly */ }
   }
   const showDemoRef = useRef(showDemo);
@@ -234,6 +267,8 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
     const m = mapRef.current;
     if (m) {
       renderDemo(m.map, m.maplibregl);
+      // real detection pins hide (demo on) / reappear (demo off) — re-run refresh
+      if (m.map.isStyleLoaded()) refresh(m.map, m.maplibregl);
       if (showDemo) setTimeout(() => fitDemoBounds(m.map, m.maplibregl), 60);  // frame incidents on enable
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -264,9 +299,25 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
     }
   }, [city.flyAt, city.city]);
 
-  // resize when shown
+  // resize when shown — the map often inits while its tab is hidden
+  // (0-size container → every marker projects to one edge). On show:
+  // resize to the real size, THEN frame the demo incidents so they're
+  // spread across the streets, not stacked at the edge.
   useEffect(() => {
-    if (active && mapRef.current) setTimeout(() => mapRef.current.map.resize(), 60);
+    if (!active || !mapRef.current) return;
+    const m = mapRef.current;
+    const t = setTimeout(() => {
+      m.map.resize();
+      // markers created while the tab was hidden (0-size container) freeze
+      // at a stale screen position — RE-CREATE them now that the map has
+      // its real size, so they land on the correct streets.
+      if (showDemoRef.current) {
+        renderDemo(m.map, m.maplibregl);
+        setTimeout(() => renderDemo(m.map, m.maplibregl), 260);   // once more after tiles settle
+      }
+    }, 120);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
   // heat toggle
@@ -320,7 +371,10 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
       const dense = visible.length > 150;
       map.getContainer().classList.toggle('dense', dense);
       markersRef.current.forEach((m) => m.remove());
-      markersRef.current = visible.map((d: any) => {
+      // demo incident view: hide the raw detection pins (they're mostly
+      // finger/mouse TRAINING shots at one GPS → a stacked colored line).
+      // Show only the curated demo hazards. Toggle demo off for real pins.
+      markersRef.current = showDemoRef.current ? [] : visible.map((d: any) => {
         const el = document.createElement('div');
         const cls = d.status === 'approved' ? ' approved'
           : d.status === 'awaiting_verify' || d.status === 'verifying' ? ' verify' : '';
@@ -344,10 +398,10 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
           .forEach((d: any) => pingAt(map, maplibregl, d.lat, d.lng));
       }
       prevIdsRef.current = new Set(visible.map((d: any) => d.id));
-      // coverage dots (thin to ~400)
+      // coverage dots (thin to ~400) — also hidden in the demo incident view
       covRef.current.forEach((m) => m.remove());
       const step = Math.max(1, Math.floor(cov.length / 400));
-      covRef.current = cov.filter((_: any, i: number) => i % step === 0).map((f: any) => {
+      covRef.current = showDemoRef.current ? [] : cov.filter((_: any, i: number) => i % step === 0).map((f: any) => {
         const el = document.createElement('div');
         el.className = 'cov-dot';
         el.title = 'לסיור מכאן';
