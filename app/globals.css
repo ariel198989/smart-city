@@ -191,9 +191,29 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .focus-callout .fc-box{background:rgba(3,10,21,.88);border:1px solid var(--gold-line);padding:4px 9px;backdrop-filter:blur(4px)}
 .focus-callout .fc-t{display:block;font-size:8.5px;letter-spacing:.18em;color:var(--gold)}
 .focus-callout .fc-box b{font-family:"Rubik",sans-serif;font-size:12px;color:var(--ink);white-space:nowrap}
-.hud-toggle{background:rgba(3,10,21,.82);border:1px solid var(--cy-faint);border-radius:0;
-  padding:7px 11px;font-size:11px;letter-spacing:.06em;color:var(--muted);display:inline-flex;gap:6px;align-items:center;cursor:pointer;backdrop-filter:blur(6px)}
-.hud-toggle input{accent-color:var(--cy)}
+/* 🛰 map layer controls — one compact panel, free top-left corner */
+.map-layers{position:absolute;top:12px;left:12px;z-index:6;width:148px;direction:rtl;
+  background:rgba(3,10,21,.74);border:1px solid var(--cy-faint);backdrop-filter:blur(9px);
+  padding:9px 7px 8px;display:flex;flex-direction:column;gap:1px}
+.map-layers::before,.map-layers::after{content:'';position:absolute;width:9px;height:9px;pointer-events:none}
+.map-layers::before{top:5px;right:5px;border-top:1px solid var(--cy-line);border-right:1px solid var(--cy-line)}
+.map-layers::after{bottom:5px;left:5px;border-bottom:1px solid var(--cy-line);border-left:1px solid var(--cy-line)}
+.ml-head{font-family:"Space Grotesk",monospace;font-size:9.5px;letter-spacing:.26em;
+  color:var(--faint);text-transform:uppercase;padding:0 7px 7px;text-align:right}
+.layer-chip{display:flex;align-items:center;gap:9px;width:100%;padding:7px 8px;
+  background:transparent;border:0;cursor:pointer;color:var(--muted);
+  font-family:"Rubik",sans-serif;font-size:12.5px;text-align:right;transition:color .18s ease,background .18s ease}
+.layer-chip .lc-ic{display:flex;opacity:.6;transition:opacity .18s ease}
+.layer-chip .lc-lbl{flex:1;text-align:right}
+.layer-chip .lc-led{width:7px;height:7px;border-radius:50%;background:rgba(191,227,240,.16);transition:all .2s ease}
+.layer-chip:hover{color:var(--body);background:rgba(53,225,255,.05)}
+.layer-chip.on{color:var(--cy)}
+.layer-chip.on .lc-ic{opacity:1}
+.layer-chip.on .lc-led{background:var(--cy);box-shadow:0 0 9px var(--cy)}
+.layer-chip:active{transform:scale(.985)}
+@media (max-width:820px){.map-layers{width:auto;flex-direction:row;flex-wrap:wrap;max-width:64vw;gap:3px}
+  .map-layers .ml-head{display:none}
+  .layer-chip{width:auto;padding:6px 8px;gap:6px}.layer-chip .lc-lbl{font-size:11.5px}.layer-chip .lc-led{display:none}}
 .map-legend{position:absolute;bottom:14px;inset-inline-start:12px;z-index:5;display:flex;flex-direction:column;gap:6px;
   background:rgba(3,10,21,.7);border:1px solid rgba(53,225,255,.28);padding:8px 12px;max-width:60%}
 .map-legend .lg{background:none;border:none;border-radius:0;padding:0;font-size:11px;display:inline-flex;gap:8px;align-items:center;color:var(--body)}

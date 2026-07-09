@@ -42,9 +42,12 @@ export const MAP_STYLE = {
       attribution: '© CARTO',
     },
   },
+  // satellite is the DEFAULT basemap (set at the style level so it never
+  // depends on post-load JS, which raced/hit the wrong map instance).
+  // Toggling "לוויין" off flips carto on / satellite+labels off at runtime.
   layers: [
-    { id: 'carto', type: 'raster' as const, source: 'carto' },
-    { id: 'satellite', type: 'raster' as const, source: 'satellite', layout: { visibility: 'none' as const } },
-    { id: 'labels', type: 'raster' as const, source: 'labels', layout: { visibility: 'none' as const } },
+    { id: 'carto', type: 'raster' as const, source: 'carto', layout: { visibility: 'none' as const } },
+    { id: 'satellite', type: 'raster' as const, source: 'satellite' },
+    { id: 'labels', type: 'raster' as const, source: 'labels' },
   ],
 };

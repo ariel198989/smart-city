@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { MAP_STYLE, CLASS_PALETTE, DEFAULT_CITY } from '@/lib/config';
 import { fetchDetections, fetchCoverage, publicUrl } from '@/lib/db';
 import { classColor, fmtWhen } from '@/lib/util';
@@ -18,6 +18,28 @@ const DEMO_CENTER: [number, number] = [
   DEMO_HAZARDS.reduce((s, h) => s + h.lat, 0) / DEMO_HAZARDS.length,
 ];
 const DEMO_ZOOM = 15.1;
+
+// map layer toggles — one config drives the top-left control panel.
+// monoline icons match the HUD stroke language.
+const svg = (paths: ReactNode) => (
+  <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"
+    fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{paths}</svg>
+);
+type SatState = { showSat: boolean; showDemo: boolean; showHeat: boolean; showCover: boolean };
+type SatSetters = {
+  setShowSat: (v: boolean) => void; setShowDemo: (v: boolean) => void;
+  setShowHeat: (v: boolean) => void; setShowCover: (v: boolean) => void;
+};
+const LAYERS: { k: string; label: string; icon: ReactNode; get: (s: SatState) => boolean; set: (s: SatSetters, v: boolean) => void }[] = [
+  { k: 'demo', label: 'מפגעים', icon: svg(<><path d="M12 21c4-4.5 6.5-8 6.5-11a6.5 6.5 0 1 0-13 0c0 3 2.5 6.5 6.5 11Z" /><circle cx="12" cy="10" r="2.2" /></>),
+    get: (s) => s.showDemo, set: (s, v) => s.setShowDemo(v) },
+  { k: 'sat', label: 'לוויין', icon: svg(<><circle cx="12" cy="12" r="8" /><path d="M4 12h16" /><path d="M12 4c2.8 2.2 2.8 13.8 0 16M12 4c-2.8 2.2-2.8 13.8 0 16" /></>),
+    get: (s) => s.showSat, set: (s, v) => s.setShowSat(v) },
+  { k: 'heat', label: 'מפת חום', icon: svg(<path d="M12 22a6 6 0 0 0 6-6c0-4.2-6-10-6-10S6 11.8 6 16a6 6 0 0 0 6 6Z" />),
+    get: (s) => s.showHeat, set: (s, v) => s.setShowHeat(v) },
+  { k: 'cover', label: 'כיסוי', icon: svg(<>{[[8, 8], [16, 8], [8, 16], [16, 16]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="1.7" fill="currentColor" stroke="none" />)}</>),
+    get: (s) => s.showCover, set: (s, v) => s.setShowCover(v) },
+];
 
 const esc = (s: unknown) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
@@ -47,6 +69,7 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
   // 🎭 demo hazard pins with visible info tags — the target look of the
   // live map while real street data is still thin. Clearly badged "דמו".
   const [showDemo, setShowDemo] = useState(true);
+  const [mapReady, setMapReady] = useState(false);   // flips true on style load
   const demoRef = useRef<any[]>([]);
   const dv = useStore(dataVersion);
   const city = useStore(cityStore);
@@ -107,13 +130,7 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
           },
         });
         refresh(map, maplibregl);
-
-        // satellite is the default basemap — apply immediately on load
-        // (the showSat effect can fire before the style is ready)
-        if (showSat) {
-          ['satellite', 'labels'].forEach((id) => map.getLayer(id) && map.setLayoutProperty(id, 'visibility', 'visible'));
-          if (map.getLayer('carto')) map.setLayoutProperty('carto', 'visibility', 'none');
-        }
+        setMapReady(true);   // lets the basemap toggle effect run against a live style
 
         // 🎬 entrance: when the demo incident layer is on, frame the
         // incidents themselves (that's the whole point of this view). Only
@@ -333,17 +350,22 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
     covRef.current.forEach((mk) => { mk.getElement().style.display = showCover ? '' : 'none'; });
   }, [showCover]);
 
-  // satellite basemap toggle — real aerial photos of the city
+  // satellite basemap toggle — real aerial photos of the city.
+  // apply once the style is ready (on mount it often isn't yet, which used
+  // to leave the default satellite view showing the dark basemap instead).
   useEffect(() => {
     const m = mapRef.current;
-    if (!m || !m.map.isStyleLoaded()) return;
-    const set = (id: string, v: boolean) => {
-      if (m.map.getLayer(id)) m.map.setLayoutProperty(id, 'visibility', v ? 'visible' : 'none');
+    if (!m) return;
+    const apply = () => {
+      const set = (id: string, v: boolean) => {
+        if (m.map.getLayer(id)) m.map.setLayoutProperty(id, 'visibility', v ? 'visible' : 'none');
+      };
+      set('satellite', showSat);
+      set('labels', showSat);
+      set('carto', !showSat);
     };
-    set('satellite', showSat);
-    set('labels', showSat);
-    set('carto', !showSat);
-  }, [showSat]);
+    if (m.map.isStyleLoaded()) apply(); else m.map.once('idle', apply);
+  }, [showSat, mapReady]);
 
   async function refresh(map: any, maplibregl: any) {
     try {
@@ -492,18 +514,24 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
           <div className="stat-chip"><b>{stats.ok}</b><span>בטיפול</span></div>
           <div className="stat-chip resolved"><b>{stats.resolved}</b><span>טופלו 🟢</span></div>
           <div className="stat-chip"><b>{stats.frames}</b><span>צילומים</span></div>
-          <label className="hud-toggle">
-            <input type="checkbox" checked={showHeat} onChange={(e) => setShowHeat(e.target.checked)} /> מפת חום
-          </label>
-          <label className="hud-toggle">
-            <input type="checkbox" checked={showCover} onChange={(e) => setShowCover(e.target.checked)} /> כיסוי
-          </label>
-          <label className="hud-toggle">
-            <input type="checkbox" checked={showSat} onChange={(e) => setShowSat(e.target.checked)} /> לוויין
-          </label>
-          <label className="hud-toggle">
-            <input type="checkbox" checked={showDemo} onChange={(e) => setShowDemo(e.target.checked)} /> תרחיש דמו
-          </label>
+        </div>
+
+        {/* layer controls — one compact panel in the free top-left corner,
+            out of the pins' way. icon + label + LED state per row. */}
+        <div className="map-layers">
+          <div className="ml-head">שכבות</div>
+          {LAYERS.map((L) => {
+            const on = L.get({ showSat, showDemo, showHeat, showCover });
+            return (
+              <button key={L.k} className={'layer-chip' + (on ? ' on' : '')}
+                onClick={() => L.set({ setShowSat, setShowDemo, setShowHeat, setShowCover }, !on)}
+                aria-pressed={on}>
+                <span className="lc-ic">{L.icon}</span>
+                <span className="lc-lbl">{L.label}</span>
+                <span className="lc-led" />
+              </button>
+            );
+          })}
         </div>
         {legend.length > 0 && (
           <div className="map-legend">
