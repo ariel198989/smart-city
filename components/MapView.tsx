@@ -123,6 +123,7 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
       map.on('contextmenu', (e: any) => cbRef.current.onStreetView(e.lngLat.lat, e.lngLat.lng));
       mapRef.current = { map, maplibregl };
       startFx(map);
+      renderDemo(map, maplibregl);   // demo layer never waits on data/style
     })();
     return () => { disposed = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -187,9 +188,14 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
     if (!showDemoRef.current) return;
     const sevColor: Record<string, string> = { 'גבוהה': '#FF6B6B', 'בינונית': '#FFB627', 'נמוכה': '#35E1FF' };
     demoRef.current = DEMO_HAZARDS.map((h) => {
+      // 📍 BIG red teardrop pin — an incident marker you can't miss
       const el = document.createElement('div');
-      el.className = 'pin demo';
-      el.style.color = sevColor[h.severity];
+      el.className = 'demo-pin';
+      el.innerHTML =
+        `<svg viewBox="0 0 24 34" width="38" height="54" aria-hidden="true">` +
+        `<path d="M12 1C6 1 1.5 5.6 1.5 11.4c0 7.6 8.6 19 10.5 21.6 1.9-2.6 10.5-14 10.5-21.6C22.5 5.6 18 1 12 1Z" ` +
+        `fill="#e63946" stroke="#7f1d1d" stroke-width="1.2"/>` +
+        `<circle cx="12" cy="11.4" r="4.4" fill="#fff"/></svg>`;
       const tag = document.createElement('div');
       tag.className = 'pin-tag';
       tag.innerHTML =
@@ -197,7 +203,7 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
         `<span class="pt-trait">${esc(h.trait)}</span>` +
         `<span class="pt-meta"><i style="background:${sevColor[h.severity]}"></i>חומרה ${h.severity} · ${fmtAgoMin(h.agoMin)}</span>`;
       el.appendChild(tag);
-      return new maplibregl.Marker({ element: el })
+      return new maplibregl.Marker({ element: el, anchor: 'bottom' })
         .setLngLat([DEFAULT_CITY.center_lng + h.dlng, DEFAULT_CITY.center_lat + h.dlat])
         .addTo(map);
     });
@@ -205,8 +211,10 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
   const showDemoRef = useRef(showDemo);
   showDemoRef.current = showDemo;
   useEffect(() => {
+    // DOM markers don't need the style loaded — never gate on it
+    // (isStyleLoaded() flickers false on slow tiles → pins silently vanish)
     const m = mapRef.current;
-    if (m && m.map.isStyleLoaded()) renderDemo(m.map, m.maplibregl);
+    if (m) renderDemo(m.map, m.maplibregl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showDemo]);
 

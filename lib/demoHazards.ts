@@ -21,7 +21,7 @@ export const DEMO_HAZARDS: DemoHazard[] = [
   { id: 'dm6', class_name: 'ספסל שבור',      trait: 'קרש חסר · גינה ציבורית', severity: 'נמוכה',  agoMin: 420, dlat: -0.0047, dlng:  0.0014 },
   { id: 'dm7', class_name: 'גרפיטי',         trait: 'קיר מבנה ציבור · ~4 מ"ר', severity: 'נמוכה',  agoMin: 510, dlat:  0.0035, dlng: -0.0048 },
   { id: 'dm8', class_name: 'מעבר חציה דהוי', trait: 'צבע מחוק ~40% · ליד קופ"ח', severity: 'בינונית', agoMin: 600, dlat: -0.0009, dlng: -0.0055 },
-  { id: 'dm9', class_name: 'בור בכביש',      trait: 'מתרחב · אחרי גשם', severity: 'בינונית', agoMin: 720, dlat: -0.0052, dlng: -0.0007 },
+  { id: 'dm9', class_name: 'בור מים',        trait: 'שלולית עומדת · חשש לנזילת צנרת', severity: 'גבוהה', agoMin: 720, dlat: -0.0052, dlng: -0.0007 },
   { id: 'dm10', class_name: 'מדרכה שקועה',   trait: 'הפרש ~5 ס"מ · נגישות', severity: 'בינונית', agoMin: 850, dlat:  0.0056, dlng: -0.0012 },
 ];
 
