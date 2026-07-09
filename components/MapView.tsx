@@ -6,6 +6,7 @@ import { classColor, fmtWhen } from '@/lib/util';
 import { createStore, useStore, dataVersion, toast } from '@/lib/store';
 import { STATUS_META, OPEN_STATUSES } from '@/lib/status';
 import { openVerify } from '@/components/VerifyModal';
+import { DEMO_HAZARDS, fmtAgoMin } from '@/lib/demoHazards';
 
 export const cityStore = createStore<{ city: any; flyAt: number }>({ city: DEFAULT_CITY, flyAt: 0 });
 
@@ -34,6 +35,10 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
   const [showHeat, setShowHeat] = useState(false);
   const [showCover, setShowCover] = useState(true);
   const [showSat, setShowSat] = useState(false);
+  // 🎭 demo hazard pins with visible info tags — the target look of the
+  // live map while real street data is still thin. Clearly badged "דמו".
+  const [showDemo, setShowDemo] = useState(true);
+  const demoRef = useRef<any[]>([]);
   const dv = useStore(dataVersion);
   const city = useStore(cityStore);
   const cbRef = useRef({ onStreetView, onTourFrame });
@@ -174,6 +179,37 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
     requestAnimationFrame(loop);
   }
 
+  // 🎭 demo hazard pins — pin + always-visible info tag (class, trait,
+  // severity, when), spread on real streets around the city center
+  function renderDemo(map: any, maplibregl: any) {
+    demoRef.current.forEach((m) => m.remove());
+    demoRef.current = [];
+    if (!showDemoRef.current) return;
+    const sevColor: Record<string, string> = { 'גבוהה': '#FF6B6B', 'בינונית': '#FFB627', 'נמוכה': '#35E1FF' };
+    demoRef.current = DEMO_HAZARDS.map((h) => {
+      const el = document.createElement('div');
+      el.className = 'pin demo';
+      el.style.color = sevColor[h.severity];
+      const tag = document.createElement('div');
+      tag.className = 'pin-tag';
+      tag.innerHTML =
+        `<span class="pt-demo">דמו</span><b>${esc(h.class_name)}</b>` +
+        `<span class="pt-trait">${esc(h.trait)}</span>` +
+        `<span class="pt-meta"><i style="background:${sevColor[h.severity]}"></i>חומרה ${h.severity} · ${fmtAgoMin(h.agoMin)}</span>`;
+      el.appendChild(tag);
+      return new maplibregl.Marker({ element: el })
+        .setLngLat([DEFAULT_CITY.center_lng + h.dlng, DEFAULT_CITY.center_lat + h.dlat])
+        .addTo(map);
+    });
+  }
+  const showDemoRef = useRef(showDemo);
+  showDemoRef.current = showDemo;
+  useEffect(() => {
+    const m = mapRef.current;
+    if (m && m.map.isStyleLoaded()) renderDemo(m.map, m.maplibregl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showDemo]);
+
   // 📡 radar ping where a new detection just landed (realtime moment)
   function pingAt(map: any, maplibregl: any, lat: number, lng: number) {
     if (cinematic.current.rm) return;
@@ -302,6 +338,7 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
         });
       }
       updateFocusZone(map, maplibregl, visible);
+      renderDemo(map, maplibregl);
     } catch (e: any) { toast('טעינת מפה: ' + (e.message || e)); }
   }
 
@@ -380,6 +417,9 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
           </label>
           <label className="hud-toggle">
             <input type="checkbox" checked={showSat} onChange={(e) => setShowSat(e.target.checked)} /> לוויין
+          </label>
+          <label className="hud-toggle">
+            <input type="checkbox" checked={showDemo} onChange={(e) => setShowDemo(e.target.checked)} /> תרחיש דמו
           </label>
         </div>
         {legend.length > 0 && (
