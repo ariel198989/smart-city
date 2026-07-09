@@ -959,3 +959,44 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
   #svWrap{height:46vh}
   .logo{font-size:16px;letter-spacing:.2em}
 }
+
+/* 🛠️ workshop admin console (/admin) */
+.admin-gate{max-width:400px;margin:14vh auto;padding:28px 26px;display:flex;flex-direction:column;gap:10px;text-align:center}
+.admin-gate h2{font-size:22px}
+.admin-gate input{width:100%}
+.admin{max-width:1100px;margin:0 auto;padding:26px 20px 60px}
+.admin-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px}
+.admin-head h1{font-size:26px;margin-bottom:4px}
+.admin-head p{font-size:12.5px;color:var(--muted)}
+.admin-actions{display:flex;gap:8px}
+.admin-new{display:flex;gap:10px;padding:14px;margin-bottom:18px}
+.admin-new input{flex:1}
+.admin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.admin-card{padding:16px 16px 14px}
+.admin-card.off{opacity:.55}
+.ac-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.ac-head b{font-size:17px}
+.ac-toggle{font-size:11.5px;padding:5px 12px;border:1px solid rgba(255,107,107,.5);color:#ff9d9d;background:transparent}
+.ac-toggle.on{border-color:rgba(124,255,203,.5);color:#7CFFCB}
+.ac-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.ac-stats span{text-align:center;font-size:10px;color:var(--muted);background:rgba(53,225,255,.04);
+  border:1px solid var(--cy-faint);padding:7px 2px}
+.ac-stats b{display:block;font-family:'Space Grotesk',monospace;font-size:19px;color:var(--cy);line-height:1.15}
+.ac-model{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--body);
+  border-top:1px solid var(--cy-faint);padding-top:10px}
+.ac-model.none{color:var(--faint)}
+.acm-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,107,107,.8);flex-shrink:0}
+.acm-dot.ok{background:#7CFFCB;box-shadow:0 0 8px rgba(124,255,203,.6)}
+.acm-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acm-acc{font-family:'Space Grotesk',monospace;color:var(--gold)}
+.acm-btn{font-size:11px;padding:4px 10px;border:1px solid var(--cy-faint);background:transparent;color:var(--muted)}
+.admin-sub{font-size:16px;margin:24px 0 10px}
+.admin-jobs{padding:6px 14px}
+.aj-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid rgba(53,225,255,.08);font-size:12.5px}
+.aj-row:last-child{border-bottom:0}
+.aj-status{min-width:74px;font-weight:600}
+.aj-status.done{color:#7CFFCB}
+.aj-status.pending{color:var(--gold)}
+.aj-team{flex:1;color:var(--ink)}
+.aj-n{color:var(--muted);font-family:'Space Grotesk',monospace}
+.aj-when{color:var(--faint);font-size:11px}

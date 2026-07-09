@@ -1,7 +1,9 @@
 export const SB_URL = 'https://eaawnjvabcnznukewnlj.supabase.co';
 export const SB_KEY = 'sb_publishable_tiGoGAebIqTF-gDldacKAw_IIlaYifh';
 export const COLAB = 'https://colab.research.google.com/gist/ariel198989/ea2262e3b42826f94b7fdf6771afbadd/yolo-train.ipynb';
-export const ADMINS = ['ariel@ao-fin.co.il', 'dahanlid555@gmail.com'];
+export const ADMINS = ['ariel@ao-fin.co.il', 'dahanlid555@gmail.com', 'arielohayon3@gmail.com'];
+// the workshop console (/admin) is gated to this user only
+export const SUPER_ADMIN = 'arielohayon3@gmail.com';
 
 export const BUCKET = 'smartcity';        // frames, crops, models
 export const POOL_BUCKET = 'thinkcv';     // shared dataset ZIPs (proven pipeline)

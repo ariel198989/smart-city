@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { authStore, login, signup } from '@/lib/auth';
 import { useStore } from '@/lib/store';
+import { fetchClasses, type WorkshopClass } from '@/lib/classes';
 
 export default function AuthOverlay() {
   const auth = useStore(authStore);
@@ -21,12 +22,19 @@ export default function AuthOverlay() {
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
   const [busy, setBusy] = useState(false);
+  // managed class list — signup picks from admin-opened classes (no more
+  // free-text typos splitting a class into two teams)
+  const [classes, setClasses] = useState<WorkshopClass[]>([]);
+  useEffect(() => {
+    fetchClasses(true).then(setClasses).catch(() => setClasses([]));
+  }, []);
 
   if (auth.user || auth.viewer) return null;
 
   const go = async () => {
     setErr(''); setOk('');
     if (!email.trim() || !pass) { setErr('צריך אימייל וסיסמה'); return; }
+    if (mode === 'signup' && classes.length > 0 && !team) { setErr('בחרו כיתה מהרשימה'); return; }
     setBusy(true);
     try {
       if (mode === 'signup') {
@@ -54,8 +62,15 @@ export default function AuthOverlay() {
         </div>
         {mode === 'signup' && (
           <>
-            <label className="lbl">שם הקבוצה</label>
-            <input type="text" value={team} onChange={(e) => setTeam(e.target.value)} placeholder="למשל: הנמרים של שדרות" />
+            <label className="lbl">הכיתה / הקבוצה שלכם</label>
+            {classes.length > 0 ? (
+              <select value={team} onChange={(e) => setTeam(e.target.value)} style={{ width: '100%' }}>
+                <option value="">בחרו כיתה…</option>
+                {classes.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+              </select>
+            ) : (
+              <input type="text" value={team} onChange={(e) => setTeam(e.target.value)} placeholder="למשל: הנמרים של שדרות" />
+            )}
           </>
         )}
         <label className="lbl">אימייל</label>
