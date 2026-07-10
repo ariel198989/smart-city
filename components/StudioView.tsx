@@ -483,6 +483,7 @@ export default function StudioView() {
     try {
       const built = await buildCityPoolZip((d, t) => setCpMsg(`אורז ${d}/${t} תמונות…`));
       if (!built) { setCpMsg('הפול ריק.'); setCpBusy(false); return; }
+      if ((built as any).error || !built.blob) { setCpMsg('⚠️ ' + ((built as any).error || 'בניית הדאטה נכשלה')); setCpBusy(false); return; }
       download(built.blob, `smartcity_pool_${Date.now()}.zip`);
       setCpMsg(`✓ ירד מאגר עירוני: ${built.count} תמונות מתויגות + ${built.negatives || 0} דוגמאות רקע · ${built.classes.length} קטגוריות (${built.classes.join(' · ')}) — ל-Colab, אמנו, וטענו כמודל העיר! 🔁`);
     } catch (e: any) { setCpMsg('⚠️ ' + (e.message || e)); }
