@@ -2,7 +2,7 @@
 // 🎮 City Patrol — Pokémon-GO-style mobile game mode:
 // GPS avatar on the real city map, real crosswalk spawn points from OSM,
 // photo-capture gated by the trained model, credits + monthly prizes.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MAP_STYLE, DEFAULT_CITY, CLASS_PALETTE } from '@/lib/config';
 import { insertDetection, uploadBlob, fetchMyCatches, publicUrl } from '@/lib/db';
 import { STATUS_META } from '@/lib/status';
@@ -23,6 +23,7 @@ import { BottomBar, TrainingHub, MeHub, type MobileTab } from '@/components/Mobi
 import SeriesCollect from '@/components/SeriesCollect';
 import MobileTagger from '@/components/MobileTagger';
 import { fetchActiveCampaign, type Campaign } from '@/lib/campaigns';
+import { openVerify } from '@/components/VerifyModal';
 import { sb } from '@/lib/db';
 
 import ResultCards, { type CatchResult } from '@/components/ResultCards';
@@ -233,6 +234,70 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
     const d = Math.min(...spawns.map((s) => distM(pos.lat, pos.lng, s.lat, s.lng)));
     setNearest(Math.round(d));
   }, [pos, spawns, mission]);
+
+  // ── 🗺️ the map as a GAME BOARD ──────────────────────────────────────
+  // 1) MY IMPACT: my own catches live on my map, colored by status —
+  //    the kid literally watches "the pothole I shot" turn 🟢 resolved.
+  // 2) QUESTS: any incident awaiting field verification is a walk-to
+  //    mission — photograph it again and the AI confirms the fix.
+  const impactMarks = useRef<any[]>([]);
+  const [impact, setImpact] = useState<any[]>([]);
+  const [quests, setQuests] = useState<any[]>([]);
+  useEffect(() => {
+    if (!auth.user) return;
+    let stop = false;
+    const load = async () => {
+      const { data, error } = await sb.from('sc_detections')
+        .select('id, lat, lng, class_name, status, confidence, crop_path, verify_photo_path, detected_by, team_name, created_at')
+        .not('status', 'in', '("dataset","rejected")')
+        .or(`detected_by.eq.${auth.user!.id},status.eq.awaiting_verify`)
+        .order('created_at', { ascending: false }).limit(120);
+      if (stop || error) return;
+      const rows = data || [];
+      setImpact(rows.filter((r: any) => r.detected_by === auth.user!.id && r.lat && r.lng));
+      setQuests(rows.filter((r: any) => r.status === 'awaiting_verify' && r.lat && r.lng));
+    };
+    load();
+    const h = setInterval(load, 30000);   // live-ish: status flips show within 30s
+    return () => { stop = true; clearInterval(h); };
+  }, [auth.user, result]);
+
+  const IMPACT_COLOR: Record<string, string> = {
+    pending: '#FFB627', approved: '#35E1FF',
+    awaiting_verify: '#c084fc', verifying: '#c084fc', resolved: '#4ade80',
+  };
+  useEffect(() => {
+    const m = mapRef.current;
+    if (!m) return;
+    impactMarks.current.forEach((mk) => mk.remove());
+    impactMarks.current = [];
+    // one marker per detection; quests (anyone's) get the pulsing ring
+    const byId: Record<string, any> = {};
+    [...impact, ...quests].forEach((r) => { byId[r.id] = r; });
+    impactMarks.current = Object.values(byId).map((r: any) => {
+      const quest = r.status === 'awaiting_verify';
+      const el = document.createElement('div');
+      el.className = 'imp-pin' + (quest ? ' quest' : '') + (r.status === 'resolved' ? ' res' : '');
+      el.style.setProperty('--imp', IMPACT_COLOR[r.status] || '#FFB627');
+      el.innerHTML = (quest ? '<i class="imp-ring"></i>' : '') + '<b>' + (r.status === 'resolved' ? '✓' : '') + '</b>';
+      el.onclick = (ev) => {
+        ev.stopPropagation();
+        if (quest) openVerify(r);
+        else toast(`${r.class_name} · ${STATUS_META[r.status]?.label || r.status}`, r.status === 'resolved');
+      };
+      return new m.maplibregl.Marker({ element: el }).setLngLat([r.lng, r.lat]).addTo(m.map);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [impact, quests]);
+
+  // nearest walkable quest (≤600m) → floating call-to-action chip
+  const nearQuest = useMemo(() => {
+    if (!pos || !quests.length) return null;
+    const scored = quests
+      .map((q) => ({ q, d: Math.round(distM(pos.lat, pos.lng, q.lat, q.lng)) }))
+      .sort((a, b) => a.d - b.d)[0];
+    return scored && scored.d <= 600 ? scored : null;
+  }, [pos, quests]);
 
   async function capture(f: File) {
     const durl = await fileToDataURL(f, 900, 675);
@@ -464,6 +529,16 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
           <div className={'pt-near' + (nearest <= 60 ? ' in' : '')}>
             {nearest <= 60 ? '🎯 בטווח משימה! בונוס +5' : `מעבר החציה הקרוב: ${nearest} מ׳`}
           </div>
+        )}
+
+        {/* 🔍 walk-to quest: an incident nearby awaits field verification */}
+        {nearQuest && (
+          <button className="pt-quest" onClick={() => {
+            mapRef.current?.map?.easeTo({ center: [nearQuest.q.lng, nearQuest.q.lat], zoom: 17.5, duration: 800 });
+            openVerify(nearQuest.q);
+          }}>
+            🔍 משימת אימות: {nearQuest.q.class_name} · <b>{nearQuest.d} מ'</b> מכם — צלמו שוב ותסגרו את המעגל 📸
+          </button>
         )}
         {gpsErr && (
           <button className="pt-gps" onClick={() => {

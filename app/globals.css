@@ -781,6 +781,22 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .spawn{width:14px;height:14px;border-radius:50%;background:rgba(255,182,39,.25);
   border:1.5px solid var(--gold);box-shadow:0 0 10px rgba(255,182,39,.5);animation:sc-dot 1.8s ease-in-out infinite;cursor:pointer}
 
+/* 🗺️ game-board pins: my catches (status-colored) + verify quests */
+.imp-pin{position:relative;width:16px;height:16px;border-radius:50%;cursor:pointer;
+  background:color-mix(in srgb,var(--imp) 30%,transparent);border:2px solid var(--imp);
+  box-shadow:0 0 10px color-mix(in srgb,var(--imp) 55%,transparent)}
+.imp-pin b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:10px;color:var(--imp);line-height:1}
+.imp-pin.res{opacity:.85}
+.imp-pin.quest{width:20px;height:20px}
+.imp-ring{position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--imp);
+  animation:sc-ring 1.6s ease-out infinite;pointer-events:none}
+.pt-quest{position:absolute;bottom:132px;right:50%;transform:translateX(50%);z-index:6;
+  background:rgba(3,10,21,.92);border:1px solid #c084fc;color:#e9d5ff;
+  padding:9px 16px;font-size:12.5px;white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis;
+  box-shadow:0 0 18px rgba(192,132,252,.35);cursor:pointer;animation:sc-dot 2.2s ease-in-out infinite}
+.pt-quest b{color:#fff;font-family:"Space Grotesk",monospace}
+
 /* top HUD */
 .pt-top{position:absolute;top:10px;inset-inline:10px;z-index:5;display:flex;gap:8px;align-items:center;justify-content:space-between}
 .pt-chip{background:rgba(3,10,21,.88);border:1px solid var(--cy-line);padding:7px 13px;font-size:12px;
