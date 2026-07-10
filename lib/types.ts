@@ -7,7 +7,7 @@ export interface Detection {
   confidence: number;
   lat: number;
   lng: number;
-  status: 'pending' | 'approved' | 'rejected' | 'awaiting_verify' | 'verifying' | 'resolved';
+  status: 'pending' | 'approved' | 'rejected' | 'awaiting_verify' | 'verifying' | 'resolved' | 'dataset';
   crop_path: string | null;
   frame_path: string | null;
   bbox: { x: number; y: number; w: number; h: number } | null;

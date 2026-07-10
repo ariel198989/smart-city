@@ -167,6 +167,7 @@ export async function fetchMonthlyLeaderboard() {
     .select('team_name, credits, status, created_at')
     .gte('created_at', monthStart.toISOString())
     .neq('status', 'rejected')
+    .neq('status', 'dataset')     // training frames aren't "catches"
     .limit(2000);
   if (error) throw error;
   const byTeam: Record<string, { credits: number; catches: number }> = {};

@@ -37,6 +37,12 @@ interface Props {
   onClose: (collected: number) => void;
 }
 
+// classes that look like real street hazards → offer to register a live
+// incident at the measured location when the session ends.
+// full-word-ish tokens: 'חציה/חצייה' not 'חצי' (which matches 'חציל').
+const HAZARD_WORDS = ['חציה', 'חצייה', 'בור', 'תמרור', 'פסולת', 'ספסל', 'תאורה', 'גרפיטי', 'מדרכה', 'כביש', 'שלולית', 'מפגע'];
+const isHazard = (name: string) => HAZARD_WORDS.some((w) => name.includes(w));
+
 export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
   const auth = useStore(authStore);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -48,6 +54,51 @@ export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
   const [thumbs, setThumbs] = useState<string[]>([]);
   const runningRef = useRef(false);
   const shotsRef = useRef(0);
+
+  // 🛰️ OWN high-accuracy GPS watch — the parent's coarse fix isn't good
+  // enough to dispatch a repair crew. We collect every good fix during
+  // the session and pin the incident at the MEDIAN (beats any single
+  // reading, since the student walks around the hazard).
+  const fixRef = useRef<{ lat: number; lng: number; acc: number } | null>(null);
+  const fixesRef = useRef<{ lat: number; lng: number; acc: number }[]>([]);
+  const [gpsAcc, setGpsAcc] = useState<number | null>(null);
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    const id = navigator.geolocation.watchPosition(
+      (p) => {
+        const f = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy ?? 999 };
+        fixRef.current = f;
+        setGpsAcc(Math.round(f.acc));
+        if (f.acc <= 40) {
+          fixesRef.current.push(f);
+          if (fixesRef.current.length > 400) fixesRef.current.shift();
+        }
+      },
+      () => { /* no permission / no fix — chip stays red, frames still save */ },
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 12000 },
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, []);
+  // dispatch-grade position ONLY: centroid of good fixes (≤40m), or a
+  // single good last fix. A red-chip 2km reading must NEVER pin an
+  // incident — better no pin than a wrong pin the city drives to.
+  function bestPos(): { lat: number; lng: number } | null {
+    const good = fixesRef.current;
+    if (good.length >= 3) {
+      return {
+        lat: good.reduce((s, f) => s + f.lat, 0) / good.length,
+        lng: good.reduce((s, f) => s + f.lng, 0) / good.length,
+      };
+    }
+    const f = fixRef.current;
+    return f && f.acc <= 40 ? { lat: f.lat, lng: f.lng } : null;
+  }
+
+  // representative frame per class → becomes the incident card's photo
+  const lastFrameRef = useRef<Record<string, string>>({});
+  // ❓ end-of-session incident confirmation sheet
+  const [confirmEvt, setConfirmEvt] = useState<null | { cls: string; pos: { lat: number; lng: number } }>(null);
+  const [evtBusy, setEvtBusy] = useState(false);
 
   // 🎯 which object is being photographed right now
   const [activeIdx, setActiveIdx] = useState(0);
@@ -102,7 +153,8 @@ export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
   }
 
   async function saveFrame(durl: string, cls: string) {
-    const at = getPos() || { lat: DEFAULT_CITY.center_lat, lng: DEFAULT_CITY.center_lng };
+    // real fix first (own high-accuracy watch → parent watch → city center)
+    const at = fixRef.current || getPos() || { lat: DEFAULT_CITY.center_lat, lng: DEFAULT_CITY.center_lng };
     const stamp = Date.now() + '_' + Math.random().toString(36).slice(2, 7);
     const framePath = `pool/s_${stamp}.jpg`;
     await uploadBlob(framePath, dataURLtoBlob(durl), 'image/jpeg');
@@ -110,7 +162,60 @@ export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
       lat: at.lat, lng: at.lng, class_name: cls, confidence: 0,
       frame_path: framePath, detected_by: authStore.get().user!.id,
       team_name: authStore.get().team || null, credits: 0, heading: null,
+      // training material, NOT a live incident — keeps hundreds of series
+      // frames off the city map. The ONE incident card is created at
+      // session end (finishSession) at the median GPS position.
+      status: 'dataset',
     });
+    lastFrameRef.current[cls] = framePath;
+  }
+
+  // ── end of session: register ONE real incident at the measured spot ──
+  function finishSession() {
+    runningRef.current = false;
+    setRunning(false);
+    // hazard classes that actually got photographed this session
+    const hazardCls = [...classNames]
+      .filter((c) => isHazard(c) && countOf(c) > 0)
+      .sort((a, b) => countOf(b) - countOf(a))[0];
+    if (shotsRef.current > 0 && hazardCls) {
+      const pos = bestPos();
+      if (pos) {
+        setConfirmEvt({ cls: hazardCls, pos });
+        return;                     // sheet decides; onClose happens after
+      }
+      // honest: no dispatch-grade GPS → no incident pin at a wrong spot
+      toast('🛰️ אין מיקום מדויק — התמונות נשמרו לאימון, אבל מפגע לא נרשם במפה', true);
+    }
+    onClose(shotsRef.current);
+  }
+  const evtBusyRef = useRef(false);
+  async function registerIncident() {
+    if (!confirmEvt || evtBusyRef.current) return;   // double-tap guard
+    evtBusyRef.current = true;
+    setEvtBusy(true);
+    try {
+      await insertDetection({
+        lat: confirmEvt.pos.lat, lng: confirmEvt.pos.lng,
+        class_name: confirmEvt.cls, confidence: 0,
+        frame_path: lastFrameRef.current[confirmEvt.cls] || null,
+        detected_by: authStore.get().user!.id,
+        team_name: authStore.get().team || null, credits: 0, heading: null,
+        // no explicit status → 'pending' → shows on the city map as an
+        // open incident the municipality can dispatch to
+      });
+      toast('📍 המפגע נרשם במפת העיר — העירייה רואה אותו', true);
+    } catch (e: any) {
+      // keep the sheet open — the student can retry or dismiss explicitly
+      toast('רישום נכשל: ' + (e.message || e) + ' — נסו שוב', true);
+      evtBusyRef.current = false;
+      setEvtBusy(false);
+      return;
+    }
+    evtBusyRef.current = false;
+    setEvtBusy(false);
+    setConfirmEvt(null);
+    onClose(shotsRef.current);
   }
 
   async function loop() {
@@ -149,9 +254,30 @@ export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
     <div className="streetcam" style={{ zIndex: 70 }}>
       <video ref={videoRef} playsInline muted />
       <div className="sc-top">
-        <button className="ghost sc-close" onClick={() => { runningRef.current = false; onClose(shotsRef.current); }}>✕ סיום</button>
+        <button className="ghost sc-close" onClick={finishSession}>✕ סיום</button>
         <div className="pt-chip">📸 סדרת אימון: {className}</div>
+        {/* 🛰️ live GPS accuracy — the incident pin is only as good as this */}
+        <div className={'pt-chip sr-gps' + (gpsAcc == null ? ' bad' : gpsAcc <= 15 ? ' good' : gpsAcc <= 40 ? ' mid' : ' bad')}>
+          {gpsAcc == null ? '🛰️ אין GPS' : `🛰️ ±${gpsAcc} מ'`}
+        </div>
       </div>
+
+      {/* ❓ end-of-session: pin the real incident on the city map? */}
+      {confirmEvt && (
+        <div className="sr-evt">
+          <div className="sr-evt-card hud">
+            <b>📍 לרשום מפגע אמיתי במפה?</b>
+            <p>צילמתם "{confirmEvt.cls}" — {shots} תמונות. אם זה מפגע אמיתי ברחוב, נרשום אירוע במיקום המדויק שנמדד וצוות העירייה יראה אותו במפת העיר.</p>
+            <button className="hot" disabled={evtBusy} onClick={registerIncident}>
+              {evtBusy ? 'רושם…' : '✅ כן — זה מפגע אמיתי, רשמו במפה'}
+            </button>
+            <button className="ghost" disabled={evtBusy}
+              onClick={() => { setConfirmEvt(null); onClose(shotsRef.current); }}>
+              לא — זה אימון בלבד
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 🎯 object switcher — shoot a series per object, one model learns all */}
       {classNames.length > 1 && (

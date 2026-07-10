@@ -1013,3 +1013,12 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .ag-cls{position:absolute;bottom:0;right:0;left:0;font-size:10px;color:var(--body);
   background:rgba(2,5,9,.78);padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .admin-more{display:block;margin:14px auto 0}
+
+/* 🛰️ series GPS accuracy chip + end-of-session incident sheet */
+.sr-gps.good{border-color:rgba(124,255,203,.5);color:#7CFFCB}
+.sr-gps.mid{border-color:rgba(255,182,39,.5);color:var(--gold)}
+.sr-gps.bad{border-color:rgba(255,107,107,.5);color:#ff9d9d}
+.sr-evt{position:absolute;inset:0;z-index:30;display:grid;place-items:center;background:rgba(2,5,9,.72);backdrop-filter:blur(4px)}
+.sr-evt-card{max-width:340px;margin:0 16px;padding:22px 20px;display:flex;flex-direction:column;gap:10px;text-align:center}
+.sr-evt-card b{font-size:19px}
+.sr-evt-card p{font-size:13.5px;color:var(--body);line-height:1.5}

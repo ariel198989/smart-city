@@ -75,6 +75,10 @@ export async function insertModel(row: object) {
 export async function fetchDetections({ status = null as string | null, limit = 400, scope = null as GeoScope | null } = {}): Promise<Detection[]> {
   let q = sb.from('sc_detections').select('*').order('created_at', { ascending: false }).limit(limit);
   if (status && status !== 'all') q = q.eq('status', status);
+  // training-series frames are NOT incidents. Excluded server-side —
+  // hundreds of fresh 'dataset' rows would otherwise eat the LIMIT window
+  // and push real open incidents off the map entirely.
+  else q = q.neq('status', 'dataset');
   const { data, error } = await scoped(q, scope);
   if (error) throw error;
   return data as Detection[];
