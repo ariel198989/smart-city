@@ -79,7 +79,9 @@ export async function loadModelFromZip(fileOrBlob: Blob, name = 'model', fallbac
   tfModel = await tf.loadGraphModel(makeLoader(modelArtifacts, fileMap) as any);
   const inShape = tfModel.inputs[0].shape;
   inputSize = inShape[1] === 3 ? inShape[2] : inShape[1];
-  modelStore.set({ ready: true, name, classes });
+  // reset quality fields too — the store shallow-merges, so a new model
+  // would otherwise inherit the PREVIOUS model's accuracy/imageCount/stats
+  modelStore.set({ ready: true, name, classes, accuracy: null, imageCount: null, honestVal: null, classStats: null });
 }
 
 function makeLoader(modelArtifacts: any, fileMap: Record<string, string>) {

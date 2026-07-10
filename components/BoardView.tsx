@@ -1,7 +1,7 @@
 'use client';
 // Hazard board: moderation (approve/reject), leaderboard, city CSV report
 import { useEffect, useState } from 'react';
-import { fetchDetections, setDetectionStatus, updateDetection, publicUrl } from '@/lib/db';
+import { fetchDetections, setDetectionStatus, updateDetection, publicUrl, sb } from '@/lib/db';
 import { authStore } from '@/lib/auth';
 import { CLASS_PALETTE, DEFAULT_CITY } from '@/lib/config';
 import { classColor, fmtWhen, download } from '@/lib/util';
@@ -37,10 +37,21 @@ export default function BoardView() {
     } catch (e: any) { toast(e.message || e); }
   }
 
-  function exportCSV() {
-    const approved = rows.filter((d) => d.status === 'approved');
-    const list = approved.length ? approved : rows;
-    if (!list.length) { toast('אין זיהויים לייצוא'); return; }
+  async function exportCSV() {
+    // full export, not just the 400-row moderation screen — page through
+    // ALL approved incidents so the municipality report is complete
+    toast('אוסף את כל המפגעים לדוח…');
+    const list: any[] = [];
+    for (let from = 0; from < 20000; from += 1000) {
+      const { data, error } = await sb.from('sc_detections')
+        .select('class_name, confidence, lat, lng, status, team_name, created_at, crop_path')
+        .eq('status', 'approved').order('created_at', { ascending: false })
+        .range(from, from + 999);
+      if (error) { toast('ייצוא: ' + error.message, true); break; }
+      list.push(...(data || []));
+      if (!data || data.length < 1000) break;
+    }
+    if (!list.length) { toast('אין מפגעים מאושרים לייצוא'); return; }
     const head = 'סוג מפגע,ביטחון,קו רוחב,קו אורך,סטטוס,קבוצה,תאריך,קישור לתמונה';
     const lines = list.map((d) => [
       csvSafe(d.class_name), Math.round(d.confidence * 100) + '%', d.lat, d.lng,

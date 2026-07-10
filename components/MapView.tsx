@@ -150,12 +150,14 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
           }
         }
 
-        // marching-ants border on the focus zone (dasharray step animation)
+        // marching-ants border on the focus zone (dasharray step animation).
+        // stored + cleared on unmount, and skipped when the tab/map is
+        // hidden (was repainting the map every 140ms forever, even offscreen)
         if (!cinematic.current.rm) {
           const seq = [[0, 4, 3], [1, 4, 2], [2, 4, 1], [3, 4, 0], [0, 0, 4, 3]];
           let step = 0;
-          setInterval(() => {
-            if (!map.getLayer('focus-line')) return;
+          antsRef.current = setInterval(() => {
+            if (document.hidden || !activeRef.current || !map.getLayer('focus-line')) return;
             step = (step + 1) % seq.length;
             try { map.setPaintProperty('focus-line', 'line-dasharray', seq[step]); } catch { /* style reload */ }
           }, 140);
@@ -166,13 +168,19 @@ export default function MapView({ active, onStreetView, onTourFrame }: Props) {
       startFx(map);
       renderDemo(map, maplibregl);   // demo layer never waits on data/style
     })();
-    return () => { disposed = true; };
+    return () => {
+      disposed = true;
+      if (antsRef.current) clearInterval(antsRef.current);
+      try { mapRef.current?.map.remove(); } catch { /* already gone */ }
+      mapRef.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ✨ ambient FX layer: data particles converging on the focus zone
   const activeRef = useRef(active);
   activeRef.current = active;
+  const antsRef = useRef<ReturnType<typeof setInterval> | null>(null);
   function startFx(map: any) {
     if (cinematic.current.rm || !cinematic.current.desktop) return;
     const cv = fxCanvasRef.current;

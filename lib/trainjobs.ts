@@ -11,11 +11,25 @@ export interface TrainJob {
   classes: string[]; team_name: string | null; created_at: string;
 }
 
-export async function fetchJobs(limit = 5): Promise<TrainJob[]> {
-  const { data, error } = await sb.from('sc_training_jobs')
+// jobs scoped to the requester — a student's pending job must not block
+// (or get claimed by) a different student/class. 'mine' = my personal
+// jobs; 'all' = this team's merged-training jobs.
+export async function fetchJobs(
+  limit = 5,
+  who?: { userId?: string; team?: string | null; scope?: 'mine' | 'all' },
+): Promise<TrainJob[]> {
+  let q = sb.from('sc_training_jobs')
     .select('*').order('created_at', { ascending: false }).limit(limit);
+  if (who?.scope === 'mine' && who.userId) q = q.eq('requested_by', who.userId);
+  else if (who?.scope === 'all' && who.team) q = q.eq('team_name', who.team);
+  const { data, error } = await q;
   if (error) throw error;
   return data || [];
+}
+
+// let a requester cancel their own stale pending job (frees the queue)
+export async function cancelJob(id: string): Promise<void> {
+  await sb.from('sc_training_jobs').update({ status: 'cancelled' }).eq('id', id).eq('status', 'pending');
 }
 
 // phone-side: build the dataset and open a job.
@@ -31,6 +45,7 @@ export async function startTrainingJob(
     (d, t) => onProgress(`אורז ${d}/${t} תמונות…`),
     scope === 'mine' ? user.id : undefined,
   );
+  if (built && (built as any).error) return { error: (built as any).error };
   if (!built || !built.count) {
     return { error: scope === 'mine'
       ? 'אין לך עדיין תמונות מתויגות — צלמו סדרה ותייגו קודם.'

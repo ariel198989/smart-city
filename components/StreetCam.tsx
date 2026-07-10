@@ -85,6 +85,7 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
       autoTimerRef.current = null;
       setAutoCap(null);
       autoLastRef.current = Date.now();
+      if (busyRef.current) return;   // a manual capture is already in flight — don't double-submit
       const full = grabFrame(0.85, 900) || durl;   // freshest full-res frame
       onCapture(full);
     }, 1500);
@@ -100,6 +101,7 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
   // open the rear camera
   useEffect(() => {
     let stream: MediaStream | null = null;
+    let disposed = false;              // set true if we unmount mid-getUserMedia
     runningRef.current = true;
     (async () => {
       try {
@@ -108,7 +110,9 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
           audio: false,
         });
         const v = videoRef.current;
-        if (!v) return;
+        // unmounted while the permission prompt was open, or StrictMode
+        // double-mount → kill this stream now (else the camera LED stays on)
+        if (disposed || !v) { stream.getTracks().forEach((t) => t.stop()); return; }
         v.srcObject = stream;
         await v.play();
         liveLoop();
@@ -119,6 +123,7 @@ export default function StreetCam({ mission, onCapture, onClose, busy, getPos, b
       }
     })();
     return () => {
+      disposed = true;
       runningRef.current = false;
       stream?.getTracks().forEach((t) => t.stop());
     };

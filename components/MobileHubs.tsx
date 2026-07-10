@@ -122,7 +122,7 @@ export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer
     let stop = false;
     const tick = () => {
       if (stop) return;
-      fetchJobs(1).then((j) => { if (!stop) setJob(j[0] || 'none'); }).catch(() => {});
+      fetchJobs(1, { team: authStore.get().team || null, scope: 'all' }).then((j) => { if (!stop) setJob(j[0] || 'none'); }).catch(() => {});
       setTimeout(tick, 20000);
     };
     tick();
@@ -183,7 +183,7 @@ export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer
   return (
     <section className="hub">
       <header className="hub-head">
-        <button className="ghost hub-close" onClick={onClose}>✕</button>
+        <button className="ghost hub-close" aria-label="סגירה" onClick={onClose}>✕</button>
         <b>🧠 אימון</b>
         <span>שני עולמות: להרגיש איך AI לומד · ולבנות מודל אמיתי ביחד</span>
       </header>
@@ -361,7 +361,7 @@ export function MeHub({ onClose, onMyLog, onBoard, credits, streak, dailyN }: Me
   return (
     <section className="hub">
       <header className="hub-head">
-        <button className="ghost hub-close" onClick={onClose}>✕</button>
+        <button className="ghost hub-close" aria-label="סגירה" onClick={onClose}>✕</button>
         <b>👤 {auth.team || 'אורח'}</b>
         <span>{auth.user?.email || 'לא מחוברים — הצטרפו למשחק'}</span>
       </header>
@@ -418,7 +418,7 @@ export function PoolModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="modal-back" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="card hud det-modal">
-        <button className="ghost mclose" onClick={onClose}>✕</button>
+        <button className="ghost mclose" aria-label="סגירה" onClick={onClose}>✕</button>
         <h3 style={{ fontSize: 14, letterSpacing: '.2em' }}>🏙️ מאגר האימון של העיר</h3>
         {stats && (
           <div className="dw-poolstats">
@@ -455,7 +455,7 @@ export function SensorsModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="modal-back" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="card hud det-modal">
-        <button className="ghost mclose" onClick={onClose}>✕</button>
+        <button className="ghost mclose" aria-label="סגירה" onClick={onClose}>✕</button>
         <h3 style={{ fontSize: 14, letterSpacing: '.2em' }}>🧭 בדיקת חיישנים</h3>
         <div className="boxrow">🧭 מצפן: {heading != null
           ? <b style={{ color: 'var(--cy)' }}>{SECTOR_NAMES[sectorOf(heading)]} ({Math.round(heading)}°) — סובבו ותראו</b>

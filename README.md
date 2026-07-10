@@ -1,6 +1,6 @@
 # Smart City 🏙️
 
-**Live:** https://ariel198989.github.io/smart-city/
+**Live:** https://smart-city-cyan.vercel.app/
 
 Hackathon platform where kids train computer-vision models to detect urban hazards
 (potholes, faded crosswalks, litter, broken signs), tour real Israeli streets

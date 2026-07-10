@@ -103,7 +103,7 @@ export default function MobileTagger({ onClose, classNames = [] }: { onClose: ()
     <div className="modal-back" style={{ padding: 0, placeItems: 'stretch' }}>
       <div className="tagger">
         <header className="hub-head" style={{ backgroundImage: 'none', background: 'rgba(4,11,22,.98)' }}>
-          <button className="ghost hub-close" onClick={onClose}>✕</button>
+          <button className="ghost hub-close" aria-label="סגירה" onClick={onClose}>✕</button>
           <b>🏷️ תיוג בטלפון</b>
           <span>{total ? `תמונה ${Math.min(idx + 1, total)} מתוך ${total} · תויגו ${doneN}` : 'סמנו תיבה סביב האובייקט באצבע'}</span>
         </header>

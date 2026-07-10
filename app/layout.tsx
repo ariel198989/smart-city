@@ -27,15 +27,14 @@ export const metadata: Metadata = {
 };
 
 // width+initialScale are REQUIRED — exporting a viewport object replaces
-// Next's default, so without these the phone renders at ~980px and forces
-// pinch-zoom. maximumScale + userScalable lock it to an app-like fit;
+// Next's default, so without these the phone renders at ~980px.
+// a11y (WCAG 1.4.4): do NOT set maximumScale/userScalable — never disable
+// pinch-zoom. Inputs are ≥13px so iOS won't auto-zoom on focus.
 // viewportFit:cover powers our env(safe-area-inset-*) offsets.
 export const viewport: Viewport = {
   themeColor: '#020509',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: 'cover',
 };
 

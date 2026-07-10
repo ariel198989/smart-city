@@ -36,24 +36,27 @@ export default function AdminView() {
     try {
       const cls = await fetchClasses();
       setClasses(cls);
-      // live stats per class, straight from the source tables
-      const [dets, models, jobRows] = await Promise.all([
-        sb.from('sc_detections').select('team_name, detected_by, bbox, created_at').limit(5000),
+      // per-class funnel via a single server-side aggregate (was a
+      // 5000-row scan every 20s, silently capped at 1000 by PostgREST)
+      const [agg, models, jobRows] = await Promise.all([
+        sb.rpc('sc_admin_class_stats'),
         sb.from('sc_models').select('id, name, team_name, accuracy, approved, created_at').order('created_at', { ascending: false }).limit(100),
         sb.from('sc_training_jobs').select('id, team_name, status, image_count, created_at, completed_at').order('created_at', { ascending: false }).limit(12),
       ]);
-      const dayAgo = Date.now() - 864e5;
+      if (agg.error || models.error || jobRows.error) {
+        toast('טעינת אדמין: ' + (agg.error || models.error || jobRows.error)!.message, true);
+        return;   // don't render misleading zeros on a failed load
+      }
+      const byTeam: Record<string, any> = {};
+      for (const r of (agg.data || [])) byTeam[r.team] = r;
       const st: Record<string, ClassStats> = {};
       for (const c of cls) {
-        const mine = (dets.data || []).filter((d: any) =>
-          d.team_name === c.name || d.team_name === 'אישי · ' + c.name);
+        const a = byTeam[c.name] || { students: 0, photos: 0, tagged: 0, today: 0 };
         const m = (models.data || []).find((x: any) =>
           x.team_name === c.name || x.team_name === 'אישי · ' + c.name);
         st[c.name] = {
-          students: new Set(mine.map((d: any) => d.detected_by).filter(Boolean)).size,
-          photos: mine.length,
-          tagged: mine.filter((d: any) => d.bbox).length,
-          today: mine.filter((d: any) => new Date(d.created_at).getTime() > dayAgo).length,
+          students: Number(a.students) || 0, photos: Number(a.photos) || 0,
+          tagged: Number(a.tagged) || 0, today: Number(a.today) || 0,
           model: m ? { id: m.id, name: m.name, accuracy: m.accuracy, approved: m.approved, created_at: m.created_at } : null,
         };
       }
@@ -98,7 +101,7 @@ export default function AdminView() {
       .not('frame_path', 'is', null)
       .order('created_at', { ascending: false })
       .range(offset, offset + PAGE - 1);
-    if (team) q = q.or(`team_name.eq."${team}",team_name.eq."אישי · ${team}"`);
+    if (team) q = q.in("team_name", [team, "אישי · " + team]);
     const { data, count, error } = await q;
     if (error) { toast('גלריה: ' + error.message, true); return; }
     setPhotoTotal(count || 0);
@@ -114,7 +117,7 @@ export default function AdminView() {
         .select('frame_path, class_name, created_at')
         .not('frame_path', 'is', null)
         .order('created_at', { ascending: false }).limit(1000);
-      if (photoTeam) q = q.or(`team_name.eq."${photoTeam}",team_name.eq."אישי · ${photoTeam}"`);
+      if (photoTeam) q = q.in("team_name", [photoTeam, "אישי · " + photoTeam]);
       const { data, error } = await q;
       if (error) throw error;
       const rows = data || [];

@@ -160,24 +160,12 @@ export async function ensureCityModel(): Promise<{ ok: boolean; name?: string; e
 }
 
 // ---- monthly leaderboard (top catchers, city prizes for top 3) ----
+// server-side SUM/GROUP BY — the old client sum over 2000 rows was silently
+// capped at 1000 by PostgREST, producing wrong winners in a busy month.
 export async function fetchMonthlyLeaderboard() {
-  const monthStart = new Date();
-  monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
-  const { data, error } = await sb.from('sc_detections')
-    .select('team_name, credits, status, created_at')
-    .gte('created_at', monthStart.toISOString())
-    .neq('status', 'rejected')
-    .neq('status', 'dataset')     // training frames aren't "catches"
-    .limit(2000);
+  const { data, error } = await sb.rpc('sc_monthly_leaderboard');
   if (error) throw error;
-  const byTeam: Record<string, { credits: number; catches: number }> = {};
-  (data || []).forEach((d: any) => {
-    const t = d.team_name || 'אנונימי';
-    byTeam[t] = byTeam[t] || { credits: 0, catches: 0 };
-    byTeam[t].credits += d.credits || 0;
-    byTeam[t].catches += 1;
-  });
-  return Object.entries(byTeam)
-    .map(([name, s]) => ({ name, ...s }))
-    .sort((a, b) => b.credits - a.credits);
+  return (data || []).map((r: any) => ({
+    name: r.name, credits: Number(r.credits) || 0, catches: Number(r.catches) || 0,
+  }));
 }

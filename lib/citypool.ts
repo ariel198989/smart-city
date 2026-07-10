@@ -158,13 +158,13 @@ export async function buildCityPoolZip(onProgress: (d: number, t: number) => voi
     for (let i = 0; i < take; i++) valGroups.add(gs[i]);
   }
 
-  let ok = 0;
+  let ok = 0, failed = 0;
   for (let i = 0; i < rows.length; i++) {
     const r: any = rows[i];
     onProgress(i + 1, rows.length);
     try {
       const res = await fetch(publicUrl(r.frame_path));
-      if (!res.ok) continue;
+      if (!res.ok) { failed++; continue; }
       const bytes = new Uint8Array(await res.arrayBuffer());
       const seg = valGroups.has(groupOf(r)) ? 'val' : 'train';
       const base = `pool_${String(i).padStart(4, '0')}`;
@@ -173,13 +173,20 @@ export async function buildCityPoolZip(onProgress: (d: number, t: number) => voi
       const xc = (b.x + b.w / 2).toFixed(6), yc = (b.y + b.h / 2).toFixed(6);
       zip.file(`labels/${seg}/${base}.txt`, `${idx[r.class_name]} ${xc} ${yc} ${(b.w || 0).toFixed(6)} ${(b.h || 0).toFixed(6)}\n`);
       ok++;
-    } catch { /* skip unreadable frame */ }
+    } catch { failed++; /* skip unreadable frame */ }
     await new Promise((res) => setTimeout(res, 0));
+  }
+  // a mostly-failed pack would open a training job that trains on almost
+  // nothing — abort loudly instead (>25% of frames failed to download)
+  if (ok === 0 || failed > rows.length * 0.25) {
+    return { blob: null as any, count: 0, negatives: 0, classes: names,
+      error: `${failed}/${rows.length} תמונות לא ירדו (רשת?) — האימון בוטל, נסו שוב` };
   }
 
   // negatives: accepted "ה-AI צדק" photos → background images, empty labels
-  // (~quarter negatives is the proven thinkCV recipe for fewer false positives)
-  const negs = await fetchAcceptedNegatives();
+  // (~quarter negatives; and for a personal 'mine' pool, cap at ~25% of the
+  // positives so a student's small dataset isn't swamped by city-wide bg)
+  const negs = (await fetchAcceptedNegatives()).slice(0, ownerId ? Math.ceil(ok / 4) : 1000);
   let negOk = 0;
   for (let i = 0; i < negs.length; i++) {
     try {

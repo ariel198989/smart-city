@@ -50,7 +50,8 @@ export default function AuthOverlay() {
   };
 
   return (
-    <div className="overlay">
+    <div className="overlay" role="dialog" aria-modal="true" aria-label="כניסה ל-Smart City"
+      onKeyDown={(e) => { if (e.key === 'Escape' && !isMobile) authStore.set({ viewer: true }); }}>
       <div className="auth-card hud">
         <div className="logo-lg">SMART<span className="accent">CITY</span></div>
         <div className="muted" style={{ fontSize: 13.5, marginTop: 6, textAlign: 'center' }}>

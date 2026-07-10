@@ -122,8 +122,10 @@ export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
     if (navigator.vibrate) navigator.vibrate(15);
   }
 
+  const wakeRef = useRef<any>(null);
   useEffect(() => {
     let stream: MediaStream | null = null;
+    let disposed = false;
     (async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -131,14 +133,28 @@ export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
           audio: false,
         });
         const v = videoRef.current;
-        if (!v) return;
+        if (disposed || !v) { stream.getTracks().forEach((t) => t.stop()); return; }  // unmounted mid-prompt → no camera leak
         v.srcObject = stream;
         await v.play();
       } catch (e: any) {
         setCamErr(e?.name === 'NotAllowedError' ? 'אין הרשאת מצלמה — אפשרו בהגדרות הדפדפן' : 'המצלמה לא נפתחה: ' + (e?.message || e));
       }
     })();
-    return () => { runningRef.current = false; stream?.getTracks().forEach((t) => t.stop()); };
+    // 🔆 keep the screen awake during minutes of hands-off auto-capture
+    const acquireWake = async () => {
+      try { wakeRef.current = await (navigator as any).wakeLock?.request('screen'); } catch { /* unsupported */ }
+    };
+    acquireWake();
+    const onVis = () => { if (document.visibilityState === 'visible' && !wakeRef.current) acquireWake(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      disposed = true;
+      runningRef.current = false;
+      stream?.getTracks().forEach((t) => t.stop());
+      document.removeEventListener('visibilitychange', onVis);
+      try { wakeRef.current?.release(); } catch { /* already gone */ }
+      wakeRef.current = null;
+    };
   }, []);
 
   function grab(): string | null {
@@ -218,8 +234,12 @@ export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
     onClose(shotsRef.current);
   }
 
+  // generation token: a fast pause→resume must not leave the old parked
+  // loop running alongside the new one (double frame rate, dup uploads)
+  const loopGenRef = useRef(0);
   async function loop() {
-    while (runningRef.current) {
+    const gen = ++loopGenRef.current;
+    while (runningRef.current && gen === loopGenRef.current) {
       const durl = grab();
       if (durl) {
         const q = await assessFrameQuality(durl);
@@ -246,7 +266,7 @@ export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
 
   function toggle() {
     if (!auth.user) { toast('צריך להתחבר', true); return; }
-    if (running) { runningRef.current = false; setRunning(false); }
+    if (running) { runningRef.current = false; loopGenRef.current++; setRunning(false); }  // invalidate any parked loop
     else { runningRef.current = true; setRunning(true); loop(); }
   }
 

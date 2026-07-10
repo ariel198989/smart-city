@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { COLAB } from '@/lib/config';
 import { authStore } from '@/lib/auth';
 import { useStore, toast, bumpData } from '@/lib/store';
-import { startTrainingJob, registerTrainedModel, fetchJobs, type TrainJob } from '@/lib/trainjobs';
+import { startTrainingJob, registerTrainedModel, fetchJobs, cancelJob, type TrainJob } from '@/lib/trainjobs';
 import { fetchPoolStats, fetchMyTaggedCount, type PoolStats } from '@/lib/citypool';
 
 // scope 'mine' = a student's personal model on her own photos;
@@ -21,13 +21,16 @@ export default function TrainReal({ onClose, scope = 'all' }: { onClose: () => v
 
   const [pool, setPool] = useState<PoolStats | null>(null);
   const [mine, setMine] = useState<number | null>(null);
+  // scope-aware job fetch — see only MY (or my team's) jobs, so another
+  // student's pending job never blocks or gets claimed as mine
+  const jobsFor = () => fetchJobs(5, { userId: auth.user?.id, team: auth.team || null, scope });
   useEffect(() => {
-    fetchJobs().then(setJobs).catch(() => {});
+    jobsFor().then(setJobs).catch(() => {});
     if (scope === 'all') fetchPoolStats().then(setPool).catch(() => {});
     else if (auth.user) fetchMyTaggedCount(auth.user.id).then(setMine).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope]);
-  const pending = jobs.find((j) => j.status === 'pending');
+  }, [scope, auth.user?.id]);
+  const pending = jobs.find((j) => j.status === 'pending' || j.status === 'running');
   // readiness: YOLO starts being useful ~50 imgs/class, strong at 150+
   const weakest = pool?.byClass.length ? Math.min(...pool.byClass.map((c) => c.count)) : 0;
   const readiness = !pool ? null
@@ -43,7 +46,7 @@ export default function TrainReal({ onClose, scope = 'all' }: { onClose: () => v
     if ('error' in r) { setProgress('⚠️ ' + r.error); }
     else {
       setProgress('');
-      setJobs(await fetchJobs());
+      setJobs(await jobsFor());
       if (navigator.vibrate) navigator.vibrate(150);
     }
     setBusy(false);
@@ -57,7 +60,7 @@ export default function TrainReal({ onClose, scope = 'all' }: { onClose: () => v
     else {
       toast('🎉 מודל העיר עודכן — כל טלפון יקבל אותו עכשיו!', true);
       bumpData();
-      setJobs(await fetchJobs());
+      setJobs(await jobsFor());
       if (navigator.vibrate) navigator.vibrate([100, 60, 200]);
     }
     setRegBusy(false);
@@ -92,7 +95,13 @@ export default function TrainReal({ onClose, scope = 'all' }: { onClose: () => v
           )}
           {pending ? (
             <div className="ai-verdict pass" style={{ marginTop: 6 }}>
-              ✅ משימה ממתינה: {pending.image_count} תמונות · {(pending.classes || []).join(' · ')}
+              {pending.status === 'running' ? '🏃 מתאמן עכשיו' : '✅ משימה ממתינה'}: {pending.image_count} תמונות · {(pending.classes || []).join(' · ')}
+              {pending.status === 'pending' && (
+                <button className="ghost" style={{ display: 'block', width: '100%', marginTop: 6, fontSize: 11.5 }}
+                  onClick={async () => { await cancelJob(pending.id); setJobs(await jobsFor()); }}>
+                  ביטול המשימה (כדי לפתוח חדשה)
+                </button>
+              )}
             </div>
           ) : (
             <button className="hot" style={{ width: '100%', marginTop: 6 }} disabled={busy} onClick={start}>

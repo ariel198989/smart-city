@@ -34,11 +34,26 @@ let didInitialRoute = false;
 export default function PatrolView({ defaultCam = false }: { defaultCam?: boolean }) {
   const auth = useStore(authStore);
   const model = useStore(modelStore);
+  const [retrying, setRetrying] = useState(false);
+  async function retryModel() {
+    setRetrying(true); setModelMsg('טוען את מודל העיר…');
+    const r = await ensureCityModel();
+    setModelMsg(r.ok ? '' : (r.error || 'הטעינה נכשלה'));
+    setRetrying(false);
+  }
+  // auto-retry the model download when connectivity returns
+  useEffect(() => {
+    const onOnline = () => { if (!modelStore.get().ready) retryModel(); };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const mapEl = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const avatarRef = useRef<any>(null);
   const spawnMarks = useRef<any[]>([]);
   const posRef = useRef<{ lat: number; lng: number } | null>(null);
+  const accRef = useRef<number>(999);   // current GPS accuracy (m); manual map-taps stay 999
   const [pos, setPos] = useState<{ lat: number; lng: number } | null>(null);
   const [gpsErr, setGpsErr] = useState('');
   const [mission, setMission] = useState<string>('');
@@ -129,10 +144,10 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
         if (!posRef.current || gpsErr) moveAgent(e.lngLat.lat, e.lngLat.lng, true);
       });
 
-      // GPS follow
+      // GPS follow — track accuracy so we never pin a hazard on a bad fix
       if (navigator.geolocation) {
         watchId = navigator.geolocation.watchPosition(
-          (p) => moveAgent(p.coords.latitude, p.coords.longitude, false),
+          (p) => { accRef.current = p.coords.accuracy ?? 999; moveAgent(p.coords.latitude, p.coords.longitude, false); },
           () => setGpsErr('אין GPS — לחצו על המפה כדי "ללכת" 🚶'),
           { enableHighAccuracy: true, maximumAge: 3000, timeout: 12000 },
         );
@@ -269,10 +284,10 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
           } catch { /* angle service down — capture proceeds */ }
         }
 
-        // 🎯 daily challenge: first 3 gated catches today earn +10 each
-        const daily = dailyCatch();
-        setDailyN(daily.count);
-        const cr = calcCredits({ conf: best.score, nearSpawn, gated: true, newAngle }) + daily.bonus;
+        // 🎯 daily bonus PREVIEW (don't consume the slot until the catch
+        // actually persists — a dropped upload must not burn today's bonus)
+        const wouldBonus = dailyProgress() < DAILY_TARGET ? DAILY_BONUS : 0;
+        const cr = calcCredits({ conf: best.score, nearSpawn, gated: true, newAngle }) + wouldBonus;
         const stamp = Date.now() + '_' + Math.random().toString(36).slice(2, 7);
         const cropURL = await cropDetection(durl, best);
         const path = `crops/p_${stamp}.jpg`;        // crop for the map pin
@@ -281,9 +296,12 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
         await uploadBlob(framePath, dataURLtoBlob(durl), 'image/jpeg');
         // 🎯 auto-pin ON the object: GPS gives the photographer's position;
         // project forward along the compass heading by the distance the
-        // bbox geometry implies — the pin lands on the hazard itself
+        // bbox geometry implies — the pin lands on the hazard itself. But
+        // only if the fix is dispatch-grade — a 2km cold-start fix must not
+        // drop a hazard the city drives to; keep the training frame either way.
+        const goodFix = accRef.current <= 50;
         let pinAt = { lat: at.lat, lng: at.lng };
-        if (heading != null) {
+        if (heading != null && goodFix) {
           pinAt = projectForward(at.lat, at.lng, heading, estimateObjectDistanceM(best));
         }
         await insertDetection({
@@ -293,8 +311,14 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
           frame_path: framePath,                    // full photo (training data)
           bbox: { x: best.x, y: best.y, w: best.w, h: best.h },  // YOLO label
           detected_by: auth.user.id, team_name: auth.team || null,
+          // no dispatch-grade GPS → 'dataset' so it feeds training but does
+          // NOT pin a hazard at a wrong spot on the municipal map
+          status: goodFix ? undefined : 'dataset',
           credits: cr, heading,
         });
+        // catch persisted → NOW commit the daily bonus slot
+        const daily = dailyCatch();
+        setDailyN(daily.count);
         setCredits((c) => c + cr);
         setResult({ kind: 'pass', cls, conf: best.score, credits: cr, newAngle, daily: daily.bonus });
         if (navigator.vibrate) navigator.vibrate(200);
@@ -501,6 +525,17 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
         )}
 
         {/* 🎥 street mode — live camera with real-time AI */}
+        {/* model download failed → tell the user + one-tap retry (was silent) */}
+        {!model.ready && modelMsg && modelMsg !== 'טוען את מודל העיר…'
+          && !/אין עדיין מודל|לקבוצה שלכם/.test(modelMsg) && (
+          <div className="model-err">
+            <span>⚠️ {modelMsg}</span>
+            <button className="hot" disabled={retrying} onClick={retryModel}>
+              {retrying ? '⏳ טוען…' : '🔄 נסה שוב'}
+            </button>
+          </div>
+        )}
+
         {camMode && (
           <StreetCam
             mission={mission}
