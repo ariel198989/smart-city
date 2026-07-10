@@ -16,6 +16,7 @@ import { publicUrl, sb } from '@/lib/db';
 import { fetchPoolGallery } from '@/lib/citypool';
 import { DAILY_TARGET, DAILY_BONUS } from '@/lib/daily';
 import { normalizeHebrewCount } from '@/lib/text';
+import { fetchActiveCampaign, fetchCampaignProgress, type Campaign, type CampaignProgress } from '@/lib/campaigns';
 
 export type MobileTab = 'map' | 'cam' | 'train' | 'me';
 
@@ -115,6 +116,15 @@ export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer
   const pocket = useStore(pocketStore);
   const [pool, setPool] = useState<PoolStats | null>(null);
   const [job, setJob] = useState<TrainJob | null | 'none'>(null);
+  // 🎯 the city's live weekly mission — one banner every phone sees
+  const [camp, setCamp] = useState<Campaign | null>(null);
+  const [campProg, setCampProg] = useState<CampaignProgress | null>(null);
+  useEffect(() => {
+    fetchActiveCampaign().then((c) => {
+      setCamp(c);
+      if (c) fetchCampaignProgress(c.id).then(setCampProg).catch(() => {});
+    }).catch(() => {});
+  }, []);
   useEffect(() => {
     fetchPoolStats().then(setPool).catch(() => {});
     // live job status — poll while the hub is open so "התחל אימון" never
@@ -188,6 +198,43 @@ export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer
         <span>שני עולמות: להרגיש איך AI לומד · ולבנות מודל אמיתי ביחד</span>
       </header>
       <div className="hub-body">
+        {/* 🎯 THE weekly city mission — admin-defined; joining loads its
+            objects into this session so every frame lands attributed */}
+        {camp && (() => {
+          const daysLeft = Math.max(0, Math.ceil((new Date(camp.ends_at).getTime() - Date.now()) / 86400000));
+          const pct = campProg ? Math.min(100, Math.round((campProg.total / Math.max(1, camp.goal_images)) * 100)) : 0;
+          const joined = camp.classes.every((c) => classes.includes(c));
+          return (
+            <div className="world hud" style={{ border: '1px solid var(--gold)', position: 'relative' }}>
+              <div className="world-head">
+                <b>🎯 המשימה העירונית: {camp.title}</b>
+                <span className="step-who">{daysLeft > 0 ? `עוד ${daysLeft} ימים` : 'מסתיים היום'}</span>
+              </div>
+              {camp.description && <p>{camp.description}</p>}
+              <div className="pick-list" style={{ marginBottom: 6 }}>
+                {camp.classes.map((c) => <span key={c} className="pick-sel">{c}</span>)}
+              </div>
+              {campProg && (
+                <>
+                  <div className="mc-bar"><i style={{ width: pct + '%' }} /></div>
+                  <p style={{ margin: '4px 0 8px' }}>
+                    📸 <b>{campProg.total}</b>/{camp.goal_images} תמונות מהעיר ({pct}%) · 👥 {campProg.contributors} משתתפים
+                  </p>
+                </>
+              )}
+              <button className={joined ? 'primary' : 'hot'} style={{ width: '100%' }}
+                onClick={() => {
+                  if (!joined) {
+                    onClasses([...new Set([...camp.classes, ...classes])]);
+                    toast('🎯 הצטרפתם! האובייקטים של המשימה נטענו — צלמו סדרה וכל תמונה נספרת לעיר', true);
+                  } else onSeries(camp.classes[0]);
+                }}>
+                {joined ? '📸 צלמו למשימה עכשיו' : '🎯 הצטרפו למשימה העירונית'}
+              </button>
+            </div>
+          );
+        })()}
+
         {/* the answer to "where's my model + how good is it" — HONESTLY.
             weak model → says so + sends you to shoot more, never fakes success */}
         {(() => {

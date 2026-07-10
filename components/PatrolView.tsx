@@ -22,6 +22,7 @@ import StreetCam from '@/components/StreetCam';
 import { BottomBar, TrainingHub, MeHub, type MobileTab } from '@/components/MobileHubs';
 import SeriesCollect from '@/components/SeriesCollect';
 import MobileTagger from '@/components/MobileTagger';
+import { fetchActiveCampaign, type Campaign } from '@/lib/campaigns';
 import { sb } from '@/lib/db';
 
 import ResultCards, { type CatchResult } from '@/components/ResultCards';
@@ -54,6 +55,13 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
   const spawnMarks = useRef<any[]>([]);
   const posRef = useRef<{ lat: number; lng: number } | null>(null);
   const accRef = useRef<number>(999);   // current GPS accuracy (m); manual map-taps stay 999
+  // 🎯 weekly campaign attribution — patrol catches of a campaign class count too
+  const campRef = useRef<Campaign | null>(null);
+  useEffect(() => {
+    fetchActiveCampaign().then((c) => { campRef.current = c; }).catch(() => {});
+  }, []);
+  const campaignIdFor = (cls: string) =>
+    campRef.current && campRef.current.classes.includes(cls) ? campRef.current.id : null;
   const [pos, setPos] = useState<{ lat: number; lng: number } | null>(null);
   const [gpsErr, setGpsErr] = useState('');
   const [mission, setMission] = useState<string>('');
@@ -314,7 +322,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
           // no dispatch-grade GPS → 'dataset' so it feeds training but does
           // NOT pin a hazard at a wrong spot on the municipal map
           status: goodFix ? undefined : 'dataset',
-          credits: cr, heading,
+          credits: cr, heading, campaign_id: campaignIdFor(cls),
         });
         // catch persisted → NOW commit the daily bonus slot
         const daily = dailyCatch();
@@ -352,7 +360,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
           class_name: pk.className, confidence,
           crop_path: path, frame_path: framePath,   // no bbox (classifier) — excluded from auto-pool, tag on desktop
           detected_by: auth.user.id, team_name: auth.team || null,
-          credits: cr, heading,
+          credits: cr, heading, campaign_id: campaignIdFor(pk.className),
         });
         setCredits((c) => c + cr);
         setResult({ kind: 'pass', cls: pk.className + ' (מודל כיס 🎓)', conf: confidence, credits: cr, daily: daily.bonus });
@@ -367,7 +375,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
           lat: at.lat, lng: at.lng,
           class_name: mission || 'מפגע כללי', confidence: 0,
           crop_path: path, detected_by: auth.user.id, team_name: auth.team || null,
-          credits: cr, heading: getHeading(),
+          credits: cr, heading: getHeading(), campaign_id: campaignIdFor(mission || ''),
         });
         setCredits((c) => c + cr);
         setResult({ kind: 'ungated', credits: cr });

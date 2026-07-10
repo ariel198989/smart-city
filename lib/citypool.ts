@@ -15,18 +15,20 @@ export interface PoolStats {
 // SCALE CEILING: the ZIP is assembled in device memory (~200KB/img →
 // 1500 ≈ 300MB). Beyond that the export must move server-side
 // (Edge Function / worker) — newest-first keeps the freshest data in.
-async function fetchPoolRows(limit = 1500, ownerId?: string) {
+async function fetchPoolRows(limit = 1500, ownerId?: string, campaignId?: string) {
   // training-grade = full frame + a bbox. NOT confidence>0: human-tagged
   // phone photos carry confidence 0 and are exactly the data we want —
   // that filter silently excluded the whole series→tag flow.
   // ownerId: personal training — a student trains on HER photos first,
   // the class merge comes as its own later step (pedagogy, Ariel).
+  // campaignId: the weekly city mission — export ONLY that focused data.
   let q = sb.from('sc_detections')
     .select('class_name, frame_path, bbox, confidence, detected_by, created_at')
     .not('frame_path', 'is', null)
     .not('bbox', 'is', null)
     .neq('status', 'rejected');
   if (ownerId) q = q.eq('detected_by', ownerId);
+  if (campaignId) q = q.eq('campaign_id', campaignId);
   const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
   if (error) throw error;
   return data || [];
@@ -117,9 +119,9 @@ async function fetchAcceptedNegatives(limit = 800) {
 }
 
 // build a YOLO dataset ZIP from the whole city pool (full images + labels)
-export async function buildCityPoolZip(onProgress: (d: number, t: number) => void, ownerId?: string) {
+export async function buildCityPoolZip(onProgress: (d: number, t: number) => void, ownerId?: string, campaignId?: string) {
   const JSZip = (await import('jszip')).default;
-  const rows = await fetchPoolRows(1500, ownerId);
+  const rows = await fetchPoolRows(1500, ownerId, campaignId);
   if (!rows.length) return null;
 
   // class index map

@@ -14,6 +14,7 @@ import { useStore, toast } from '@/lib/store';
 import { dataURLtoBlob } from '@/lib/util';
 import { DEFAULT_CITY } from '@/lib/config';
 import { assessFrameQuality } from '@/lib/quality';
+import { fetchActiveCampaign, type Campaign } from '@/lib/campaigns';
 
 const INTERVAL_MS = 1500;
 const PER_STEP = 8;        // shots per variety step (8 steps × 8 ≈ 64/object)
@@ -54,6 +55,16 @@ export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
   const [thumbs, setThumbs] = useState<string[]>([]);
   const runningRef = useRef(false);
   const shotsRef = useRef(0);
+
+  // 🎯 weekly city campaign — if this session shoots a campaign class,
+  // every frame is attributed (campaign_id) so the week's city-wide
+  // effort lands as ONE focused dataset the admin can track and train.
+  const campRef = useRef<Campaign | null>(null);
+  useEffect(() => {
+    fetchActiveCampaign().then((c) => { campRef.current = c; }).catch(() => {});
+  }, []);
+  const campaignIdFor = (cls: string) =>
+    campRef.current && campRef.current.classes.includes(cls) ? campRef.current.id : null;
 
   // 🛰️ OWN high-accuracy GPS watch — the parent's coarse fix isn't good
   // enough to dispatch a repair crew. We collect every good fix during
@@ -182,6 +193,7 @@ export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
       // frames off the city map. The ONE incident card is created at
       // session end (finishSession) at the median GPS position.
       status: 'dataset',
+      campaign_id: campaignIdFor(cls),
     });
     lastFrameRef.current[cls] = framePath;
   }
@@ -217,6 +229,7 @@ export default function SeriesCollect({ classNames, getPos, onClose }: Props) {
         frame_path: lastFrameRef.current[confirmEvt.cls] || null,
         detected_by: authStore.get().user!.id,
         team_name: authStore.get().team || null, credits: 0, heading: null,
+        campaign_id: campaignIdFor(confirmEvt.cls),
         // no explicit status → 'pending' → shows on the city map as an
         // open incident the municipality can dispatch to
       });

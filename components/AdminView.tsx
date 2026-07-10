@@ -10,6 +10,7 @@ import { sb } from '@/lib/db';
 import { SUPER_ADMIN } from '@/lib/config';
 import { fetchClasses, createClass, setClassActive, type WorkshopClass } from '@/lib/classes';
 import { publicUrl } from '@/lib/db';
+import AdminCampaigns from '@/components/AdminCampaigns';
 
 interface ClassStats {
   students: number; photos: number; tagged: number; today: number;
@@ -230,6 +231,9 @@ export default function AdminView() {
         })}
         {classes.length === 0 && <p className="hint">אין כיתות עדיין — פתחו אחת למעלה ⬆️</p>}
       </div>
+
+      {/* 🎯 weekly city training mission */}
+      <AdminCampaigns />
 
       {/* training queue */}
       <h2 className="admin-sub">אימונים אחרונים</h2>
