@@ -158,8 +158,42 @@
           width:100%;min-height:52px;font-size:1.02rem;padding:14px 20px;white-space:nowrap;}
         .sw-route__dot{width:24px;height:24px;}
         .sw-route{gap:12px;}
-      }`;
+      }
+      /* the scroll hint is informational — it must NEVER intercept a tap
+         (it sits fixed above the CTA layer and stays there invisible) */
+      .sw-hint{pointer-events:none;}
+      /* instant launch feedback: shows the moment the CTA is tapped, covers
+         the blank gap while the app loads */
+      .sw-launch{position:fixed;inset:0;z-index:99;background:rgba(2,5,9,.92);
+        display:flex;align-items:center;justify-content:center;
+        animation:swl-in .18s ease-out;backdrop-filter:blur(6px);}
+      @keyframes swl-in{from{opacity:0}}
+      .sw-launch__box{display:flex;flex-direction:column;align-items:center;gap:16px;
+        font-family:'Rubik',sans-serif;color:#EAF4FF;font-size:1.05rem;font-weight:700;}
+      .sw-launch__box i{width:34px;height:34px;border:3px solid rgba(255,182,39,.25);
+        border-top-color:#FFB627;border-radius:50%;animation:swl-spin .7s linear infinite;}
+      @keyframes swl-spin{to{transform:rotate(360deg)}}`;
     document.body.appendChild(rtl);
+
+    // tap on any app CTA → INSTANT visual response while the app loads
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest('a.sw-btn--primary, a.sw-topcta');
+      if (!a || a.target === '_blank') return;
+      const ov = document.createElement('div');
+      ov.className = 'sw-launch';
+      ov.innerHTML = '<div class="sw-launch__box"><i></i><b>נכנסים לעיר…</b></div>';
+      document.body.appendChild(ov);
+    }, { capture: true });
+
+    // same-origin app? prerender it in the background (Chrome/Android) so the
+    // tap lands on an ALREADY-RENDERED page — instant switch
+    const appHref = document.querySelector('a.sw-topcta')?.getAttribute('href') || '';
+    if (appHref.startsWith('/')) {
+      const sr = document.createElement('script');
+      sr.type = 'speculationrules';
+      sr.textContent = JSON.stringify({ prerender: [{ urls: [appHref] }], prefetch: [{ urls: [appHref] }] });
+      document.body.appendChild(sr);
+    }
     // two-tone fixed wordmark (never follows the section accent)
     const bn = document.querySelector('.sw-brand__name');
     if (bn) bn.innerHTML = 'SMART <b>CITY</b>';
