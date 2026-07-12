@@ -193,11 +193,11 @@ function mountScrollWorld(container, config) {
   function loadClip(s) {
     // Under prefers-reduced-motion we never load the clips at all — the stills stay up
     // and simply cross-dissolve as you scroll. No scrubbed video motion, no decode cost.
-    if (reduce || s.loading || !s.clip) return;
+    if (reduce || s.loading || !s.clip) return Promise.resolve();
     s.loading = true;
     // Serve the lighter mobile encode on phones when one was provided.
     const url = (isMobile() && s.clipM) ? s.clipM : s.clip;
-    fetch(url).then(r => r.ok ? r.blob() : Promise.reject(new Error('404')))
+    return fetch(url).then(r => r.ok ? r.blob() : Promise.reject(new Error('404')))
       .then(blob => {
         const v = document.createElement('video');
         v.className = 'sw-scene__video';
@@ -299,7 +299,7 @@ function mountScrollWorld(container, config) {
     SEGMENTS.forEach(s => primeVideo(s.video));
   }
   window.addEventListener('pointerdown', onFirstGesture, { once: true, passive: true });
-  if (isMobile()) setTimeout(() => { SEGMENTS.forEach(s => { try { loadClip(s); } catch (e) {} }); }, 1200);
+  if (isMobile()) setTimeout(async () => { for (const s of SEGMENTS) { try { await loadClip(s); } catch (e) {} } }, 800);
   window.addEventListener('touchstart', onFirstGesture, { once: true, passive: true });
 
   // Particles are a per-frame cost we can't afford alongside video scrubbing on a phone.
