@@ -48,6 +48,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap"
           rel="stylesheet"
         />
+        {/* 🌍 first-visit gate: a brand-new visitor gets the scroll-world
+            story (/welcome/) before the signup screen. Runs before paint
+            (no flash). Never fires for: returning visitors (flag), logged-in
+            users (supabase token), or arrivals from the world CTA (?start=1). */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{
+          if(location.pathname!=='/')return;
+          if(new URLSearchParams(location.search).has('start')){localStorage.setItem('sc_world_seen','1');return;}
+          if(localStorage.getItem('sc_world_seen'))return;
+          for(var i=0;i<localStorage.length;i++){if(localStorage.key(i).indexOf('auth-token')>-1)return;}
+          localStorage.setItem('sc_world_seen','1');
+          location.replace('/welcome/');
+        }catch(e){}})();` }} />
       </head>
       <body>
         <CityBackdrop />
