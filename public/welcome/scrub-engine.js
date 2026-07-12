@@ -82,7 +82,7 @@ function mountScrollWorld(container, config) {
   // ---- build the interleaved segment chain: dive0, conn0, dive1, … diveN-1 ----
   const SEGMENTS = [];
   SECTIONS.forEach((s, i) => {
-    const dive = { kind: 'dive', si: i, clip: s.clip, clipM: s.clipMobile, still: s.still, accent: s.accent,
+    const dive = { kind: 'dive', si: i, clip: s.clip, clipM: s.clipMobile, still: s.still, stillM: s.stillMobile, accent: s.accent,
                    w: s.scroll || DIVE_W, linger: s.linger || 0 };
     SEGMENTS.push(dive);
     s._seg = dive;
@@ -134,7 +134,8 @@ function mountScrollWorld(container, config) {
   SEGMENTS.forEach(s => {
     const scene = el('div', 'sw-scene'); scene.style.setProperty('--sw-accent', s.accent || '');
     const img = el('img', 'sw-scene__still'); img.alt = ''; img.decoding = 'async'; img.loading = 'lazy';
-    if (s.still) img.src = s.still;
+    const _still = (typeof isMobile==='function' && isMobile() && s.stillM) ? s.stillM : s.still;
+    if (_still) img.src = _still;
     scene.appendChild(img); stage.appendChild(scene);
     s.el = scene; s.img = img; s.video = null; s.hasClip = false;
     s.loading = false; s.ready = false; s.cur = 0; s.target = 0; s.visible = false;
@@ -298,6 +299,7 @@ function mountScrollWorld(container, config) {
     SEGMENTS.forEach(s => primeVideo(s.video));
   }
   window.addEventListener('pointerdown', onFirstGesture, { once: true, passive: true });
+  if (isMobile()) setTimeout(() => { SEGMENTS.forEach(s => { try { loadClip(s); } catch (e) {} }); }, 1200);
   window.addEventListener('touchstart', onFirstGesture, { once: true, passive: true });
 
   // Particles are a per-frame cost we can't afford alongside video scrubbing on a phone.
