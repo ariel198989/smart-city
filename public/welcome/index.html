@@ -106,8 +106,10 @@
       .sw-copy{left:auto;right:clamp(18px,5vw,64px);text-align:right;}
       .sw-route{right:auto;left:clamp(14px,2.4vw,30px);}
       @media (max-width:860px){
-        .sw-copy{left:clamp(18px,5vw,64px);right:clamp(18px,5vw,64px);text-align:right;}
+        .sw-copy{left:clamp(18px,5vw,64px);right:clamp(18px,5vw,64px);text-align:right;
+          bottom:calc(clamp(92px,16dvh,150px) + env(safe-area-inset-bottom));}
         .sw-route{left:6px;right:auto;}
+        .sw-topcta{padding:10px 18px;font-size:.82rem;}
       }
       /* ── chrome, professionalized: HUD language — sharp corners, hairlines,
          one gold CTA. The engine's defaults (light pills, gradient blob mark,
