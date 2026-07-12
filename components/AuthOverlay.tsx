@@ -99,6 +99,11 @@ export default function AuthOverlay() {
             רק להציץ (צפייה בלבד)
           </button>
         )}
+        {/* explicit door back to the scroll-world story — the first-visit
+            gate fires only once, so returning visitors need this */}
+        <a href="/welcome" style={{ display: 'block', textAlign: 'center', marginTop: 12, fontSize: 12.5, color: 'var(--cy)', textDecoration: 'none', opacity: .85 }}>
+          ‹ לצפות שוב בסיפור — איך זה עובד
+        </a>
       </div>
     </div>
   );
