@@ -17,6 +17,11 @@ import { fetchPoolGallery } from '@/lib/citypool';
 import { DAILY_TARGET, DAILY_BONUS } from '@/lib/daily';
 import { normalizeHebrewCount } from '@/lib/text';
 import { fetchActiveCampaign, fetchCampaignProgress, type Campaign, type CampaignProgress } from '@/lib/campaigns';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  Target02Icon, Brain02Icon, GraduationScrollIcon, Camera01Icon, Tag01Icon,
+  Rocket01Icon, UserGroupIcon, SmartPhone01Icon, PlusSignIcon,
+} from '@hugeicons/core-free-icons';
 
 export type MobileTab = 'map' | 'cam' | 'train' | 'me';
 
@@ -145,57 +150,63 @@ export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer
   const weakest = pool?.byClass.length ? Math.min(...pool.byClass.map((c) => c.count)) : 0;
   const ready = tagged > 0 && weakest >= 50;
 
-  // the group machine, step by step — each tagged with WHOSE turn it is
+  // the group machine, step by step — each tagged with WHOSE turn it is.
+  // Rendered as a right-anchored icon accordion: closed = icon + title,
+  // tap = the step opens with its full story + CTA (de-densified mobile UX)
   const steps = [
     {
-      icon: '📸', who: '📱 אתם',
+      icon: Camera01Icon, who: 'אתם',
       title: classes.length > 1 ? `צלמו סדרה לכל אובייקט (${classes.length})` : `צלמו סדרה של ${mission}`,
       body: classes.length > 1
         ? 'המצלמה צולמת לבד כל 1.5 שניות. בוחרים אובייקט בצ\'יפ שלמעלה, מקיפים אותו — ואז עוברים לאובייקט הבא. רדאר זוויות נפרד לכל אחד.'
         : 'המצלמה צולמת לבד כל 1.5 שניות — פשוט מסתובבים סביב האובייקט. 60 תמונות בדקה וחצי, מכל הזוויות.',
-      cta: { label: '📸 צלמו סדרה', run: () => onSeries(), hot: false },
+      cta: { label: 'צלמו סדרה', run: () => onSeries(), hot: false },
       done: (myUntagged || 0) > 0 || tagged > 0,
     },
     {
-      icon: '🏷️', who: '📱 אתם', title: 'תייגו בטלפון',
+      icon: Tag01Icon, who: 'אתם', title: 'תייגו בטלפון',
       body: myUntagged
         ? `${myUntagged} תמונות שלכם מחכות לתיבה — גוררים אצבע סביב האובייקט, שמור, הבא. דקות ספורות.`
         : 'אין תמונות בהמתנה כרגע. אחרי צילום סדרה — התיוג כאן. (תיוג עדין יותר אפשרי גם בדסקטופ בסטודיו.)',
-      cta: myUntagged ? { label: `🏷️ תייגו ${myUntagged} תמונות`, run: onTagger, hot: true } : null,
+      cta: myUntagged ? { label: `תייגו ${myUntagged} תמונות`, run: onTagger, hot: true } : null,
       done: tagged > 0 && !myUntagged,
     },
     {
-      icon: '🚀', who: pendingJob ? '☁️ הענן — תורו' : '📱 אתם לבד', title: 'אימון אישי אמיתי',
+      icon: Rocket01Icon, who: pendingJob ? 'הענן — תורו' : 'אתם לבד', title: 'אימון אישי אמיתי',
       body: pendingJob
-        ? `⏳ משימה פתוחה: ${pendingJob.image_count} תמונות · נפתחה ${fmtAgo(pendingJob.created_at)} — הריצו את המחברת (Run all, ‏~15 דק'). הסטטוס מתעדכן כאן חי.`
+        ? `משימה פתוחה: ${pendingJob.image_count} תמונות · נפתחה ${fmtAgo(pendingJob.created_at)} — הריצו את המחברת (Run all, ‏~15 דק'). הסטטוס מתעדכן כאן חי.`
         : 'המודל הראשון שלכם — רק על התמונות שאתם תייגתם. עוברים לבד את כל המסלול: דאטה → ענן → מודל. (רמז: הוא ייצא חלש — וזה בדיוק השיעור.)',
-      cta: { label: pendingJob ? '☁️ המשך במחברת' : '🚀 אמנו מודל משלכם', run: () => onTrainReal('mine'), hot: true },
+      cta: { label: pendingJob ? 'המשך במחברת' : 'אמנו מודל משלכם', run: () => onTrainReal('mine'), hot: true },
       done: !!(job && job !== 'none' && job.status === 'done'),
     },
     {
-      icon: '🤝', who: '🏫 כל הכיתה', title: 'האיחוד — מודל מהמאגר של כולם',
+      icon: UserGroupIcon, who: 'כל הכיתה', title: 'האיחוד — מודל של כולם',
       body: `כל תמונה מתויגת של כל חבר קבוצה כבר במאגר אחד: ${tagged} תמונות מ-${contributors} תורמים` +
         (pool && tagged > 0 ? ` · הקטגוריה הדלה: ${weakest} (יעד 50+, ‏150+ = מצוין)` : '') +
         '. עכשיו מאמנים פעם אחת על הכל — ומשווים למודל האישי: 60 לבד נגד 400 ביחד.',
-      cta: { label: '🏫 התחל אימון כיתתי מאוחד', run: () => onTrainReal('all'), hot: false },
+      cta: { label: 'התחל אימון כיתתי מאוחד', run: () => onTrainReal('all'), hot: false },
       done: ready,
     },
     {
-      icon: '📲', who: '🤖 אוטומטי', title: 'המודל אצל כולם',
+      icon: SmartPhone01Icon, who: 'אוטומטי', title: 'המודל אצל כולם',
       body: model.ready
-        ? `✅ פעיל: ${model.name} — כל טלפון בעיר משתמש בו עכשיו.`
+        ? `פעיל: ${model.name} — כל טלפון בעיר משתמש בו עכשיו.`
         : 'כשהמודל נרשם — כל טלפון מקבל אותו אוטומטית, והמשחק נהיה חכם.',
       cta: null,
       done: model.ready,
     },
   ];
+  // accordion: one step open at a time; defaults to the first unfinished
+  const [openStep, setOpenStep] = useState<number | null>(null);
+  const firstUndone = steps.findIndex((s) => !s.done);
+  const shownStep = openStep ?? (firstUndone === -1 ? steps.length - 1 : firstUndone);
 
   return (
     <section className="hub">
       <header className="hub-head">
         <button className="ghost hub-close" aria-label="סגירה" onClick={onClose}>✕</button>
-        <b>🧠 אימון</b>
-        <span>שני עולמות: להרגיש איך AI לומד · ולבנות מודל אמיתי ביחד</span>
+        <b>אימון</b>
+        <span>להרגיש איך AI לומד · ולבנות מודל אמיתי ביחד</span>
       </header>
       <div className="hub-body">
         {/* 🎯 THE weekly city mission — admin-defined; joining loads its
@@ -205,31 +216,31 @@ export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer
           const pct = campProg ? Math.min(100, Math.round((campProg.total / Math.max(1, camp.goal_images)) * 100)) : 0;
           const joined = camp.classes.every((c) => classes.includes(c));
           return (
-            <div className="world hud" style={{ border: '1px solid var(--gold)', position: 'relative' }}>
-              <div className="world-head">
-                <b>🎯 המשימה העירונית: {camp.title}</b>
-                <span className="step-who">{daysLeft > 0 ? `עוד ${daysLeft} ימים` : 'מסתיים היום'}</span>
+            <div className="thx-camp">
+              <div className="thx-camp-top">
+                <span className="thx-ico gold"><HugeiconsIcon icon={Target02Icon} size={22} strokeWidth={1.6} /></span>
+                <div className="thx-camp-txt">
+                  <i>המשימה העירונית · {daysLeft > 0 ? `עוד ${daysLeft} ימים` : 'מסתיים היום'}</i>
+                  <b>{camp.title}</b>
+                </div>
               </div>
-              {camp.description && <p>{camp.description}</p>}
-              <div className="pick-list" style={{ marginBottom: 6 }}>
-                {camp.classes.map((c) => <span key={c} className="pick-sel">{c}</span>)}
+              <div className="thx-chips">
+                {camp.classes.map((c) => <span key={c}>{c}</span>)}
               </div>
               {campProg && (
-                <>
-                  <div className="mc-bar"><i style={{ width: pct + '%' }} /></div>
-                  <p style={{ margin: '4px 0 8px' }}>
-                    📸 <b>{campProg.total}</b>/{camp.goal_images} תמונות מהעיר ({pct}%) · 👥 {campProg.contributors} משתתפים
-                  </p>
-                </>
+                <div className="thx-progress">
+                  <div className="thx-bar"><i style={{ width: pct + '%' }} /></div>
+                  <span><b>{campProg.total}</b>/{camp.goal_images} תמונות · {campProg.contributors} משתתפים</span>
+                </div>
               )}
               <button className={joined ? 'primary' : 'hot'} style={{ width: '100%' }}
                 onClick={() => {
                   if (!joined) {
                     onClasses([...new Set([...camp.classes, ...classes])]);
-                    toast('🎯 הצטרפתם! האובייקטים של המשימה נטענו — צלמו סדרה וכל תמונה נספרת לעיר', true);
+                    toast('הצטרפתם! האובייקטים של המשימה נטענו — צלמו סדרה וכל תמונה נספרת לעיר', true);
                   } else onSeries(camp.classes[0]);
                 }}>
-                {joined ? '📸 צלמו למשימה עכשיו' : '🎯 הצטרפו למשימה העירונית'}
+                {joined ? 'צלמו למשימה עכשיו' : 'הצטרפו למשימה העירונית'}
               </button>
             </div>
           );
@@ -294,74 +305,83 @@ export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer
                   <p className="mc-hint">בדיקה כנה: צלמו {model.classes[0] || 'את זה'} <b>אחר</b> (צבע/רקע שונה). אם עדיין מזהה — באמת למד. 🎯</p>
                 </>
               ) : (
-                <div className="mc-empty">🧠 עוד אין מודל פעיל בעיר. אמנו אחד למטה ⬇️ — וכשהאימון נגמר הוא יופיע כאן עם ציון כנה.</div>
+                <div className="thx-strip">
+                  <span className="thx-ico dim"><HugeiconsIcon icon={Brain02Icon} size={20} strokeWidth={1.6} /></span>
+                  <span>אין מודל פעיל עדיין — כשהאימון למטה יסתיים, הוא יופיע כאן עם ציון כנה.</span>
+                </div>
               )}
             </div>
           );
         })()}
 
-        {/* world 1: the personal feel — deliberately small and separate */}
-        <div className="world hud">
-          <div className="world-head">
-            <b>🎓 אימון אישי — להרגיש את זה</b>
-            <span className="step-who">📱 30 שניות · במכשיר</span>
-          </div>
-          <p>{pocket.ready ? `המודל האישי שלכם מזהה "${pocket.className}".` : 'מודל צעצוע שלומד על הטלפון — בלי ענן. ככה מבינים מה זה אימון.'}</p>
-          <button className="primary" style={{ width: '100%' }} onClick={onTrainer}>
-            {pocket.ready ? '🎓 אמן מחדש / שחק איתו' : '🎓 נסו — 30 שניות'}
-          </button>
-        </div>
+        {/* world 1: the personal feel — one compact row */}
+        <button className="thx-row" onClick={onTrainer}>
+          <span className="thx-ico"><HugeiconsIcon icon={GraduationScrollIcon} size={22} strokeWidth={1.6} /></span>
+          <span className="thx-row-txt">
+            <b>אימון אישי — להרגיש את זה</b>
+            <i>{pocket.ready ? `המודל שלכם מזהה "${pocket.className}" — שחקו או אמנו מחדש` : 'מודל צעצוע על הטלפון, 30 שניות, בלי ענן'}</i>
+          </span>
+          <span className="thx-go">‹</span>
+        </button>
 
         {/* world 2: the group machine */}
-        <div className="world-sep">🏭 אימון קבוצתי אמיתי — המכונה</div>
+        <div className="thx-sep">אימון קבוצתי אמיתי</div>
 
-        {/* step 0 — the session's OBJECT LIST. One model, many objects:
-            e.g. "אצבע אחת", "2 אצבעות"… shoot a series per object. */}
-        <div className="world hud pick">
-          <div className="world-head"><b>🎯 מה מאמנים היום?</b><span className="step-who">אפשר כמה אובייקטים</span></div>
+        {/* the session's OBJECT LIST — compact, chips scroll on one line */}
+        <div className="thx-pick">
+          <div className="thx-pick-head">
+            <b>מה מאמנים היום?</b>
+            <span>{classes.length > 1 ? `מודל אחד · ${classes.length} אובייקטים` : 'אפשר כמה אובייקטים'}</span>
+          </div>
           {classes.length > 0 && (
-            <div className="pick-list">
+            <div className="thx-chips sel">
               {classes.map((c) => (
-                <span key={c} className="pick-sel">
+                <span key={c}>
                   {c}
                   <button aria-label={'הסר ' + c} onClick={() => onClasses(classes.filter((x) => x !== c))}>✕</button>
                 </span>
               ))}
             </div>
           )}
-          <div className="pick-chips">
+          <div className="thx-chips add">
             {CLASS_PRESETS.filter((c) => !classes.includes(c)).map((c) => (
-              <button key={c} className="pick-chip" onClick={() => addClass(c)}>+ {c}</button>
+              <button key={c} onClick={() => addClass(c)}>
+                <HugeiconsIcon icon={PlusSignIcon} size={13} strokeWidth={2} />{c}
+              </button>
             ))}
           </div>
-          <input className="pick-free" placeholder='הוסיפו אובייקט משלכם… למשל: "אצבע אחת" (Enter)'
+          <input className="pick-free" placeholder='אובייקט משלכם… למשל: "אצבע אחת"'
             onBlur={(e) => { addClass(e.target.value); e.target.value = ''; }}
             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
-          <p style={{ marginTop: 6 }}>
-            {classes.length > 1
-              ? <>מודל <b>אחד</b> ילמד את כל {classes.length} האובייקטים — במסך הצילום מחליפים אובייקט בצ'יפ ומצלמים סדרה לכל אחד.</>
-              : <>כל הסדרה תצולם ותתויג כ<b>"{mission}"</b>. רוצים שהמודל יבדיל בין כמה דברים (למשל אצבע אחת מול שתיים)? הוסיפו עוד אובייקטים.</>}
-          </p>
         </div>
-        {steps.map((s, i) => (
-          <div key={i} className={'step' + (s.done ? ' done' : '')}>
-            <div className="step-rail">
-              <span className="step-dot">{s.done ? '✓' : i + 1}</span>
-              {i < steps.length - 1 && <span className="step-line" />}
-            </div>
-            <div className="step-card hud">
-              <div className="step-top">
-                <span className="step-ico">{s.icon}</span>
-                <b>{s.title}</b>
-                <span className="step-who">{s.who}</span>
+
+        {/* the machine as a right-anchored icon ACCORDION — closed steps are
+            one calm line; the active step opens with its story + CTA */}
+        <div className="thx-steps">
+          {steps.map((s, i) => {
+            const open = shownStep === i;
+            return (
+              <div key={i} className={'thx-step' + (open ? ' open' : '') + (s.done ? ' done' : '')}>
+                <button className="thx-step-head" aria-expanded={open}
+                  onClick={() => setOpenStep(open ? -1 : i)}>
+                  <span className={'thx-ico' + (s.done ? ' ok' : '')}>
+                    {s.done ? '✓' : <HugeiconsIcon icon={s.icon} size={21} strokeWidth={1.6} />}
+                  </span>
+                  <span className="thx-row-txt">
+                    <b>{s.title}</b>
+                    <i>{s.who}</i>
+                  </span>
+                  <span className="thx-go">{open ? '⌄' : '‹'}</span>
+                </button>
+                {open && (
+                  <div className="thx-step-body">
+                    <p>{s.body}</p>
+                    {s.cta && <button className={s.cta.hot ? 'hot' : 'primary'} style={{ width: '100%' }} onClick={s.cta.run}>{s.cta.label}</button>}
+                  </div>
+                )}
               </div>
-              <p>{s.body}</p>
-              {s.cta && <button className={s.cta.hot ? 'hot' : 'primary'} style={{ width: '100%' }} onClick={s.cta.run}>{s.cta.label}</button>}
-            </div>
-          </div>
-        ))}
-        <div className="hint" style={{ margin: '4px 2px 14px' }}>
-          💡 ההמשך במחשב: סטודיו ← "📱 מהטלפון" לתיוג עדין, או "🚀 התחל אימון" כשהמאגר מוכן.
+            );
+          })}
         </div>
       </div>
     </section>

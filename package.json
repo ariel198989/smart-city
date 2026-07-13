@@ -8,6 +8,8 @@
     "start": "next start"
   },
   "dependencies": {
+    "@hugeicons/core-free-icons": "^4.2.2",
+    "@hugeicons/react": "^1.1.9",
     "@supabase/supabase-js": "^2.47.0",
     "@tensorflow-models/knn-classifier": "^1.2.6",
     "@tensorflow-models/mobilenet": "^2.1.1",
