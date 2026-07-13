@@ -78,9 +78,7 @@ export default function Home() {
         {auth.loaded && <AuthOverlay />}
         <div className="mgame">
           <header className="mg-top">
-            <div className="logo" style={{ fontSize: 14, letterSpacing: '.22em' }}>
-              SMART<span className="accent">CITY</span><span className="beacon" />
-            </div>
+            <img src="/logo-lockup.png" alt="SMART CITY" style={{ height: 26, width: 'auto', display: 'block', filter: 'drop-shadow(0 1px 6px rgba(2,5,9,.6))' }} />
             <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               {installEvt && (
                 <button className="hot" style={{ fontSize: 11, padding: '6px 10px' }}

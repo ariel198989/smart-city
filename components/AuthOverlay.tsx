@@ -53,7 +53,7 @@ export default function AuthOverlay() {
     <div className="overlay" role="dialog" aria-modal="true" aria-label="כניסה ל-Smart City"
       onKeyDown={(e) => { if (e.key === 'Escape' && !isMobile) authStore.set({ viewer: true }); }}>
       <div className="auth-card hud">
-        <div className="logo-lg">SMART<span className="accent">CITY</span></div>
+        <img src="/logo-lockup.png" alt="SMART CITY" style={{ height: 42, width: 'auto', display: 'block', margin: '0 auto 4px', filter: 'drop-shadow(0 2px 10px rgba(2,5,9,.6))' }} />
         <div className="muted" style={{ fontSize: 13.5, marginTop: 6, textAlign: 'center' }}>
           מאמנים AI לזהות מפגעים עירוניים — <b className="ink">ומתקנים את העיר.</b>
         </div>
