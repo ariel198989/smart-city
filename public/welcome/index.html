@@ -8,6 +8,9 @@
   <meta name="description" content="גללו — ותעופו דרך המסלול שתמונה אחת של ילד עוברת: מרחוב עם בור, דרך מוח ה-AI והענן, אל מפת העירייה — וחזרה לרחוב מתוקן." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png">
+  <link rel="apple-touch-icon" href="favicon-192.png">
   <style>
     :root, .sw-root {
       --sw-bg: #020509;
@@ -194,9 +197,10 @@
       sr.textContent = JSON.stringify({ prerender: [{ urls: [appHref] }], prefetch: [{ urls: [appHref] }] });
       document.body.appendChild(sr);
     }
-    // two-tone fixed wordmark (never follows the section accent)
-    const bn = document.querySelector('.sw-brand__name');
-    if (bn) bn.innerHTML = 'SMART <b>CITY</b>';
+    // brand = the real logo lockup (v2 horizontal, transparent)
+    const brandEl = document.querySelector('.sw-brand');
+    if (brandEl) brandEl.innerHTML =
+      '<img src="logo-header-web.png?v=1" alt="SMART CITY" style="height:clamp(30px,4.6vw,42px);width:auto;display:block;filter:drop-shadow(0 2px 10px rgba(2,5,9,.6));" />';
   </script>
 </body>
 </html>
