@@ -207,44 +207,61 @@
       .sw-btn--primary:hover{box-shadow:0 0 0 1px rgba(255,182,39,.5),0 12px 32px rgba(255,182,39,.4);}
       .sw-btn--ghost{color:#EAF4FF;border:1px solid rgba(53,225,255,.35);}
       .sw-btn--ghost:hover{border-color:#35E1FF;color:#35E1FF;}
-      /* ── ACT 2 info sections — normal flow below the cinematic ── */
+      /* ── ACT 2 info sections — normal flow below the cinematic, all Rubik ── */
+      #info,#info *{font-family:'Rubik',sans-serif;}
       #info{position:relative;z-index:45;background:#020509;}
-      .info-sec{padding:clamp(56px,9vw,104px) 0;border-top:1px solid rgba(53,225,255,.08);}
+      .info-sec{padding:clamp(64px,10vw,120px) 0;border-top:1px solid rgba(53,225,255,.07);}
       .info-sec.alt{background:#060f1c;}
-      .info-wrap{max-width:1000px;margin:0 auto;padding:0 clamp(20px,5vw,48px);}
-      .info-tag{display:block;color:#FFB627;font-size:12.5px;font-weight:700;letter-spacing:.2em;margin-bottom:12px;}
-      #info h2{color:#EAF4FF;font-family:'Rubik',sans-serif;font-weight:900;font-size:clamp(24px,3.6vw,38px);line-height:1.22;margin:0 0 14px;max-width:22ch;}
-      .info-lead{color:#AFC2D8;font-size:clamp(15px,1.8vw,17.5px);line-height:1.65;max-width:56ch;margin:0 0 8px;}
-      .info-lead b{color:#EAF4FF;}
-      .info-cards,.info-grid{display:grid;gap:14px;margin-top:34px;}
-      .info-cards{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}
-      .info-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));}
-      .info-card,.pillar{background:rgba(3,10,21,.6);border:1px solid rgba(53,225,255,.12);padding:22px 20px;}
-      .info-card i,.pillar i{font-size:26px;color:#35E1FF;display:block;margin-bottom:12px;}
-      .info-card b,.pillar b{display:block;color:#EAF4FF;font-size:16.5px;font-weight:700;margin-bottom:7px;}
-      .info-card span,.pillar span{color:#9fb2c8;font-size:14px;line-height:1.55;}
-      .info-chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px;}
-      .info-chips span{border:1px solid rgba(53,225,255,.28);color:#35E1FF;padding:10px 20px;font-size:14.5px;}
+      .info-wrap{max-width:960px;margin:0 auto;padding:0 clamp(22px,6vw,56px);}
+      .info-tag{display:inline-block;color:#FFB627;font-size:13px;font-weight:700;margin-bottom:16px;
+        padding-bottom:8px;border-bottom:2px solid rgba(255,182,39,.35);}
+      #info h2{color:#EAF4FF;font-weight:900;font-size:clamp(26px,4vw,40px);line-height:1.25;margin:0 0 18px;max-width:20ch;letter-spacing:-.01em;}
+      .info-lead{color:#AFC2D8;font-size:clamp(15.5px,1.9vw,18px);line-height:1.7;max-width:54ch;margin:0;}
+      .info-lead b{color:#EAF4FF;font-weight:500;}
+      .info-cards,.info-grid{display:grid;gap:16px;margin-top:40px;}
+      .info-cards{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));}
+      .info-grid{grid-template-columns:repeat(auto-fit,minmax(250px,1fr));}
+      .info-card,.pillar{background:rgba(6,15,28,.55);border:1px solid rgba(53,225,255,.12);
+        border-radius:14px;padding:26px 24px;transition:border-color .2s,transform .2s;}
+      .info-card:hover,.pillar:hover{border-color:rgba(53,225,255,.32);transform:translateY(-3px);}
+      .info-card i,.pillar i{font-size:24px;color:#35E1FF;display:flex;align-items:center;justify-content:center;
+        width:46px;height:46px;border-radius:12px;background:rgba(53,225,255,.09);margin-bottom:16px;}
+      .info-card b,.pillar b{display:block;color:#EAF4FF;font-size:17px;font-weight:700;margin-bottom:8px;}
+      .info-card span,.pillar span{color:#9fb2c8;font-size:14.5px;line-height:1.6;}
+      .info-chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px;}
+      .info-chips span{border:1px solid rgba(53,225,255,.26);border-radius:999px;color:#cfe6f2;
+        padding:11px 22px;font-size:14.5px;font-weight:500;transition:border-color .2s,color .2s;}
+      .info-chips span:hover{border-color:#35E1FF;color:#35E1FF;}
       .info-sec.final{text-align:center;border-top:1px solid rgba(53,225,255,.14);}
       .info-sec.final h2{margin-inline:auto;}
-      .info-cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:30px;}
-      .info-btn{text-decoration:none;font-weight:700;font-size:16px;padding:15px 34px;transition:transform .15s,box-shadow .15s,filter .12s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
-      .info-btn.primary{background:#FFB627;color:#241500;box-shadow:0 0 0 1px rgba(255,182,39,.3),0 8px 26px rgba(255,182,39,.26);}
-      .info-btn.primary:hover{transform:translateY(-2px);}
-      .info-btn.primary:active{transform:scale(.97);filter:brightness(1.1);}
+      .info-sec.final .info-tag{border-bottom:none;padding-bottom:0;}
+      .info-cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:34px;}
+      .info-btn{text-decoration:none;font-weight:700;font-size:16px;padding:16px 36px;border-radius:12px;
+        transition:transform .15s,box-shadow .15s,filter .12s,border-color .2s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+      .info-btn.primary{background:#FFB627;color:#241500;box-shadow:0 0 0 1px rgba(255,182,39,.3),0 10px 30px rgba(255,182,39,.28);}
+      .info-btn.primary:hover{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(255,182,39,.5),0 14px 36px rgba(255,182,39,.4);}
+      .info-btn.primary:active{transform:scale(.97);filter:brightness(1.08);}
       .info-btn.ghost{color:#EAF4FF;border:1px solid rgba(53,225,255,.35);}
       .info-btn.ghost:hover{border-color:#35E1FF;color:#35E1FF;}
       .info-btn.ghost:active{transform:scale(.97);}
-      .info-foot{margin-top:52px;color:#5F7288;font-size:12.5px;letter-spacing:.06em;}
+      .info-foot{margin-top:56px;color:#5F7288;font-size:12.5px;}
       @media (max-width:860px){
         .info-cta{flex-direction:column;}
         .info-btn{display:block;text-align:center;}
+        .info-card,.pillar{padding:22px 20px;}
       }
       /* when the cinematic finishes, its fixed video/copy layers fade so the
          info scrolls cleanly over them; the topbar (logo + app CTA) stays */
       body.cinema-done .sw-stage,body.cinema-done .sw-copylayer,
       body.cinema-done .sw-route,body.cinema-done .sw-hint,body.cinema-done .sw-scrollbar{
         opacity:0 !important;pointer-events:none !important;transition:opacity .45s ease;}
+      /* opaque header once we're in the info act, so sections scroll cleanly
+         beneath it instead of colliding with the logo */
+      .sw-topbar{transition:background .4s ease,backdrop-filter .4s ease;}
+      body.cinema-done .sw-topbar{background:linear-gradient(180deg,rgba(2,5,9,.94) 40%,rgba(2,5,9,.72));
+        backdrop-filter:blur(12px);border-bottom:1px solid rgba(53,225,255,.09);}
+      /* first info section clears the fixed header */
+      #info > .info-sec:first-child{padding-top:clamp(92px,14vw,150px);}
       /* ── touch: instant press feedback, no gray tap flash, real thumb targets ── */
       .sw-topcta,.sw-btn,.sw-nav__item,.sw-route__dot{
         -webkit-tap-highlight-color:transparent;touch-action:manipulation;user-select:none;}
