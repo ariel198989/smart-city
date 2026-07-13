@@ -21,6 +21,8 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Target02Icon, Brain02Icon, GraduationScrollIcon, Camera01Icon, Tag01Icon,
   Rocket01Icon, UserGroupIcon, SmartPhone01Icon, PlusSignIcon,
+  Award01Icon, Image02Icon, ChampionIcon, City01Icon, CalendarCheckIn01Icon,
+  Download04Icon, Compass01Icon, Logout01Icon, Login01Icon,
 } from '@hugeicons/core-free-icons';
 
 export type MobileTab = 'map' | 'cam' | 'train' | 'me';
@@ -416,57 +418,62 @@ export function MeHub({ onClose, onMyLog, onBoard, credits, streak, dailyN }: Me
     (window as any).__scInstall = null;
   }
 
-  const row = (icon: string, label: string, sub: string, run: () => void, badge = '') => (
-    <button className="me-row" onClick={run}>
-      <span className="dw-ico">{icon}</span>
-      <span className="dw-txt"><b>{label}</b><i>{sub}</i></span>
-      {badge && <span className="dw-badge">{badge}</span>}
-      <span className="dw-chev">‹</span>
+  // one calm row: right-anchored icon tile, label, optional badge, chevron
+  const row = (icon: any, label: string, sub: string, run: () => void, badge = '') => (
+    <button className="thx-row me" onClick={run} key={label}>
+      <span className="thx-ico"><HugeiconsIcon icon={icon} size={20} strokeWidth={1.6} /></span>
+      <span className="thx-row-txt"><b>{label}</b>{sub && <i>{sub}</i>}</span>
+      {badge && <span className="thx-badge">{badge}</span>}
+      <span className="thx-go">‹</span>
     </button>
   );
+
+  const rankPct = rank?.next ? Math.min(100, Math.round(((xp! - rank.at) / (rank.next.at - rank.at)) * 100)) : 100;
 
   return (
     <section className="hub">
       <header className="hub-head">
         <button className="ghost hub-close" aria-label="סגירה" onClick={onClose}>✕</button>
-        <b>👤 {auth.team || 'אורח'}</b>
+        <b>{auth.team || 'אורח'}</b>
         <span>{auth.user?.email || 'לא מחוברים — הצטרפו למשחק'}</span>
       </header>
       <div className="hub-body">
-        {/* 🎖️ permanent rank — survives the monthly reset */}
+        {/* rank + the month, one composed card instead of card+bar+3 tiles */}
         {rank && (
-          <div className="rank-card hud">
-            <span className="rank-ico">{rank.icon}</span>
-            <div className="rank-txt">
-              <b>{rank.name} · דרגה {rank.level}</b>
-              {rank.next
-                ? <i>עוד {rank.toNext} נק' נצברות לדרגת "{rank.next.name}" — הנקודות נשמרות לתמיד, גם אחרי איפוס החודש</i>
-                : <i>הדרגה הגבוהה ביותר — כל הכבוד! 🏆</i>}
+          <div className="me-hero">
+            <div className="me-hero-top">
+              <span className="thx-ico gold"><HugeiconsIcon icon={Award01Icon} size={22} strokeWidth={1.6} /></span>
+              <div className="thx-row-txt">
+                <b>{rank.name} · דרגה {rank.level}</b>
+                <i>{rank.next ? `עוד ${rank.toNext} נק' לדרגת "${rank.next.name}"` : 'הדרגה הגבוהה ביותר'}</i>
+              </div>
+              <span className="me-xp">{xp}</span>
             </div>
-            <b className="rank-xp">{xp}</b>
+            <div className="thx-bar"><i style={{ width: rankPct + '%' }} /></div>
+            <div className="me-stats">
+              <span><b>{credits}</b> החודש</span>
+              <span><b>{streak}</b> רצף ימים</span>
+              <span><b>{dailyN}/{DAILY_TARGET}</b> אתגר היום</span>
+            </div>
           </div>
         )}
-        {rank?.next && (
-          <div className="rank-bar"><i style={{ width: Math.min(100, Math.round(((xp! - rank.at) / (rank.next.at - rank.at)) * 100)) + '%' }} /></div>
-        )}
-        <div className="dw-stats" style={{ margin: '10px 2px 12px' }}>
-          <div className="dw-stat"><b>{credits}</b><span>💎 החודש</span></div>
-          <div className="dw-stat"><b>{streak}</b><span>🔥 רצף ימים</span></div>
-          <div className="dw-stat"><b>{dailyN}/{DAILY_TARGET}</b><span>🎯 אתגר היום</span></div>
-        </div>
-        {row('🗂️', 'התמונות שלי', 'כל צילום — ומה קרה איתו', onMyLog)}
-        {row('🏆', 'מובילי החודש', '3 הראשונים זוכים בפרס מהעירייה', onBoard)}
-        {row('🏙️', 'מאגר העיר', 'התמונות של כל הקהילה', () => setPool(true))}
-        {row('🎯', 'האתגר היומי', `${DAILY_TARGET} תפיסות = +${DAILY_BONUS} 💎 כל אחת`,
+
+        <div className="thx-sep">הפעילות שלי</div>
+        {row(Image02Icon, 'התמונות שלי', 'כל צילום ומה קרה איתו', onMyLog)}
+        {row(ChampionIcon, 'מובילי החודש', 'שלושת הראשונים זוכים בפרס', onBoard)}
+        {row(City01Icon, 'מאגר העיר', 'התמונות של כל הקהילה', () => setPool(true))}
+        {row(CalendarCheckIn01Icon, 'האתגר היומי', `${DAILY_TARGET} תפיסות = בונוס ${DAILY_BONUS} לכל אחת`,
           () => toast(dailyN >= DAILY_TARGET
-            ? '🎉 השלמתם את האתגר של היום! מחר מתאפס — שמרו על הרצף 🔥'
-            : `עוד ${DAILY_TARGET - dailyN} תפיסות דרך שער ה-AI היום = +${(DAILY_TARGET - dailyN) * DAILY_BONUS} 💎. יאללה למצלמה! 🎥`, true),
-          dailyN >= DAILY_TARGET ? 'הושלם ✓' : `${dailyN}/${DAILY_TARGET}`)}
-        {row('📲', 'התקנת האפליקציה', 'למסך הבית — כמו אפליקציה אמיתית', install)}
-        {row('🧭', 'בדיקת חיישנים', 'מצפן · GPS — לפני יציאה לשטח', () => setSensors(true))}
+            ? 'השלמתם את האתגר של היום! מחר מתאפס — שמרו על הרצף'
+            : `עוד ${DAILY_TARGET - dailyN} תפיסות דרך שער ה-AI היום. יאללה למצלמה!`, true),
+          dailyN >= DAILY_TARGET ? '✓' : `${dailyN}/${DAILY_TARGET}`)}
+
+        <div className="thx-sep">המכשיר</div>
+        {row(Download04Icon, 'התקנת האפליקציה', 'למסך הבית, כמו אפליקציה', install)}
+        {row(Compass01Icon, 'בדיקת חיישנים', 'מצפן ו-GPS לפני שטח', () => setSensors(true))}
         {auth.user
-          ? row('🚪', 'התנתקות', auth.user.email || '', () => { logout(); onClose(); })
-          : row('🔑', 'התחברות', 'כדי לתפוס ולצבור קרדיטים', () => { authStore.set({ viewer: false }); onClose(); })}
+          ? row(Logout01Icon, 'התנתקות', '', () => { logout(); onClose(); })
+          : row(Login01Icon, 'התחברות', 'כדי לתפוס ולצבור קרדיטים', () => { authStore.set({ viewer: false }); onClose(); })}
       </div>
       {pool && <PoolModal onClose={() => setPool(false)} />}
       {sensors && <SensorsModal onClose={() => setSensors(false)} />}

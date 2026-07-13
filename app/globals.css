@@ -352,6 +352,16 @@ button.ghost:hover:not(:disabled){border-color:var(--cy-faint);box-shadow:none}
 .thx-step-body{padding:0 14px 14px 14px}
 .thx-step-body p{font-size:12.5px;color:var(--body);line-height:1.6;margin:0 0 11px}
 
+/* ── "אני" hub, de-densified ── */
+.me-hero{background:rgba(6,16,28,.7);border:1px solid rgba(255,182,39,.25);border-radius:16px;padding:14px;margin-bottom:6px}
+.me-hero-top{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.me-xp{flex-shrink:0;font-family:"Space Grotesk",monospace;font-size:22px;font-weight:700;color:var(--gold)}
+.me-stats{display:flex;gap:18px;margin-top:10px}
+.me-stats span{font-size:11.5px;color:var(--muted)}
+.me-stats b{color:var(--ink);font-family:"Space Grotesk",monospace;font-size:14px;margin-inline-end:4px}
+.thx-row.me{margin-bottom:8px;padding:10px 14px}
+.thx-badge{flex-shrink:0;font-size:11px;color:var(--gold);border:1px solid var(--gold-line);border-radius:999px;padding:4px 10px;font-family:"Space Grotesk",monospace}
+
 /* the training journey stepper — tuned for 390px: slim rail, wide cards */
 .step{display:flex;gap:8px;margin-bottom:2px}
 .step-rail{display:flex;flex-direction:column;align-items:center;width:22px;flex-shrink:0}
