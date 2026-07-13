@@ -73,10 +73,11 @@
     </section>
 
     <section class="info-sec final">
-      <div class="info-wrap">
+      <div class="final-panel">
+        <img class="final-mark" src="favicon-192.png?v=3" alt="" aria-hidden="true" />
         <span class="info-tag">הצעד הבא</span>
         <h2>רוצים שהילדים שלכם יאמנו את ה-AI הבא?</h2>
-        <p class="info-lead" style="margin-inline:auto">מפגש היכרות קצר — ותוך שבוע הכיתה הראשונה כבר מצלמת, מתייגת ומאמנת.</p>
+        <p class="info-lead">מפגש היכרות קצר — ותוך שבוע הכיתה הראשונה כבר מצלמת, מתייגת ומאמנת.</p>
         <div class="info-cta">
           <a class="info-btn primary" href="/?start=1">כניסה לאפליקציה ←</a>
           <a class="info-btn ghost" href="https://wa.me/972507594477?text=%D7%94%D7%99%D7%99%20%D7%9C%D7%99%D7%93%D7%95%D7%A8%2C%20%D7%A8%D7%90%D7%99%D7%AA%D7%99%20%D7%90%D7%AA%20%D7%94%D7%A2%D7%95%D7%9C%D7%9D%20%D7%94%D7%A0%D7%92%D7%9C%D7%9C%20%D7%A9%D7%9C%20Smart%20City%20%D7%95%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%A9%D7%9E%D7%95%D7%A2%20%D7%A4%D7%A8%D7%98%D7%99%D7%9D">לתיאום סדנה בוואטסאפ</a>
@@ -232,10 +233,21 @@
       .info-chips span{border:1px solid rgba(53,225,255,.26);border-radius:999px;color:#cfe6f2;
         padding:11px 22px;font-size:14.5px;font-weight:500;transition:border-color .2s,color .2s;}
       .info-chips span:hover{border-color:#35E1FF;color:#35E1FF;}
-      .info-sec.final{text-align:center;border-top:1px solid rgba(53,225,255,.14);}
-      .info-sec.final h2{margin-inline:auto;}
-      .info-sec.final .info-tag{border-bottom:none;padding-bottom:0;}
-      .info-cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:34px;}
+      .info-sec.final{position:relative;overflow:hidden;text-align:center;
+        border-top:1px solid rgba(53,225,255,.14);padding-inline:clamp(18px,5vw,48px);}
+      .info-sec.final::before{content:'';position:absolute;inset:0;pointer-events:none;
+        background:radial-gradient(58% 46% at 50% 38%,rgba(255,182,39,.12),transparent 72%);}
+      .final-panel{position:relative;z-index:1;max-width:600px;margin:0 auto;
+        background:linear-gradient(180deg,rgba(6,15,28,.92),rgba(2,5,9,.55));
+        border:1px solid rgba(53,225,255,.18);border-radius:22px;
+        padding:clamp(38px,6vw,58px) clamp(24px,5vw,50px);
+        box-shadow:0 30px 90px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04);}
+      .final-mark{width:62px;height:auto;display:block;margin:0 auto 22px;
+        filter:drop-shadow(0 6px 18px rgba(255,182,39,.25));}
+      .info-sec.final h2{margin:0 auto 16px;}
+      .info-sec.final .info-lead{margin-inline:auto;}
+      .info-sec.final .info-tag{border-bottom:none;padding-bottom:0;margin-bottom:14px;}
+      .info-cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:32px;}
       .info-btn{text-decoration:none;font-weight:700;font-size:16px;padding:16px 36px;border-radius:12px;
         transition:transform .15s,box-shadow .15s,filter .12s,border-color .2s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
       .info-btn.primary{background:#FFB627;color:#241500;box-shadow:0 0 0 1px rgba(255,182,39,.3),0 10px 30px rgba(255,182,39,.28);}
