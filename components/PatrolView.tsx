@@ -78,7 +78,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
   const [hub, setHub] = useState<'train' | 'me' | null>(null);
   // 🎯 the training session's class LIST — multi-object training
   // (e.g. "אצבע אחת", "2 אצבעות"…): one model learns them all.
-  const [trainClasses, setTrainClasses] = useState<string[]>(['מעבר חציה']);
+  const [trainClasses, setTrainClasses] = useState<string[]>([]);   // user picks — nothing forced
   useEffect(() => {
     try {
       const s = JSON.parse(localStorage.getItem('sc_train_classes_v1') || 'null');
@@ -174,7 +174,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
       setModelMsg(r.ok ? '' : (r.error || ''));
       const cls = modelStore.get().classes;
       // default mission: first model class, or crosswalks (OSM spawns work even without a model)
-      setMission(cls.length ? cls[0] : 'מעבר חציה');
+      setMission((m) => m || cls[0] || '');   // model's class, else whatever the user picked, else none
       // mission briefing — once per session, after we know what the model knows
       setBriefReady(true);
       let seen = false;
@@ -438,7 +438,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
         await uploadBlob(path, dataURLtoBlob(durl), 'image/jpeg');
         await insertDetection({
           lat: at.lat, lng: at.lng,
-          class_name: mission || 'מפגע כללי', confidence: 0,
+          class_name: mission || 'ללא סיווג', confidence: 0,
           crop_path: path, detected_by: auth.user.id, team_name: auth.team || null,
           credits: cr, heading: getHeading(), campaign_id: campaignIdFor(mission || ''),
         });
@@ -670,12 +670,16 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
             if (focusClass) {
               const rest = trainClasses.filter((c) => c !== focusClass);
               updateTrainClasses([focusClass, ...rest]);
+            } else if (!trainClasses.length && !mission) {
+              // nothing chosen yet — the camera has nothing to label
+              toast('בחרו קודם מה מאמנים — הוסיפו אובייקט למעלה 🎯', true);
+              return;
             }
             setSeries(true);
           }} onTagger={() => setTagger(true)} />
       )}
       {series && (
-        <SeriesCollect classNames={trainClasses.length ? trainClasses : [mission || 'מעבר חציה']}
+        <SeriesCollect classNames={trainClasses.length ? trainClasses : [mission]}
           getPos={() => posRef.current}
           onClose={(n) => {
             setSeries(false);

@@ -15,7 +15,7 @@ const TARGET_MIN = 8, OTHER_MIN = 8;
 export default function PocketTrainer({ mission, onClose }: { mission: string; onClose: () => void }) {
   const pocket = useStore(pocketStore);
   const [step, setStep] = useState<'target' | 'other' | 'done'>(pocket.ready ? 'done' : 'target');
-  const [className, setClassName] = useState(pocket.className || mission || 'בור בכביש');
+  const [className, setClassName] = useState(pocket.className || mission || '');
   const [queue, setQueue] = useState<string[]>([]);           // unprocessed shots (current step)
   const [processing, setProcessing] = useState<{ done: number; total: number } | null>(null);
   const [test, setTest] = useState<{ label: string; confidence: number; durl: string } | null>(null);
@@ -81,7 +81,7 @@ export default function PocketTrainer({ mission, onClose }: { mission: string; o
       setQueue([]);
       if (navigator.vibrate) navigator.vibrate(150);
       if (step === 'target') setStep('other');
-      else { await finishPocket(className.trim() || 'מפגע'); setStep('done'); if (navigator.vibrate) navigator.vibrate(250); }
+      else { await finishPocket(className.trim() || 'האובייקט שלי'); setStep('done'); if (navigator.vibrate) navigator.vibrate(250); }
     } catch (e: any) { toast('למידה: ' + (e.message || e)); }
     setProcessing(null);
   }

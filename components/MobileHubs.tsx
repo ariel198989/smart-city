@@ -114,7 +114,8 @@ interface TrainHubProps {
 const CLASS_PRESETS = ['מעבר חציה', 'בור בכביש', 'תמרור', 'פסולת', 'ספסל שבור', 'תאורה שבורה', 'גרפיטי'];
 
 export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer, onTrainReal, onSeries, onTagger }: TrainHubProps) {
-  const mission = classes[0] || 'מעבר חציה';
+  // no forced default object — the session trains WHATEVER the user picks
+  const mission = classes[0] || '';
   const addClass = (v: string) => {
     const c = normalizeHebrewCount(v.trim());
     if (c && !classes.includes(c)) onClasses([...classes, c]);
@@ -158,7 +159,8 @@ export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer
   const steps = [
     {
       icon: Camera01Icon, who: 'אתם',
-      title: classes.length > 1 ? `צלמו סדרה לכל אובייקט (${classes.length})` : `צלמו סדרה של ${mission}`,
+      title: classes.length > 1 ? `צלמו סדרה לכל אובייקט (${classes.length})`
+        : mission ? `צלמו סדרה של ${mission}` : 'צלמו סדרה — בחרו אובייקט למעלה',
       body: classes.length > 1
         ? 'המצלמה צולמת לבד כל 1.5 שניות. בוחרים אובייקט בצ\'יפ שלמעלה, מקיפים אותו — ואז עוברים לאובייקט הבא. רדאר זוויות נפרד לכל אחד.'
         : 'המצלמה צולמת לבד כל 1.5 שניות — פשוט מסתובבים סביב האובייקט. 60 תמונות בדקה וחצי, מכל הזוויות.',
@@ -254,7 +256,7 @@ export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer
           const ic = model.imageCount, hv = model.honestVal;
           const verdict = !model.ready ? null
             : ic == null ? { t: 'unknown', msg: 'איכות לא נמדדה (מודל ישן).' }
-            : (ic < 30 || hv === false) ? { t: 'weak', msg: `⚠️ מודל ניסיוני — אומן על ${ic} תמונות בלבד${hv === false ? ', בלי סט בדיקה אמיתי' : ''}. סביר שהוא "שינן" ולא באמת הבין. כדי שיהיה אמין — צלמו עוד תמונות מגוונות (עכברים שונים, רקעים שונים).` }
+            : (ic < 30 || hv === false) ? { t: 'weak', msg: `⚠️ מודל ניסיוני — אומן על ${ic} תמונות בלבד${hv === false ? ', בלי סט בדיקה אמיתי' : ''}. סביר שהוא "שינן" ולא באמת הבין. כדי שיהיה אמין — צלמו את האובייקט במגוון מצבים — זוויות, רקעים ותאורה שונים.` }
             : ic < 100 ? { t: 'basic', msg: `מודל בסיסי — ${ic} תמונות. עובד על מקרים דומים; עוד תמונות מגוונות ישפרו אותו הרבה.` }
             : { t: 'strong', msg: `מודל חזק — ${ic} תמונות עם סט בדיקה אמיתי. 💪` };
           const optimistic = model.accuracy != null && hv === false;
