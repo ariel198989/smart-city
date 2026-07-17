@@ -17,6 +17,7 @@ import { fetchPoolGallery } from '@/lib/citypool';
 import { DAILY_TARGET, DAILY_BONUS } from '@/lib/daily';
 import { normalizeHebrewCount } from '@/lib/text';
 import { fetchActiveCampaign, fetchCampaignProgress, type Campaign, type CampaignProgress } from '@/lib/campaigns';
+import { ensureCityModel } from '@/lib/patrol';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Target02Icon, Brain02Icon, GraduationScrollIcon, Camera01Icon, Tag01Icon,
@@ -138,9 +139,22 @@ export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer
     // live job status — poll while the hub is open so "התחל אימון" never
     // becomes a black hole (the audit's #2 finding)
     let stop = false;
+    let lastStatus: string | null = null;
     const tick = () => {
       if (stop) return;
-      fetchJobs(1, { team: authStore.get().team || null, scope: 'all' }).then((j) => { if (!stop) setJob(j[0] || 'none'); }).catch(() => {});
+      fetchJobs(1, { team: authStore.get().team || null, scope: 'all' }).then((j) => {
+        if (stop) return;
+        const cur = j[0] || null;
+        setJob(cur || 'none');
+        // training just FINISHED → hot-load the fresh model right now,
+        // no quit-and-reopen needed (the "לא עובד בפעם הראשונה" bug)
+        if (cur?.status === 'done' && lastStatus && lastStatus !== 'done') {
+          ensureCityModel({ force: true }).then((r) => {
+            if (r.ok) toast('🎉 המודל החדש נטען — נסו אותו במצלמה!', true);
+          });
+        }
+        lastStatus = cur?.status || null;
+      }).catch(() => {});
       setTimeout(tick, 20000);
     };
     tick();

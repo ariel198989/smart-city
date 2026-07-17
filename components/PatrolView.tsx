@@ -39,15 +39,19 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
   const [retrying, setRetrying] = useState(false);
   async function retryModel() {
     setRetrying(true); setModelMsg('טוען את מודל העיר…');
-    const r = await ensureCityModel();
+    const r = await ensureCityModel({ force: true });
     setModelMsg(r.ok ? '' : (r.error || 'הטעינה נכשלה'));
     setRetrying(false);
   }
-  // auto-retry the model download when connectivity returns
+  // auto-retry the model download when connectivity returns, and when
+  // the app returns to the foreground (PWA resume) with no model yet —
+  // e.g. the user trained in Colab while the app sat in the background
   useEffect(() => {
     const onOnline = () => { if (!modelStore.get().ready) retryModel(); };
+    const onVisible = () => { if (document.visibilityState === 'visible' && !modelStore.get().ready) retryModel(); };
     window.addEventListener('online', onOnline);
-    return () => window.removeEventListener('online', onOnline);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { window.removeEventListener('online', onOnline); document.removeEventListener('visibilitychange', onVisible); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const mapEl = useRef<HTMLDivElement>(null);

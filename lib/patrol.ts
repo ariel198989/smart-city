@@ -109,14 +109,24 @@ export async function fetchCoveredSectors(lat: number, lng: number, className: s
 // A fresh user in another group must NOT inherit someone else's model —
 // they play ungated until THEIR group trains one. The only global
 // fallback is a model an admin explicitly marked scope='city'.
+// retry latch is TIME-BASED, not permanent: opening the app seconds
+// before Colab finishes registering must not brick model loading for the
+// whole session (the "works only after I quit and reopen" bug).
 let modelTriedFor: string | null = null;
-export async function ensureCityModel(): Promise<{ ok: boolean; name?: string; error?: string }> {
+let modelTriedAt = 0;
+let loadedZipPath: string | null = null;   // which model version is live
+const RETRY_WINDOW_MS = 15000;
+export async function ensureCityModel(opts: { force?: boolean } = {}): Promise<{ ok: boolean; name?: string; error?: string }> {
   const { authStore } = await import('./auth');   // lazy: avoid import cycles
   const me = authStore.get();
   const key = `${me.user?.id || 'anon'}|${me.team || ''}`;
-  if (modelStore.get().ready) return { ok: true, name: modelStore.get().name };
-  if (modelTriedFor === key) return { ok: false, error: 'כבר נוסה' };
+  if (!opts.force) {
+    if (modelStore.get().ready) return { ok: true, name: modelStore.get().name };
+    if (modelTriedFor === key && Date.now() - modelTriedAt < RETRY_WINDOW_MS)
+      return { ok: false, error: 'כבר נוסה' };
+  }
   modelTriedFor = key;
+  modelTriedAt = Date.now();
   try {
     const models = await fetchModels();
     const myTeam = me.team || null;
@@ -126,6 +136,9 @@ export async function ensureCityModel(): Promise<{ ok: boolean; name?: string; e
     const m = models.find((x: any) => x.zip_path && x.approved && mine(x))
       || models.find((x: any) => x.zip_path && x.approved && x.scope === 'city');
     if (!m) return { ok: false, error: 'לקבוצה שלכם אין עדיין מודל — צלמו, תייגו ואמנו אחד! 🚀' };
+    // force-reload with nothing new = keep what's running
+    if (modelStore.get().ready && loadedZipPath === m.zip_path)
+      return { ok: true, name: modelStore.get().name };
     // model ZIPs are immutable (unique path per version) → cache-first:
     // slow 3G downloads the model ONCE, every later app open is instant
     const url = publicUrl(m.zip_path);
@@ -144,6 +157,7 @@ export async function ensureCityModel(): Promise<{ ok: boolean; name?: string; e
       } catch { /* cache full — model still loads */ }
     }
     await loadModelFromZip(await res.blob(), m.name || m.team_name, Array.isArray(m.classes) ? m.classes : []);
+    loadedZipPath = m.zip_path;
     // honest quality signals — the app must say "too few, train more"
     const rawStats = (m as any).class_stats;
     modelStore.set({
