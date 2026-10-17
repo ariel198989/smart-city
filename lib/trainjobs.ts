@@ -32,6 +32,8 @@ export async function cancelJob(id: string): Promise<void> {
   await sb.from('sc_training_jobs').update({ status: 'cancelled' }).eq('id', id).eq('status', 'pending');
 }
 
+export const MIN_TRAIN_IMAGES = 10;
+
 // phone-side: build the dataset and open a job.
 // scope 'mine' = personal training (only MY tagged photos — a student
 // completes the full cycle solo first); 'team' = the group-merged pool (only
@@ -55,6 +57,11 @@ export async function startTrainingJob(
     return { error: scope === 'mine'
       ? 'אין לך עדיין תמונות מתויגות — צלמו סדרה ותייגו קודם.'
       : 'אין עדיין תמונות מתויגות (עם תיבות) בפול — צריך תפיסות דרך מודל YOLO, או תיוג בדסקטופ.' };
+  }
+  // YOLO on a handful of images yields a model that detects nothing — don't
+  // burn a Colab slot (one 1-image job sat pending in the queue for weeks)
+  if (built.count < MIN_TRAIN_IMAGES) {
+    return { error: `יש רק ${built.count} תמונות מתויגות — צריך לפחות ${MIN_TRAIN_IMAGES} כדי שהאימון ייצא משהו. צלמו ותייגו עוד.` };
   }
   onProgress('מעלה את הדאטה לענן…');
   const path = `jobs/j_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.zip`;  // ASCII-only key
