@@ -106,7 +106,7 @@ interface TrainHubProps {
   onClasses: (c: string[]) => void;     // add/remove objects
   myUntagged: number | null; // my shots waiting for a bbox
   onTrainer: () => void;                       // opens PocketTrainer
-  onTrainReal: (scope: 'mine' | 'all') => void; // personal / class-merged cloud training
+  onTrainReal: (scope: 'mine' | 'all' | 'team') => void; // personal / group-merged cloud training
   onSeries: (focusClass?: string) => void;  // opens burst series capture (optionally jump to one class)
   onTagger: () => void;      // opens the phone tagger
 }
@@ -119,6 +119,8 @@ export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer
   const mission = classes[0] || '';
   const addClass = (v: string) => {
     const c = normalizeHebrewCount(v.trim());
+    // quotes/newlines break the YOLO data.yaml quoting (citypool.ts)
+    if (/['"\r\n]/.test(c) || c.length > 40) { toast('שם האובייקט: עד 40 תווים, בלי גרשיים או ירידת שורה', true); return; }
     if (c && !classes.includes(c)) onClasses([...classes, c]);
   };
   const model = useStore(modelStore);
@@ -135,7 +137,8 @@ export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer
     }).catch(() => {});
   }, []);
   useEffect(() => {
-    fetchPoolStats().then(setPool).catch(() => {});
+    // the group's pool — counts must match what 'team' training will pack
+    fetchPoolStats(undefined, authStore.get().team || undefined).then(setPool).catch(() => {});
     // live job status — poll while the hub is open so "התחל אימון" never
     // becomes a black hole (the audit's #2 finding)
     let stop = false;
@@ -202,7 +205,7 @@ export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer
       body: `כל תמונה מתויגת של כל חבר קבוצה כבר במאגר אחד: ${tagged} תמונות מ-${contributors} תורמים` +
         (pool && tagged > 0 ? ` · הקטגוריה הדלה: ${weakest} (יעד 50+, ‏150+ = מצוין)` : '') +
         '. עכשיו מאמנים פעם אחת על הכל — ומשווים למודל האישי: 60 לבד נגד 400 ביחד.',
-      cta: { label: 'התחל אימון כיתתי מאוחד', run: () => onTrainReal('all'), hot: false },
+      cta: { label: 'התחל אימון כיתתי מאוחד', run: () => onTrainReal(authStore.get().team ? 'team' : 'all'), hot: false },
       done: ready,
     },
     {

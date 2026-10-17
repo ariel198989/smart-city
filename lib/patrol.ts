@@ -1,7 +1,7 @@
 'use client';
 // City Patrol game engine bits: real-world spawn points (OSM), credit math,
 // distance helpers. Pokémon-GO-style loop grounded on real city data.
-import { sb, publicUrl, fetchModels } from './db';
+import { sb, publicUrl, fetchModelsForTeam } from './db';
 import { loadModelFromZip, modelStore } from './infer';
 
 // ---- geo ----
@@ -128,8 +128,8 @@ export async function ensureCityModel(opts: { force?: boolean } = {}): Promise<{
   modelTriedFor = key;
   modelTriedAt = Date.now();
   try {
-    const models = await fetchModels();
     const myTeam = me.team || null;
+    const models = await fetchModelsForTeam(me.user?.id, myTeam);
     const mine = (x: any) =>
       x.owner === me.user?.id ||
       (myTeam && (x.team_name === myTeam || x.team_name === 'אישי · ' + myTeam));

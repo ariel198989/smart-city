@@ -200,6 +200,8 @@ export default function StudioView() {
   function addClass(name: string) {
     name = (name || '').trim();
     if (!name) return;
+    // quotes/newlines break the YOLO data.yaml quoting (citypool.ts)
+    if (/['"\r\n]/.test(name) || name.length > 40) { toast('שם הקטגוריה: עד 40 תווים, בלי גרשיים או ירידת שורה'); return; }
     const idx = classes.findIndex((c) => c.name === name);
     if (idx >= 0) { setSelClass(idx); return; }
     const next = [...classes, { id: 'c' + Date.now().toString(36), name, color: CLASS_PALETTE[classes.length % CLASS_PALETTE.length] }];

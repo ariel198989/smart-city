@@ -15,13 +15,15 @@ export interface PoolStats {
 // SCALE CEILING: the ZIP is assembled in device memory (~200KB/img →
 // 1500 ≈ 300MB). Beyond that the export must move server-side
 // (Edge Function / worker) — newest-first keeps the freshest data in.
-async function fetchPoolRows(limit = 1500, ownerId?: string, campaignId?: string) {
+async function fetchPoolRows(limit = 1500, ownerId?: string, campaignId?: string, team?: string) {
   // training-grade = full frame + a bbox. NOT confidence>0: human-tagged
   // phone photos carry confidence 0 and are exactly the data we want —
   // that filter silently excluded the whole series→tag flow.
   // ownerId: personal training — a student trains on HER photos first,
   // the class merge comes as its own later step (pedagogy, Ariel).
   // campaignId: the weekly city mission — export ONLY that focused data.
+  // team: a workshop group's pool — its own shots + its members' personal
+  // ones ('אישי · <team>'), never another group's objects.
   let q = sb.from('sc_detections')
     .select('class_name, frame_path, bbox, confidence, detected_by, created_at')
     .not('frame_path', 'is', null)
@@ -29,6 +31,7 @@ async function fetchPoolRows(limit = 1500, ownerId?: string, campaignId?: string
     .neq('status', 'rejected');
   if (ownerId) q = q.eq('detected_by', ownerId);
   if (campaignId) q = q.eq('campaign_id', campaignId);
+  if (team) q = q.in('team_name', [team, `אישי · ${team}`]);
   const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
   if (error) throw error;
   return data || [];
@@ -82,8 +85,8 @@ export async function fetchMyContribution(userId: string) {
   return count || 0;
 }
 
-export async function fetchPoolStats(ownerId?: string): Promise<PoolStats> {
-  const rows = await fetchPoolRows(1500, ownerId);
+export async function fetchPoolStats(ownerId?: string, team?: string): Promise<PoolStats> {
+  const rows = await fetchPoolRows(1500, ownerId, undefined, team);
   const byClass: Record<string, number> = {};
   const people = new Set<string>();
   rows.forEach((r: any) => {
@@ -119,9 +122,9 @@ async function fetchAcceptedNegatives(limit = 800) {
 }
 
 // build a YOLO dataset ZIP from the whole city pool (full images + labels)
-export async function buildCityPoolZip(onProgress: (d: number, t: number) => void, ownerId?: string, campaignId?: string) {
+export async function buildCityPoolZip(onProgress: (d: number, t: number) => void, ownerId?: string, campaignId?: string, team?: string) {
   const JSZip = (await import('jszip')).default;
-  const rows = await fetchPoolRows(1500, ownerId, campaignId);
+  const rows = await fetchPoolRows(1500, ownerId, campaignId, team);
   if (!rows.length) return null;
 
   // class index map
@@ -187,8 +190,9 @@ export async function buildCityPoolZip(onProgress: (d: number, t: number) => voi
 
   // negatives: accepted "ה-AI צדק" photos → background images, empty labels
   // (~quarter negatives; and for a personal 'mine' pool, cap at ~25% of the
-  // positives so a student's small dataset isn't swamped by city-wide bg)
-  const negs = (await fetchAcceptedNegatives()).slice(0, ownerId ? Math.ceil(ok / 4) : 1000);
+  // positives so a student's small dataset isn't swamped by city-wide bg;
+  // a team pool is capped the same way)
+  const negs = (await fetchAcceptedNegatives()).slice(0, (ownerId || team) ? Math.ceil(ok / 4) : 1000);
   let negOk = 0;
   for (let i = 0; i < negs.length; i++) {
     try {

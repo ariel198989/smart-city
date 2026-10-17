@@ -16,12 +16,12 @@ export interface TrainJob {
 // jobs; 'all' = this team's merged-training jobs.
 export async function fetchJobs(
   limit = 5,
-  who?: { userId?: string; team?: string | null; scope?: 'mine' | 'all' },
+  who?: { userId?: string; team?: string | null; scope?: 'mine' | 'all' | 'team' },
 ): Promise<TrainJob[]> {
   let q = sb.from('sc_training_jobs')
     .select('*').order('created_at', { ascending: false }).limit(limit);
   if (who?.scope === 'mine' && who.userId) q = q.eq('requested_by', who.userId);
-  else if (who?.scope === 'all' && who.team) q = q.eq('team_name', who.team);
+  else if ((who?.scope === 'all' || who?.scope === 'team') && who.team) q = q.eq('team_name', who.team);
   const { data, error } = await q;
   if (error) throw error;
   return data || [];
@@ -34,16 +34,21 @@ export async function cancelJob(id: string): Promise<void> {
 
 // phone-side: build the dataset and open a job.
 // scope 'mine' = personal training (only MY tagged photos — a student
-// completes the full cycle solo first); 'all' = the class-merged pool.
+// completes the full cycle solo first); 'team' = the group-merged pool (only
+// this team's photos); 'all' = city-wide pool (admin use).
 export async function startTrainingJob(
   user: { id: string }, team: string | null,
   onProgress: (msg: string) => void,
-  scope: 'mine' | 'all' = 'all',
+  scope: 'mine' | 'all' | 'team' = 'all',
 ): Promise<{ job: TrainJob } | { error: string }> {
-  onProgress(scope === 'mine' ? 'אוסף את התמונות שלך…' : 'אוסף את מאגר העיר…');
+  // 'team' without a team would silently pack the whole city — refuse
+  if (scope === 'team' && !team) return { error: 'אין קבוצה משויכת — התחברו לקבוצה כדי לאמן.' };
+  onProgress(scope === 'mine' ? 'אוסף את התמונות שלך…' : scope === 'team' ? 'אוסף את מאגר הקבוצה…' : 'אוסף את מאגר העיר…');
   const built = await buildCityPoolZip(
     (d, t) => onProgress(`אורז ${d}/${t} תמונות…`),
     scope === 'mine' ? user.id : undefined,
+    undefined,
+    scope === 'team' ? team! : undefined,
   );
   if (built && (built as any).error) return { error: (built as any).error };
   if (!built || !built.count) {

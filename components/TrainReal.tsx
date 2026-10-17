@@ -11,8 +11,9 @@ import { startTrainingJob, registerTrainedModel, fetchJobs, cancelJob, type Trai
 import { fetchPoolStats, fetchMyTaggedCount, type PoolStats } from '@/lib/citypool';
 
 // scope 'mine' = a student's personal model on her own photos;
-// 'all' = the class-merged city dataset
-export default function TrainReal({ onClose, scope = 'all' }: { onClose: () => void; scope?: 'mine' | 'all' }) {
+// 'team' = the group-merged dataset (only this group's photos);
+// 'all' = the city-wide dataset (admin)
+export default function TrainReal({ onClose, scope = 'all' }: { onClose: () => void; scope?: 'mine' | 'all' | 'team' }) {
   const auth = useStore(authStore);
   const [jobs, setJobs] = useState<TrainJob[]>([]);
   const [progress, setProgress] = useState('');
@@ -26,7 +27,7 @@ export default function TrainReal({ onClose, scope = 'all' }: { onClose: () => v
   const jobsFor = () => fetchJobs(5, { userId: auth.user?.id, team: auth.team || null, scope });
   useEffect(() => {
     jobsFor().then(setJobs).catch(() => {});
-    if (scope === 'all') fetchPoolStats().then(setPool).catch(() => {});
+    if (scope !== 'mine') fetchPoolStats(undefined, scope === 'team' ? auth.team || undefined : undefined).then(setPool).catch(() => {});
     else if (auth.user) fetchMyTaggedCount(auth.user.id).then(setMine).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope, auth.user?.id]);
@@ -82,7 +83,7 @@ export default function TrainReal({ onClose, scope = 'all' }: { onClose: () => v
         {/* step 1 */}
         <div className="tr-step">
           <b>① פתחו משימת אימון</b>
-          {scope === 'all' && readiness && (
+          {scope !== 'mine' && readiness && (
             <div className={'ai-verdict ' + (readiness.level === 'great' ? 'pass' : readiness.level === 'low' || readiness.level === 'none' ? 'fail' : '')} style={{ marginTop: 6 }}>
               {readiness.level === 'none' ? '📭 ' : readiness.level === 'low' ? '📈 ' : '✅ '}{readiness.msg}
             </div>

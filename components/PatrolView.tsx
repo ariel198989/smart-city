@@ -118,7 +118,7 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
   const pocket = useStore(pocketStore);
   const [showTrainer, setShowTrainer] = useState(false);
   const [showTrainReal, setShowTrainReal] = useState(false);
-  const [trainScope, setTrainScope] = useState<'mine' | 'all'>('all');
+  const [trainScope, setTrainScope] = useState<'mine' | 'all' | 'team'>('all');
   const [briefed, setBriefed] = useState(true);
   const [briefReady, setBriefReady] = useState(false);
   const [camMode, setCamMode] = useState(false);
@@ -780,8 +780,8 @@ export default function PatrolView({ defaultCam = false }: { defaultCam?: boolea
               </div>
             )}
             <button className="hot" style={{ width: '100%', marginTop: 10 }}
-              onClick={() => { setShowBoard(false); setTrainScope('all'); setShowTrainReal(true); }}>
-              🚀 התחל אימון אמיתי — מודל YOLO לעיר
+              onClick={() => { setShowBoard(false); setTrainScope(authStore.get().team ? 'team' : 'all'); setShowTrainReal(true); }}>
+              🚀 התחל אימון אמיתי — מודל YOLO לקבוצה
             </button>
             <div className="hint" style={{ marginTop: 10 }}>
               קרדיטים = תפיסה שעברה את מסנן ה-AI (10-20) + בונוס אזור משימה (+5). מתאפס כל חודש — 3 הראשונים זוכים.

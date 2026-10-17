@@ -66,6 +66,20 @@ export async function fetchModels(): Promise<CityModel[]> {
   return data as CityModel[];
 }
 
+// a group's models + my own + admin-approved city ones — NOT the global
+// newest-100 window, where a group's model falls out as workshops multiply
+export async function fetchModelsForTeam(userId: string | undefined, team: string | null): Promise<CityModel[]> {
+  // PostgREST: quote list values; escape \ and " inside them
+  const q = (s: string) => `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  const parts: string[] = ['scope.eq.city'];
+  if (userId) parts.push(`owner.eq.${userId}`);
+  if (team) parts.push(`team_name.in.(${q(team)},${q('אישי · ' + team)})`);
+  const { data, error } = await sb.from('sc_models').select('*')
+    .or(parts.join(',')).order('created_at', { ascending: false }).limit(50);
+  if (error) throw error;
+  return data as CityModel[];
+}
+
 export async function insertModel(row: object) {
   const { data, error } = await sb.from('sc_models').insert(row).select().single();
   if (error) throw error;
