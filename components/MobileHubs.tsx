@@ -18,6 +18,7 @@ import { DAILY_TARGET, DAILY_BONUS } from '@/lib/daily';
 import { normalizeHebrewCount } from '@/lib/text';
 import { fetchActiveCampaign, fetchCampaignProgress, type Campaign, type CampaignProgress } from '@/lib/campaigns';
 import { ensureCityModel } from '@/lib/patrol';
+import { fetchWorkshopContext, wsContextStore, TASK_HE } from '@/lib/workshop';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Target02Icon, Brain02Icon, GraduationScrollIcon, Camera01Icon, Tag01Icon,
@@ -136,6 +137,20 @@ export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer
       if (c) fetchCampaignProgress(c.id).then(setCampProg).catch(() => {});
     }).catch(() => {});
   }, []);
+  // 🏫 workshop student: the group's sub-problem pre-fills the object list
+  // ONCE (only if she hasn't picked any); chips stay fully manual after that
+  const uid = useStore(authStore).user?.id || '';
+  const ws = useStore(wsContextStore).ctx;
+  useEffect(() => { fetchWorkshopContext(); }, [uid]);
+  useEffect(() => {
+    const st = wsContextStore.get();
+    if (!st.ctx || st.prefilled) return;
+    wsContextStore.set({ prefilled: true });
+    const targets = (st.ctx.subproblem?.target_classes || [])
+      .map((t) => normalizeHebrewCount(String(t).trim()))
+      .filter((t) => t && t.length <= 40 && !/['"\r\n]/.test(t));
+    if (classes.length === 0 && targets.length) onClasses([...new Set(targets)]);
+  }, [ws]);
   useEffect(() => {
     // the group's pool — counts must match what 'team' training will pack
     fetchPoolStats(undefined, authStore.get().team || undefined).then(setPool).catch(() => {});
@@ -354,6 +369,12 @@ export function TrainingHub({ onClose, classes, onClasses, myUntagged, onTrainer
             <b>מה מאמנים היום?</b>
             <span>{classes.length > 1 ? `מודל אחד · ${classes.length} אובייקטים` : 'אפשר כמה אובייקטים'}</span>
           </div>
+          {ws?.subproblem?.title && (
+            <div className="thx-ws" style={{ fontSize: 12, color: 'var(--cy)', marginBottom: 8 }}>
+              המשימה של הקבוצה: {ws.subproblem.title}
+              {ws.subproblem.task_type && TASK_HE[ws.subproblem.task_type] ? ` · ${TASK_HE[ws.subproblem.task_type]}` : ''}
+            </div>
+          )}
           {classes.length > 0 && (
             <div className="thx-chips sel">
               {classes.map((c) => (
